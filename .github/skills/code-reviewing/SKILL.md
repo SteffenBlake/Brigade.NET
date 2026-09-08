@@ -45,6 +45,8 @@ Load skill `writing-unit-tests` for python script that find uncovered line/branc
 
 Write finding to `/tmp/CODE-REVIEW.MD`. Timestamp at very top. Whole report in caveman speak (short word, no fluff, like this skill file talk).
 
+If already exists, check timestamp, alert user, ask permission before overwriting old report.
+
 ## Rule 🪨
 
 - Reviewer role only. Never edit code, never edit test, never fix anything. Report finding, that's it.

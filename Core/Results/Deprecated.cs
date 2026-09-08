@@ -7,6 +7,7 @@ namespace Brigade.Net.Core.Results;
 /// <param name="value">The success value.</param>
 /// <param name="deprecatedAfterUtc">The UTC date and time after which this value is no longer supported.</param>
 /// <param name="message">An optional human-readable explanation.</param>
+[System.Text.Json.Serialization.JsonConverter(typeof(ResultJsonConverterFactory))]
 public sealed class Deprecated<T>(T value, DateTime deprecatedAfterUtc, string? message = null) : Success<T>(value)
 {
     /// <summary>

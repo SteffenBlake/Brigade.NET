@@ -9,4 +9,8 @@
     <UserSecretsId>6d5f4946-70d5-4330-8ff4-7167d8476116</UserSecretsId>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Web\Brigade.Net.Example.Web.csproj" />
+  </ItemGroup>
+
 </Project>

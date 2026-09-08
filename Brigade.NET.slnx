@@ -1,10 +1,26 @@
 <Solution>
+  <Folder Name="/Partie/" />
+  <Folder Name="/Partie/Engines/" />
+  <Folder Name="/Partie/Engines/AspNetCore/">
+    <Project Path="Partie/Engines/AspNetCore/Brigade.Net.Partie.Engines.AspNetCore.csproj" />
+  </Folder>
+  <Folder Name="/Partie/Engines/AspNetCore/Tests/">
+    <Project Path="Partie/Engines/AspNetCore/Tests/Brigade.Net.Partie.Engines.AspNetCore.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Partie/Generator/" />
+  <Folder Name="/Partie/Generator/Tests/">
+    <Project Path="Partie/Generator/Tests/Brigade.Net.Partie.Generator.Tests.csproj" />
+  </Folder>
   <Project Path="Core/Brigade.Net.Core.csproj" />
   <Project Path="Core/Tests/Brigade.Net.Core.Tests/Brigade.Net.Core.Tests.csproj" />
   <Project Path="Partie/Brigade.Net.Partie.csproj" />
   <Project Path="Partie/Tests/Brigade.Net.Partie.Tests.csproj" />
+  <Project Path="Partie/AspNetCore/Brigade.Net.Partie.AspNetCore.csproj" />
+  <Project Path="Partie/AspNetCore/Tests/Brigade.Net.Partie.AspNetCore.Tests.csproj" />
+  <Project Path="Partie/Generator/Brigade.Net.Partie.Generator.csproj" />
   <Project Path="Example/AppHost/Brigade.Net.Example.AppHost.csproj" />
   <Project Path="Example/ServiceDefaults/Brigade.Net.Example.ServiceDefaults.csproj" />
   <Project Path="Example/Web/Brigade.Net.Example.Web.csproj" />
-  <Project Path="Example/Tests/Brigade.Net.Example.Tests.csproj" />
+  <Project Path="Example/Domain/Brigade.Net.Example.Domain.csproj" />
+  <Project Path="Example/IntegrationTests/Brigade.Net.Example.IntegrationTests.csproj" />
 </Solution>

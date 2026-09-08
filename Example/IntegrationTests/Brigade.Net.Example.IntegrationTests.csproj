@@ -21,8 +21,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AppHost\Brigade.Net.Example.AppHost.csproj" />
-    <ProjectReference Include="..\ServiceDefaults\Brigade.Net.Example.ServiceDefaults.csproj" />
-    <ProjectReference Include="..\..\Core\Brigade.Net.Core.csproj" />
   </ItemGroup>
 
 </Project>

@@ -5,6 +5,7 @@ namespace Brigade.Net.Core.Results;
 /// </summary>
 /// <typeparam name="T">The type of the success value.</typeparam>
 /// <param name="value">The success value.</param>
+[System.Text.Json.Serialization.JsonConverter(typeof(ResultJsonConverterFactory))]
 public class Success<T>(T value) : Result<T>
 {
     /// <summary>

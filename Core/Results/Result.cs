@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Brigade.Net.Core.Results;
 
 /// <summary>
@@ -6,6 +8,7 @@ namespace Brigade.Net.Core.Results;
 /// consumers never need to switch on a discriminator to use it.
 /// </summary>
 /// <typeparam name="T">The type of the success value.</typeparam>
+[JsonConverter(typeof(ResultJsonConverterFactory))]
 public abstract class Result<T>
 {
     private protected Result()

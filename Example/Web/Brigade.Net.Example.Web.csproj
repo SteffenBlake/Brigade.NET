@@ -7,11 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
-  </ItemGroup>
+    <ProjectReference Include="..\Domain\Brigade.Net.Example.Domain.csproj" />
+    <ProjectReference Include="..\ServiceDefaults\Brigade.Net.Example.ServiceDefaults.csproj" />
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\Core\Brigade.Net.Core.csproj" />
+    <ProjectReference Include="..\..\Partie\Engines\AspNetCore\Brigade.Net.Partie.Engines.AspNetCore.csproj"
+      OutputItemType="Analyzer"
+      ReferenceOutputAssembly="false"/>
   </ItemGroup>
 
 </Project>

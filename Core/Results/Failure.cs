@@ -7,6 +7,7 @@ namespace Brigade.Net.Core.Results;
 /// <typeparam name="T">The success value type this result would have carried.</typeparam>
 /// <typeparam name="TFailure">The type of the wrapped failure payload.</typeparam>
 /// <param name="value">The wrapped failure payload.</param>
+[System.Text.Json.Serialization.JsonConverter(typeof(ResultJsonConverterFactory))]
 public sealed class Failure<T, TFailure>(TFailure value) : Result<T>
     where TFailure : FailureBase
 {

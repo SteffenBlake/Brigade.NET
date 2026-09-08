@@ -1,28 +1,19 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
-
   <ItemGroup>
-    <PackageReference Include="Aspire.Hosting.Testing" Version="13.5.3" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="10.0.11" />
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Using Include="Xunit" />
+    <ProjectReference Include="..\Brigade.Net.Partie.Engines.AspNetCore.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="true" />
+    <ProjectReference Include="..\..\..\Brigade.Net.Partie.csproj" />
   </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\AppHost\Brigade.Net.Example.AppHost.csproj" />
-    <ProjectReference Include="..\ServiceDefaults\Brigade.Net.Example.ServiceDefaults.csproj" />
-    <ProjectReference Include="..\..\Core\Brigade.Net.Core.csproj" />
-  </ItemGroup>
-
 </Project>

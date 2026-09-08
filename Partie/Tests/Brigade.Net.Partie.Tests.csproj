@@ -20,7 +20,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Brigade.Net.Partie.csproj" />
-    <ProjectReference Include="..\..\Core\Brigade.Net.Core.csproj" />
   </ItemGroup>
 
 </Project>
