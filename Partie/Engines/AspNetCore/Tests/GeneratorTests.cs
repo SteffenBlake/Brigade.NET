@@ -23,6 +23,16 @@ public class GeneratorTests
         Assert.DoesNotContain(core.GetReferencedAssemblies(), reference => reference.Name!.StartsWith("Microsoft.AspNetCore", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void RoutePolicyAttribute_BelongsToRuntimeSymbols()
+    {
+        Assert.Equal("Brigade.Net.Partie.AspNetCore", typeof(RoutePolicyAttribute).Assembly.GetName().Name);
+        Assert.DoesNotContain(typeof(AspNetCorePartieGenerator).Assembly.GetTypes(), type => typeof(Attribute).IsAssignableFrom(type)
+            && type.Namespace?.StartsWith("Brigade.Net.", StringComparison.Ordinal) == true);
+        Assert.DoesNotContain(typeof(BrigadeGeneratorCore).Assembly.GetTypes(), type => typeof(Attribute).IsAssignableFrom(type)
+            && type.Namespace?.StartsWith("Brigade.Net.", StringComparison.Ordinal) == true);
+    }
+
     [Theory]
     [InlineData("Microsoft.AspNetCore.Http.HttpContext")]
     [InlineData("Microsoft.AspNetCore.Http.HttpRequest")]
@@ -205,6 +215,54 @@ public class GeneratorTests
         Assert.Contains(driver.GetRunResult().Results.Single().TrackedSteps["BrigadeRouteSources"].SelectMany(step => step.Outputs),
             output => output.Reason == IncrementalStepRunReason.Modified
         );
+    }
+
+    [Theory]
+    [InlineData("", false)]
+    [InlineData("", true)]
+    [InlineData("partial ", false)]
+    [InlineData("partial ", true)]
+    public async Task Generator_InlineRoutesCallOriginalMethods(string modifier, bool expressionBody)
+    {
+        var body = expressionBody ? "=> Configure(@event);" : "{ Configure(@event); }";
+        var source = TypedSource("Get", "")
+            .Replace("[BrigadeGroup", "using Microsoft.AspNetCore.Builder;\nnamespace Sample;\n[BrigadeGroup")
+            .Replace("static partial void Go();", $$"""
+                static {{modifier}}void Go(global::Microsoft.AspNetCore.Builder.RouteHandlerBuilder @event) {{body}}
+
+                [Get("second"), Handler(typeof(Handler))]
+                static {{modifier}}void Second(global::Microsoft.AspNetCore.Builder.RouteHandlerBuilder otherName)
+                {
+                    Configure(otherName);
+                }
+
+                public static int Calls;
+
+                private static void Configure(RouteHandlerBuilder builder)
+                {
+                    Calls++;
+                    builder.WithMetadata("configured");
+                }
+                """);
+
+        var (_, output, result) = Generate(source);
+
+        Assert.Empty(result.Diagnostics);
+        AssertNoErrors(output);
+        using var assemblyStream = new MemoryStream();
+        var emitted = output.Emit(assemblyStream);
+        Assert.True(emitted.Success, string.Join(Environment.NewLine, emitted.Diagnostics));
+        var assembly = System.Reflection.Assembly.Load(assemblyStream.ToArray());
+        await using var app = Microsoft.AspNetCore.Builder.WebApplication.CreateBuilder().Build();
+        var extensions = assembly.GetType("Microsoft.AspNetCore.Builder.PartieRoutingExtensions")!;
+
+        extensions.GetMethod("UsePartieRoutes")!.Invoke(null, [app]);
+
+        Assert.Equal(2, assembly.GetType("Sample.Routes")!.GetField("Calls")!.GetValue(null));
+        var endpoints = ((Microsoft.AspNetCore.Routing.IEndpointRouteBuilder)app).DataSources
+            .SelectMany(dataSource => dataSource.Endpoints).ToArray();
+        Assert.Equal(2, endpoints.Length);
+        Assert.All(endpoints, endpoint => Assert.Equal("configured", endpoint.Metadata.GetMetadata<string>()));
     }
 
     private static string TypedSource(string attributes, string parameters = "[FromRoute(\"id\")] string identifier") => $$"""

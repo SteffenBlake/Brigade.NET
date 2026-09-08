@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Domain\Brigade.Net.Example.Domain.csproj" />
+    <ProjectReference Include="..\..\Partie\AspNetCore\Brigade.Net.Partie.AspNetCore.csproj" />
     <ProjectReference Include="..\ServiceDefaults\Brigade.Net.Example.ServiceDefaults.csproj" />
 
     <ProjectReference Include="..\..\Partie\Engines\AspNetCore\Brigade.Net.Partie.Engines.AspNetCore.csproj"

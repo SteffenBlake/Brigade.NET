@@ -1,4 +1,5 @@
 using Brigade.Net.Core.Results;
+using Brigade.Net.Example.Domain.Products;
 using Brigade.Net.Partie;
 
 namespace Brigade.Net.Example.Domain.Orders;

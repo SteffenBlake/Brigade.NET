@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using Brigade.Net.Core.Results;
 using Brigade.Net.Example.Domain.Orders;
 
-namespace Brigade.Net.Example.Web.Orders;
+namespace Brigade.Net.Example.Web;
 
 public sealed class InMemoryOrderStore : IOrderStore
 {

@@ -15,5 +15,6 @@
     <Using Include="Xunit" />
     <ProjectReference Include="..\Brigade.Net.Partie.Engines.AspNetCore.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="true" />
     <ProjectReference Include="..\..\..\Brigade.Net.Partie.csproj" />
+    <ProjectReference Include="..\..\..\AspNetCore\Brigade.Net.Partie.AspNetCore.csproj" />
   </ItemGroup>
 </Project>

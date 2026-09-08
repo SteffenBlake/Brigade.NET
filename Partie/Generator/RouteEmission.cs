@@ -8,7 +8,9 @@ public sealed class RouteEmission(
     string operation,
     string descriptorExpression,
     string inputTypeName,
-    ImmutableArray<RouteInputEmission> inputs
+    ImmutableArray<RouteInputEmission> inputs,
+    ImmutableArray<RoutePolicyEmission> policies = default,
+    ImmutableArray<string> policyFunctions = default
 )
 {
     public string Name { get; } = name;
@@ -17,12 +19,6 @@ public sealed class RouteEmission(
     public string DescriptorExpression { get; } = descriptorExpression;
     public string InputTypeName { get; } = inputTypeName;
     public ImmutableArray<RouteInputEmission> Inputs { get; } = inputs;
-}
-
-public sealed class RouteInputEmission(string typeName, string memberName, string bindingName, string source)
-{
-    public string TypeName { get; } = typeName;
-    public string MemberName { get; } = memberName;
-    public string BindingName { get; } = bindingName;
-    public string Source { get; } = source;
+    public ImmutableArray<RoutePolicyEmission> Policies { get; } = policies;
+    public ImmutableArray<string> PolicyFunctions { get; } = policyFunctions;
 }

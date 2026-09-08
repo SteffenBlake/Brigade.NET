@@ -1,11 +1,11 @@
 ---
 name: csharp-standards
-description: "MANDATORY ALWAYS LOAD. C# code style rules for this repo. Use for ANY C# code write/edit."
+description: "MUST LOAD. All C# edits. One class per file. RoutePolicy suffix."
 ---
 
-# C# Standards ⚠️ ALWAYS LOAD
+# C# Rules. MUST LOAD.
 
-1. Braces `{ }` ALWAYS. NEVER 1-liner if/for/while/etc.
+1. Braces ALWAYS. No bare if/for/while.
    ```csharp
    // BAD
    if (x) return y;
@@ -17,7 +17,7 @@ description: "MANDATORY ALWAYS LOAD. C# code style rules for this repo. Use for 
    }
    ```
 
-2. Multi-line params/args → closing `)` OWN LINE. Never end-of-line.
+2. Args span lines? Close `)` on own line.
    ```csharp
    // BAD
    public void Foo(
@@ -32,7 +32,7 @@ description: "MANDATORY ALWAYS LOAD. C# code style rules for this repo. Use for 
    }
    ```
 
-3. Class/record ctor → ALWAYS primary constructor. Never old-style ctor body just to assign field.
+3. Class/record ctor: primary ONLY. No old ctor for field set.
    ```csharp
    // BAD
    public class Foo
@@ -51,3 +51,7 @@ description: "MANDATORY ALWAYS LOAD. C# code style rules for this repo. Use for 
        private readonly int _x = x;
    }
    ```
+
+4. ONE class per file. No class pile. File name match class name.
+
+5. Route policy class name MUST end `RoutePolicy`.

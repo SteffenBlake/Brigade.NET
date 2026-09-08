@@ -1,4 +1,4 @@
-namespace Brigade.Net.Example.Domain.Orders;
+namespace Brigade.Net.Example.Domain.Products;
 
 public static class ProductCatalog
 {

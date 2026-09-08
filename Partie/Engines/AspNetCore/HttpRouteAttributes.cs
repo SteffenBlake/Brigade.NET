@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using Brigade.Net.Partie.Generator;
@@ -22,6 +24,59 @@ internal static class HttpRouteAttributes
             attribute.ConstructorArguments.FirstOrDefault().Value as string ?? "",
             verb.ToUpperInvariant()
         );
+    }
+
+    public static ImmutableArray<RoutePolicyEmission> DiscoverPolicies(
+        IMethodSymbol method,
+        string operation,
+        Compilation compilation,
+        Action<ISymbol, string> report
+    )
+    {
+        var policies = ImmutableArray.CreateBuilder<RoutePolicyEmission>();
+        var attributes = method.GetAttributes().Concat(method.ContainingType.GetAttributes());
+        foreach (var attribute in attributes.Where(attribute => attribute.AttributeClass?.ToDisplayString() == AttributeNamespace + ".RoutePolicyAttribute"))
+        {
+            if (attribute.ConstructorArguments.FirstOrDefault().Value is not INamedTypeSymbol policyType)
+            {
+                report(method, "RoutePolicy must name a static, closed policy type");
+                continue;
+            }
+
+            var methodNames = GetPolicyMethodNames(policyType, operation, compilation);
+            if (methodNames.Length != 1)
+            {
+                var signature = operation.Equals("GET", StringComparison.OrdinalIgnoreCase) ? "Query<TParams>" : "Command<TParams, TBody>";
+                report(method, $"RoutePolicy '{policyType.ToDisplayString()}' must be static and closed and declare exactly one accessible, non-async static void {signature}(RouteHandlerBuilder route) method");
+                continue;
+            }
+
+            policies.Add(new RoutePolicyEmission(policyType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat), methodNames[0]));
+        }
+
+        return policies.ToImmutable();
+    }
+
+    public static bool DiscoverPolicyFunctions(IMethodSymbol method) => method.Parameters.Length == 1
+        && method.Parameters[0].RefKind == RefKind.None
+        && method.Parameters[0].Type.ToDisplayString() == "Microsoft.AspNetCore.Builder.RouteHandlerBuilder";
+
+    private static string[] GetPolicyMethodNames(INamedTypeSymbol policyType, string operation, Compilation compilation)
+    {
+        if (!policyType.IsStatic || policyType.IsUnboundGenericType)
+        {
+            return Array.Empty<string>();
+        }
+
+        var isQuery = operation.Equals("GET", StringComparison.OrdinalIgnoreCase);
+        var builderType = compilation.GetTypeByMetadataName("Microsoft.AspNetCore.Builder.RouteHandlerBuilder");
+        return policyType.GetMembers(isQuery ? "Query" : "Command").OfType<IMethodSymbol>()
+            .Where(candidate => candidate.IsStatic && !candidate.IsAsync && candidate.ReturnsVoid
+                && candidate.Arity == (isQuery ? 1 : 2) && candidate.Parameters.Length == 1
+                && candidate.Parameters[0].RefKind == RefKind.None
+                && SymbolEqualityComparer.Default.Equals(candidate.Parameters[0].Type, builderType)
+                && compilation.IsSymbolAccessibleWithin(candidate, compilation.Assembly))
+            .Select(candidate => candidate.Name).ToArray();
     }
 
     public static string Emit()

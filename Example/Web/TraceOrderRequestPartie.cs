@@ -2,7 +2,7 @@ using Brigade.Net.Core.Results;
 using Brigade.Net.Example.Domain.Orders;
 using Brigade.Net.Partie;
 
-namespace Brigade.Net.Example.Web.Orders;
+namespace Brigade.Net.Example.Web;
 
 public static class TraceOrderRequestPartie
 {

@@ -13,18 +13,46 @@ public sealed class AspNetCorePartieGenerator : IIncrementalGenerator
         context.RegisterPostInitializationOutput(static output =>
             output.AddSource("PartieHttpAttributes.g.cs", HttpRouteAttributes.Emit())
         );
-        BrigadeGeneratorCore.Initialize(context, EmitRoute, EmitAdapter, HttpRouteAttributes.Discover);
+        BrigadeGeneratorCore.Initialize(
+            context, EmitRoute, EmitAdapter, HttpRouteAttributes.Discover,
+            HttpRouteAttributes.DiscoverPolicies, HttpRouteAttributes.DiscoverPolicyFunctions
+        );
     }
 
     private static string EmitRoute(RouteEmission route)
     {
         var parameters = route.Inputs.Select(input => Binding(input) + input.TypeName + " " + input.MemberName);
         var arguments = string.Join(", ", route.Inputs.Select(input => input.MemberName));
-        return "global::Microsoft.AspNetCore.Builder.RoutingEndpointConventionBuilderExtensions.WithName("
+        var baseRoute = "global::Microsoft.AspNetCore.Builder.RoutingEndpointConventionBuilderExtensions.WithName("
             + "global::Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapMethods(app, "
             + Literal(route.Pattern.Length == 0 ? "/" : route.Pattern) + ", new[] { " + Literal(route.Operation.ToUpperInvariant()) + " }, "
             + "static (" + string.Join(", ", parameters) + ") => " + route.DescriptorExpression
-            + ".ExecuteAsync(new " + route.InputTypeName + "(" + arguments + "))), " + Literal(route.Name) + ");\n";
+            + ".ExecuteAsync(new " + route.InputTypeName + "(" + arguments + "))), " + Literal(route.Name) + ")";
+
+        if (route.PolicyFunctions.Length == 0 && route.Policies.Length == 0)
+        {
+            return baseRoute + ";\n";
+        }
+
+        var code = "{\nvar __routeBuilder = " + baseRoute + ";\n";
+        foreach (var policyFunc in route.PolicyFunctions)
+        {
+            code += policyFunc + "(__routeBuilder);\n";
+        }
+
+        foreach (var policy in route.Policies)
+        {
+            var typeArguments = route.InputTypeName;
+            if (policy.MethodName == "Command")
+            {
+                typeArguments += ", " + (route.Inputs.FirstOrDefault(input => input.Source == "Body")?.TypeName
+                    ?? "global::Brigade.Net.Core.Results.Unit");
+            }
+
+            code += policy.PolicyTypeName + "." + policy.MethodName + "<" + typeArguments + ">(__routeBuilder);\n";
+        }
+
+        return code + "}\n";
     }
 
     private static string Binding(RouteInputEmission input)

@@ -20,13 +20,15 @@ public static class BrigadeGeneratorCore
         IncrementalGeneratorInitializationContext context,
         Func<RouteEmission, string>? emitRoute = null,
         Func<string, string>? emitAdapter = null,
-        Func<AttributeData, RouteDeclaration?>? discoverRoute = null
+        Func<AttributeData, RouteDeclaration?>? discoverRoute = null,
+        Func<IMethodSymbol, string, Compilation, Action<ISymbol, string>, ImmutableArray<RoutePolicyEmission>>? discoverPolicies = null,
+        Func<IMethodSymbol, bool>? discoverPolicyFunctions = null
     )
     {
         var groups = context.SyntaxProvider.ForAttributeWithMetadataName(
             "Brigade.Net.Partie.BrigadeGroupAttribute",
             static (node, _) => node is ClassDeclarationSyntax,
-            (attributeContext, cancellationToken) => BuildGroup(attributeContext, cancellationToken, emitRoute, discoverRoute)
+            (attributeContext, cancellationToken) => BuildGroup(attributeContext, cancellationToken, emitRoute, discoverRoute, discoverPolicies, discoverPolicyFunctions)
         ).WithTrackingName("BrigadeGroups");
 
         context.RegisterSourceOutput(groups, static (output, group) =>
@@ -75,7 +77,9 @@ public static class BrigadeGeneratorCore
         GeneratorAttributeSyntaxContext context,
         CancellationToken cancellationToken,
         Func<RouteEmission, string>? emitRoute,
-        Func<AttributeData, RouteDeclaration?>? discoverRoute
+        Func<AttributeData, RouteDeclaration?>? discoverRoute,
+        Func<IMethodSymbol, string, Compilation, Action<ISymbol, string>, ImmutableArray<RoutePolicyEmission>>? discoverPolicies,
+        Func<IMethodSymbol, bool>? discoverPolicyFunctions
     )
     {
         var group = (INamedTypeSymbol)context.TargetSymbol;
@@ -114,15 +118,34 @@ public static class BrigadeGeneratorCore
             }
 
             var syntax = route.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(cancellationToken) as MethodDeclarationSyntax;
-            if (!route.IsStatic || route.Arity != 0 || route.Parameters.Length != 0 || !route.ReturnsVoid
-                || syntax is null || !syntax.Modifiers.Any(SyntaxKind.PartialKeyword)
-                || syntax.Body is not null || syntax.ExpressionBody is not null || route.PartialImplementationPart is not null)
+            var hasPolicyFunction = emitRoute is not null && discoverPolicyFunctions?.Invoke(route) == true;
+            var isValidPolicyFunction = hasPolicyFunction && syntax is not null
+                && (syntax.Body is not null || syntax.ExpressionBody is not null) && route.PartialImplementationPart is null;
+            var isValidBasicRoute = route.Parameters.Length == 0 && syntax is not null
+                && syntax.Modifiers.Any(SyntaxKind.PartialKeyword) && syntax.Body is null
+                && syntax.ExpressionBody is null && route.PartialImplementationPart is null;
+
+            if (!route.IsStatic || route.IsAsync || route.Arity != 0 || !route.ReturnsVoid
+                || syntax is null
+                || (!isValidBasicRoute && !isValidPolicyFunction))
             {
-                Report(route, "Route declarations must be unimplemented static partial void methods without type parameters or arguments");
+                Report(route, "Route declarations must be unimplemented static partial void methods without arguments, or implemented static void methods with one RouteHandlerBuilder parameter; neither may be async or generic");
                 continue;
             }
 
-            stubs.Add(syntax.WithAttributeLists(default).WithBody(SyntaxFactory.Block()).WithSemicolonToken(default));
+            if (!hasPolicyFunction)
+            {
+                stubs.Add(syntax.WithAttributeLists(default).WithBody(SyntaxFactory.Block()).WithSemicolonToken(default));
+            }
+            else if (syntax.Modifiers.Any(SyntaxKind.PartialKeyword) && route.PartialDefinitionPart is null)
+            {
+                var parameter = syntax.ParameterList.Parameters[0].WithAttributeLists(default)
+                    .WithType(SyntaxFactory.ParseTypeName(TypeName(route.Parameters[0].Type)));
+                stubs.Add(syntax.WithAttributeLists(default).WithBody(null).WithExpressionBody(null)
+                    .WithParameterList(SyntaxFactory.ParameterList(SyntaxFactory.SingletonSeparatedList(parameter)))
+                    .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken)));
+            }
+
             if (routes.Length != 1 || handlers.Length != 1)
             {
                 Report(route, "Each route must declare exactly one route attribute and one Handler");
@@ -134,6 +157,7 @@ public static class BrigadeGeneratorCore
                 .Select(attribute => GetMethod(GetRegisteredType(attribute), route)).ToArray();
             var providers = providerAttributes.Concat(attributes.Where(attribute => IsAttribute(attribute, "ProviderAttribute")))
                 .Select(GetRegisteredType).ToArray();
+            
             if (handler is null || parties.Any(method => method is null) || providers.Any(type => type is null))
             {
                 Report(route, "Route types must resolve to named Handler, Partie and Provider types");
@@ -155,6 +179,14 @@ public static class BrigadeGeneratorCore
             if (string.IsNullOrWhiteSpace(operation))
             {
                 Report(route, "A route operation must not be empty");
+                continue;
+            }
+
+            var diagnosticCount = diagnostics.Count;
+            var routePolicies = discoverPolicies?.Invoke(route, operation, context.SemanticModel.Compilation, Report)
+                ?? ImmutableArray<RoutePolicyEmission>.Empty;
+            if (diagnostics.Count != diagnosticCount)
+            {
                 continue;
             }
 
@@ -201,6 +233,18 @@ public static class BrigadeGeneratorCore
             registrations.Append("engine.Map(").Append(descriptorName).Append(");\n");
             if (emitRoute is not null)
             {
+                var policyFunctionName = "Configure_" + suffix;
+                var policyFunctionFullName = TypeName(group) + "." + policyFunctionName;
+
+                if (hasPolicyFunction)
+                {
+                    stubs.Add(SyntaxFactory.ParseMemberDeclaration(
+                        "internal static void " + policyFunctionName
+                        + "(global::Microsoft.AspNetCore.Builder.RouteHandlerBuilder builder) { @"
+                        + route.Name + "(builder); }"
+                    )!);
+                }
+                
                 adapter.Append(emitRoute(new RouteEmission(
                     group.ToDisplayString() + "." + route.Name,
                     pattern,
@@ -209,7 +253,9 @@ public static class BrigadeGeneratorCore
                     "global::Brigade.Net.Partie.Generated.BrigadeRoutes." + inputName,
                     graph.ExternalValues.Select((value, index) => new RouteInputEmission(
                         TypeName(value.Type), "value" + value.Id, bindings[index].Name, bindings[index].Source
-                    )).ToImmutableArray()
+                    )).ToImmutableArray(),
+                    routePolicies,
+                    hasPolicyFunction ? ImmutableArray.Create(policyFunctionFullName) : ImmutableArray<string>.Empty
                 )));
             }
         }
