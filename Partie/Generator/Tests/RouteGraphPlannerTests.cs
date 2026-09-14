@@ -24,16 +24,12 @@ public class RouteGraphPlannerTests
         public sealed class Service { }
         public sealed class Context { }
         """;
-
-    private static readonly MetadataReference[] References = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
-        .Split(Path.PathSeparator)
-        .Select(path => MetadataReference.CreateFromFile(path))
-        .ToArray();
-
+    private static readonly MetadataReference[] References = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator).Select(path => MetadataReference.CreateFromFile(path)).ToArray();
     [Fact]
     public void Plan_InsertsProvidersAtFirstNeedAndReusesClosedValues()
     {
-        var compilation = Compile("""
+        var compilation = Compile(
+            """
             public static class FooProvider<T>
             {
                 public static ValueTask<Result<TResult>> InvokeAsync<TResult>(Context context, Next<Foo<T>, TResult> next) => default;
@@ -58,10 +54,9 @@ public class RouteGraphPlannerTests
             {
                 public static ValueTask<Result<string>> InvokeAsync(Foo<int> first, Foo<string> second, Bar bar) => default;
             }
-            """);
-
+            """
+        );
         var graph = Plan(compilation, ["PartieA", "PartieB", "PartieC"], ["FooProvider`1", "BarProvider"]);
-
         Assert.Equal(
             ["FooProvider<int>", "PartieA", "PartieB", "BarProvider", "PartieC", "FooProvider<string>", "Handler"],
             graph.Calls.Select(call => call.Method.ContainingType.ToDisplayString())
@@ -73,11 +68,15 @@ public class RouteGraphPlannerTests
         Assert.Same(graph.Calls[3].ProvidedValue, graph.Calls[6].Arguments[2]);
         Assert.Same(graph.ExternalValues[0], graph.Calls[3].Arguments[0]);
         Assert.Equal("service", graph.ExternalValues[1].ExternalParameter!.Name);
-        Assert.All(graph.Calls.Where(call => call.IsProvider), call => Assert.Equal("string", call.Method.TypeArguments[0].ToDisplayString()));
+        Assert.All(
+            graph.Calls.Where(call => call.IsProvider),
+            call => Assert.Equal("string", call.Method.TypeArguments[0].ToDisplayString())
+        );
         Assert.Equal(-1, graph.Calls[^1].ContinuationParameterIndex);
         Assert.Equal(1, graph.Calls[0].ContinuationParameterIndex);
         Assert.Equal("string", graph.ResultType.ToDisplayString());
-        Assert.Equal(graph.ExternalValues.Length + graph.Calls.Length - 1,
+        Assert.Equal(
+            graph.ExternalValues.Length + graph.Calls.Length - 1,
             graph.ExternalValues.Concat(graph.Calls.Take(graph.Calls.Length - 1).Select(call => call.ProvidedValue!)).Select(value => value.Id).Distinct().Count()
         );
     }
@@ -85,7 +84,8 @@ public class RouteGraphPlannerTests
     [Fact]
     public void Plan_ResolvesDiamondOnceAndIgnoresUnusedProviderCycle()
     {
-        var compilation = Compile("""
+        var compilation = Compile(
+            """
             public static class Root
             {
                 public static ValueTask<Result<TResult>> InvokeAsync<TResult>(Foo<int> left, Foo<string> right, Next<Bar, TResult> next) => default;
@@ -106,11 +106,13 @@ public class RouteGraphPlannerTests
             {
                 public static Result<int> InvokeAsync(Bar bar) => default;
             }
-            """);
-
+            """
+        );
         var graph = Plan(compilation, [], ["Root", "Leaf`1", "Shared", "Unused", "Shared"]);
-
-        Assert.Equal(["Shared", "Leaf<int>", "Leaf<string>", "Root", "Handler"], graph.Calls.Select(call => call.Method.ContainingType.ToDisplayString()));
+        Assert.Equal(
+            ["Shared", "Leaf<int>", "Leaf<string>", "Root", "Handler"],
+            graph.Calls.Select(call => call.Method.ContainingType.ToDisplayString())
+        );
         Assert.Same(graph.Calls[1].Arguments[0], graph.Calls[2].Arguments[0]);
         Assert.Empty(graph.ExternalValues);
     }
@@ -118,7 +120,8 @@ public class RouteGraphPlannerTests
     [Fact]
     public void Plan_FixedPartieOutputShadowsOnlyLaterUses()
     {
-        var compilation = Compile("""
+        var compilation = Compile(
+            """
             public static class First
             {
                 public static ValueTask<Result<TResult>> InvokeAsync<TResult>(Foo<int> input, Next<Foo<int>, TResult> next) => default;
@@ -131,10 +134,9 @@ public class RouteGraphPlannerTests
             {
                 public static Task<Result<int>> InvokeAsync(Foo<int> input) => default!;
             }
-            """);
-
+            """
+        );
         var graph = Plan(compilation, ["First", "Second"], []);
-
         Assert.Same(graph.ExternalValues[0], graph.Calls[0].Arguments[0]);
         Assert.Same(graph.Calls[0].ProvidedValue, graph.Calls[1].Arguments[0]);
         Assert.Same(graph.Calls[1].ProvidedValue, graph.Calls[2].Arguments[0]);
@@ -146,7 +148,8 @@ public class RouteGraphPlannerTests
     [InlineData("Foo<string>", "Foo<int>")]
     public void Plan_ReportsProviderCycle(string dependency, string requested)
     {
-        var compilation = Compile($$"""
+        var compilation = Compile(
+            $$"""
             public static class Provider<T>
             {
                 public static ValueTask<Result<TResult>> InvokeAsync<TResult>({{dependency}} input, Next<Foo<T>, TResult> next) => default;
@@ -155,10 +158,9 @@ public class RouteGraphPlannerTests
             {
                 public static Result<int> InvokeAsync({{requested}} input) => default;
             }
-            """);
-
+            """
+        );
         var result = CreatePlan(compilation, [], ["Provider`1"]);
-
         Assert.Null(result.Graph);
         var diagnostic = Assert.Single(result.Diagnostics);
         Assert.Equal("BRG002", diagnostic.Id);
@@ -168,7 +170,8 @@ public class RouteGraphPlannerTests
     [Fact]
     public void Plan_ReportsAmbiguousClosedAndOpenProviders()
     {
-        var compilation = Compile("""
+        var compilation = Compile(
+            """
             public static class Open<T>
             {
                 public static ValueTask<Result<TResult>> InvokeAsync<TResult>(Next<Foo<T>, TResult> next) => default;
@@ -181,10 +184,9 @@ public class RouteGraphPlannerTests
             {
                 public static Result<int> InvokeAsync(Foo<int> input) => default;
             }
-            """);
-
+            """
+        );
         var result = CreatePlan(compilation, [], ["Open`1", "Closed"]);
-
         Assert.Null(result.Graph);
         Assert.Equal("BRG003", Assert.Single(result.Diagnostics).Id);
     }
@@ -197,9 +199,14 @@ public class RouteGraphPlannerTests
     [InlineData("Foo<Foo<string>>", "Foo<Foo<T>>", true)]
     [InlineData("int[]", "Foo<T>", false)]
     [InlineData("Foo<int>", "T[]", false)]
-    public void Plan_UnifiesGenericShapes(string requested, string provided, bool matches)
+    public void Plan_UnifiesGenericShapes(
+        string requested,
+        string provided,
+        bool matches
+    )
     {
-        var compilation = Compile($$"""
+        var compilation = Compile(
+            $$"""
             public static class Provider<T>
             {
                 public static ValueTask<Result<TResult>> InvokeAsync<TResult>(Next<{{provided}}, TResult> next) => default;
@@ -208,10 +215,9 @@ public class RouteGraphPlannerTests
             {
                 public static Result<int> InvokeAsync({{requested}} input) => default;
             }
-            """);
-
+            """
+        );
         var graph = Plan(compilation, [], ["Provider`1"]);
-
         Assert.Equal(matches ? 2 : 1, graph.Calls.Length);
         Assert.Equal(matches ? 0 : 1, graph.ExternalValues.Length);
     }
@@ -219,7 +225,8 @@ public class RouteGraphPlannerTests
     [Fact]
     public void Plan_ClosesNestedProviderAndNestedOutput()
     {
-        var compilation = Compile("""
+        var compilation = Compile(
+            """
             public class Outer<T>
             {
                 public class Value<TInner> { }
@@ -232,10 +239,9 @@ public class RouteGraphPlannerTests
             {
                 public static Result<int> InvokeAsync(Outer<string>.Value<int> input) => default;
             }
-            """);
-
+            """
+        );
         var graph = Plan(compilation, [], ["Outer`1+Provider`1"]);
-
         Assert.Equal("Outer<string>.Provider<int>", graph.Calls[0].Method.ContainingType.ToDisplayString());
         Assert.Same(graph.Calls[0].ProvidedValue, graph.Calls[1].Arguments[0]);
     }
@@ -248,9 +254,7 @@ public class RouteGraphPlannerTests
     public void Plan_RejectsInvalidHandler(string method)
     {
         var compilation = Compile($"public class Handler {{ {method} }}");
-
         var result = CreatePlan(compilation, [], []);
-
         Assert.Null(result.Graph);
         Assert.Equal("BRG001", Assert.Single(result.Diagnostics).Id);
     }
@@ -268,14 +272,14 @@ public class RouteGraphPlannerTests
     [InlineData("public static ValueTask<Result<TResult>> InvokeAsync<TResult>(Next<Foo<T>, TResult> first, Next<Foo<T>, TResult> second) => default;", "T")]
     public void Plan_RejectsInvalidProvider(string method, string typeParameters)
     {
-        var compilation = Compile($$"""
+        var compilation = Compile(
+            $$"""
             public static class Provider<{{typeParameters}}> { {{method}} }
             public static class Handler { public static Result<int> InvokeAsync() => default; }
-            """);
+            """
+        );
         var arity = typeParameters.Split(',').Length;
-
         var result = CreatePlan(compilation, [], [$"Provider`{arity}"]);
-
         Assert.Null(result.Graph);
         Assert.Equal("BRG001", Assert.Single(result.Diagnostics).Id);
     }
@@ -292,9 +296,14 @@ public class RouteGraphPlannerTests
     [InlineData("new()", "string", false)]
     [InlineData("IComparable<int>", "int", true)]
     [InlineData("IComparable<int>", "string", false)]
-    public void Plan_FiltersProvidersByTypeConstraints(string constraint, string argument, bool matches)
+    public void Plan_FiltersProvidersByTypeConstraints(
+        string constraint,
+        string argument,
+        bool matches
+    )
     {
-        var compilation = Compile($$"""
+        var compilation = Compile(
+            $$"""
             public static class Provider<T> where T : {{constraint}}
             {
                 public static ValueTask<Result<TResult>> InvokeAsync<TResult>(Next<Foo<T>, TResult> next) => default;
@@ -303,10 +312,9 @@ public class RouteGraphPlannerTests
             {
                 public static Result<int> InvokeAsync(Foo<{{argument}}> input) => default;
             }
-            """);
-
+            """
+        );
         var graph = Plan(compilation, [], ["Provider`1"]);
-
         Assert.Equal(matches ? 2 : 1, graph.Calls.Length);
         Assert.Equal(matches ? 0 : 1, graph.ExternalValues.Length);
     }
@@ -316,7 +324,8 @@ public class RouteGraphPlannerTests
     [InlineData("string", false)]
     public void Plan_ChecksDependentTypeConstraints(string argument, bool matches)
     {
-        var compilation = Compile($$"""
+        var compilation = Compile(
+            $$"""
             public static class Provider<T, TOther> where T : System.Collections.Generic.IEnumerable<TOther>
             {
                 public static ValueTask<Result<TResult>> InvokeAsync<TResult>(Next<Tuple<T, TOther>, TResult> next) => default;
@@ -325,10 +334,9 @@ public class RouteGraphPlannerTests
             {
                 public static Result<int> InvokeAsync(Tuple<int[], {{argument}}> input) => default;
             }
-            """);
-
+            """
+        );
         var graph = Plan(compilation, [], ["Provider`2"]);
-
         Assert.Equal(matches ? 2 : 1, graph.Calls.Length);
     }
 
@@ -337,7 +345,8 @@ public class RouteGraphPlannerTests
     [InlineData(false)]
     public void Plan_RejectsIncompatibleResultConstraint(bool isProvider)
     {
-        var compilation = Compile("""
+        var compilation = Compile(
+            """
             public static class Step
             {
                 public static ValueTask<Result<TResult>> InvokeAsync<TResult>(Next<Bar, TResult> next) where TResult : struct => default;
@@ -346,10 +355,9 @@ public class RouteGraphPlannerTests
             {
                 public static Result<string> InvokeAsync(Bar input) => default;
             }
-            """);
-
+            """
+        );
         var result = CreatePlan(compilation, isProvider ? [] : ["Step"], isProvider ? ["Step"] : []);
-
         Assert.Null(result.Graph);
         Assert.Equal("BRG001", Assert.Single(result.Diagnostics).Id);
     }
@@ -357,15 +365,15 @@ public class RouteGraphPlannerTests
     [Fact]
     public void Plan_RejectsInaccessibleHandler()
     {
-        var compilation = Compile("""
+        var compilation = Compile(
+            """
             public static class Handler
             {
                 private static Result<int> InvokeAsync() => default;
             }
-            """);
-
+            """
+        );
         var result = CreatePlan(compilation, [], []);
-
         Assert.Null(result.Graph);
         Assert.Contains("inaccessible", Assert.Single(result.Diagnostics).GetMessage());
     }
@@ -373,7 +381,8 @@ public class RouteGraphPlannerTests
     [Fact]
     public void Plan_StopsExpandingGenericDependenciesAtConfiguredDepth()
     {
-        var compilation = Compile("""
+        var compilation = Compile(
+            """
             public static class Provider<T>
             {
                 public static ValueTask<Result<TResult>> InvokeAsync<TResult>(Foo<Foo<T>> input, Next<Foo<T>, TResult> next) => default;
@@ -382,13 +391,10 @@ public class RouteGraphPlannerTests
             {
                 public static Result<int> InvokeAsync(Foo<int> input) => default;
             }
-            """);
-        var handler = compilation.GetTypeByMetadataName("Handler")!.GetMembers("InvokeAsync").OfType<IMethodSymbol>().Single();
-
-        var result = new RouteGraphPlanner(compilation, maximumProviderDepth: 8).Plan(
-            handler, [], [compilation.GetTypeByMetadataName("Provider`1")!]
+            """
         );
-
+        var handler = compilation.GetTypeByMetadataName("Handler")!.GetMembers("InvokeAsync").OfType<IMethodSymbol>().Single();
+        var result = new RouteGraphPlanner(compilation, maximumProviderDepth: 8).Plan(handler, [], [compilation.GetTypeByMetadataName("Provider`1")!]);
         Assert.Null(result.Graph);
         Assert.Equal("BRG004", Assert.Single(result.Diagnostics).Id);
     }
@@ -398,10 +404,9 @@ public class RouteGraphPlannerTests
     {
         var compilation = Compile("public static class Handler { public static Result<int> InvokeAsync() => default; }");
         var handler = compilation.GetTypeByMetadataName("Handler")!.GetMembers("InvokeAsync").OfType<IMethodSymbol>().Single();
-
-        Assert.Throws<OperationCanceledException>(() => new RouteGraphPlanner(compilation).Plan(
-            handler, [], [], new CancellationToken(canceled: true)
-        ));
+        Assert.Throws<OperationCanceledException>(
+            () => new RouteGraphPlanner(compilation).Plan(handler, [], [], new CancellationToken(canceled: true))
+        );
     }
 
     [Fact]
@@ -409,7 +414,6 @@ public class RouteGraphPlannerTests
     {
         var compilation = Compile("public static class Handler { public static Result<int> InvokeAsync() => default; }");
         var handler = compilation.GetTypeByMetadataName("Handler")!.GetMembers("InvokeAsync").OfType<IMethodSymbol>().Single();
-
         Assert.Throws<ArgumentOutOfRangeException>(() => new RouteGraphPlanner(compilation, 0).Plan(handler, [], []));
     }
 
@@ -418,7 +422,8 @@ public class RouteGraphPlannerTests
     [InlineData(false)]
     public void Plan_AcceptsClosedAndUnboundRegistrations(bool unbound)
     {
-        var compilation = Compile("""
+        var compilation = Compile(
+            """
             public static class Provider<T>
             {
                 public static ValueTask<Result<TResult>> InvokeAsync<TResult>(Next<Foo<T>, TResult> next) => default;
@@ -427,15 +432,12 @@ public class RouteGraphPlannerTests
             {
                 public static Result<int> InvokeAsync(Foo<int> first, Foo<string> second) => default;
             }
-            """);
+            """
+        );
         var definition = compilation.GetTypeByMetadataName("Provider`1")!;
-        var provider = unbound
-            ? definition.ConstructUnboundGenericType()
-            : definition.Construct(compilation.GetSpecialType(SpecialType.System_Int32));
+        var provider = unbound ? definition.ConstructUnboundGenericType() : definition.Construct(compilation.GetSpecialType(SpecialType.System_Int32));
         var handler = compilation.GetTypeByMetadataName("Handler")!.GetMembers("InvokeAsync").OfType<IMethodSymbol>().Single();
-
         var result = new RouteGraphPlanner(compilation).Plan(handler, [], [provider]);
-
         Assert.Empty(result.Diagnostics);
         Assert.Equal(unbound ? 3 : 2, result.Graph!.Calls.Length);
         Assert.Equal(unbound ? 0 : 1, result.Graph.ExternalValues.Length);
@@ -444,7 +446,8 @@ public class RouteGraphPlannerTests
     [Fact]
     public void Plan_KeepsRepeatedFixedStepsAndAvoidsProbeNameCollisions()
     {
-        var compilation = Compile("""
+        var compilation = Compile(
+            """
             public class __BrigadeCallValidation { }
             public static class Step
             {
@@ -454,10 +457,9 @@ public class RouteGraphPlannerTests
             {
                 public static Result<int> InvokeAsync(Bar input) => default;
             }
-            """);
-
+            """
+        );
         var graph = Plan(compilation, ["Step", "Step"], []);
-
         Assert.Equal(3, graph.Calls.Length);
         Assert.NotSame(graph.Calls[0].ProvidedValue, graph.Calls[1].ProvidedValue);
         Assert.Same(graph.Calls[1].ProvidedValue, graph.Calls[2].Arguments[0]);
@@ -466,13 +468,13 @@ public class RouteGraphPlannerTests
     [Fact]
     public void Plan_RejectsMalformedFixedPartie()
     {
-        var compilation = Compile("""
+        var compilation = Compile(
+            """
             public static class Step { public static int InvokeAsync() => 0; }
             public static class Handler { public static Result<int> InvokeAsync() => default; }
-            """);
-
+            """
+        );
         var result = CreatePlan(compilation, ["Step"], []);
-
         Assert.Null(result.Graph);
         Assert.Equal("BRG001", Assert.Single(result.Diagnostics).Id);
     }
@@ -480,7 +482,8 @@ public class RouteGraphPlannerTests
     [Fact]
     public void Plan_DoesNotMatchDifferentContainingTypeArguments()
     {
-        var compilation = Compile("""
+        var compilation = Compile(
+            """
             public class Outer<T> { public class Inner<TOther> { } }
             public static class Provider<T>
             {
@@ -490,10 +493,9 @@ public class RouteGraphPlannerTests
             {
                 public static Result<int> InvokeAsync(Outer<int>.Inner<int> input) => default;
             }
-            """);
-
+            """
+        );
         var graph = Plan(compilation, [], ["Provider`1"]);
-
         Assert.Single(graph.Calls);
         Assert.Single(graph.ExternalValues);
     }
@@ -501,7 +503,8 @@ public class RouteGraphPlannerTests
     [Fact]
     public void Plan_RecognizesCoreUnitWithoutPublishingAValue()
     {
-        var compilation = Compile("""
+        var compilation = Compile(
+            """
             namespace Brigade.Net.Core { public readonly struct Unit { } }
             public static class Step
             {
@@ -511,14 +514,90 @@ public class RouteGraphPlannerTests
             {
                 public static Result<int> InvokeAsync(Brigade.Net.Core.Unit input) => default;
             }
-            """);
-
+            """
+        );
         var graph = Plan(compilation, ["Step"], []);
-
         Assert.Single(graph.ExternalValues);
         Assert.NotSame(graph.Calls[0].ProvidedValue, graph.Calls[1].Arguments[0]);
     }
 
+    [Theory]
+    [InlineData("FromRoute")]
+    [InlineData("FromQuery")]
+    [InlineData("FromBody")]
+    [InlineData("FromServices")]
+    public void Plan_ReusesExplicitBindings(string attribute)
+    {
+        var compilation = Compile(
+            BindingAttributes + $$"""
+            public static class Step
+            {
+                public static ValueTask<Result<T>> InvokeAsync<T>([Brigade.Net.Partie.{{attribute}}("value")] string first, Next<Unit, T> next) => default;
+            }
+            public static class Handler
+            {
+                public static Result<int> InvokeAsync([Brigade.Net.Partie.{{attribute}}("value")] string second, string unbound) => default;
+            }
+            """
+        );
+        var graph = Plan(compilation, ["Step"], []);
+        Assert.Single(graph.ExternalValues);
+        Assert.Same(graph.Calls[0].Arguments[0], graph.Calls[1].Arguments[0]);
+        Assert.Same(graph.Calls[1].Arguments[0], graph.Calls[1].Arguments[1]);
+        Assert.Equal(
+            attribute + "Attribute",
+            Assert.Single(graph.ExternalValues[0].ExternalParameter!.GetAttributes()).AttributeClass!.Name
+        );
+    }
+
+    [Fact]
+    public void Plan_ReplacesEarlyUnboundInputWithLaterProviderBinding()
+    {
+        var compilation = Compile(
+            BindingAttributes + """
+            public static class Early
+            {
+                public static ValueTask<Result<T>> InvokeAsync<T>(string value, Next<Unit, T> next) => default;
+            }
+            public static class Provider
+            {
+                public static ValueTask<Result<T>> InvokeAsync<T>([Brigade.Net.Partie.FromQuery("value")] string value, Next<Bar, T> next) => default;
+            }
+            public static class Handler
+            {
+                public static Result<int> InvokeAsync(Bar value) => default;
+            }
+            """
+        );
+        var graph = Plan(compilation, ["Early"], ["Provider"]);
+        Assert.Single(graph.ExternalValues);
+        Assert.Same(graph.Calls[0].Arguments[0], graph.Calls[1].Arguments[0]);
+    }
+
+    [Theory]
+    [InlineData("[Brigade.Net.Partie.FromQuery, Brigade.Net.Partie.FromBody] string first", "at most one")]
+    [InlineData("[Brigade.Net.Partie.FromQuery(\"a\")] string first, [Brigade.Net.Partie.FromQuery(\"b\")] string second, string unbound", "Several external")]
+    public void Plan_RejectsAmbiguousBindings(string parameters, string message)
+    {
+        var result = CreatePlan(
+            Compile(
+                BindingAttributes + "public static class Handler { public static Result<int> InvokeAsync(" + parameters + ") => default; }"
+            ),
+            [],
+            []
+        );
+        Assert.Contains(result.Diagnostics, diagnostic => diagnostic.GetMessage().Contains(message));
+    }
+
+    private const string BindingAttributes = """
+        namespace Brigade.Net.Partie
+        {
+            [AttributeUsage(AttributeTargets.Parameter)] public class FromRouteAttribute(string name = "") : Attribute { }
+            [AttributeUsage(AttributeTargets.Parameter)] public class FromQueryAttribute(string name = "") : Attribute { }
+            [AttributeUsage(AttributeTargets.Parameter)] public class FromBodyAttribute(string name = "") : Attribute { }
+            [AttributeUsage(AttributeTargets.Parameter)] public class FromServicesAttribute(string name = "") : Attribute { }
+        }
+        """;
     private static CSharpCompilation Compile(string source)
     {
         var compilation = CSharpCompilation.Create(
@@ -527,25 +606,34 @@ public class RouteGraphPlannerTests
             References,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
         );
-        Assert.Empty(compilation.GetDiagnostics().Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error));
+        Assert.Empty(
+            compilation.GetDiagnostics().Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+        );
         return compilation;
     }
 
-    private static RouteGraph Plan(CSharpCompilation compilation, string[] parties, string[] providers)
+    private static RouteGraph Plan(
+        CSharpCompilation compilation,
+        string[] parties,
+        string[] providers
+    )
     {
         var result = CreatePlan(compilation, parties, providers);
         Assert.Empty(result.Diagnostics);
         return Assert.IsType<RouteGraph>(result.Graph);
     }
 
-    private static RouteGraphResult CreatePlan(CSharpCompilation compilation, string[] parties, string[] providers)
+    private static RouteGraphResult CreatePlan(
+        CSharpCompilation compilation,
+        string[] parties,
+        string[] providers
+    )
     {
         return new RouteGraphPlanner(compilation).Plan(
             Method("Handler"),
             parties.Select(Method),
             providers.Select(name => compilation.GetTypeByMetadataName(name)!)
         );
-
         IMethodSymbol Method(string name) => compilation.GetTypeByMetadataName(name)!.GetMembers("InvokeAsync").OfType<IMethodSymbol>().Single();
     }
 }

@@ -7,35 +7,24 @@ namespace Brigade.Net.Example.Web;
 public sealed class InMemoryOrderStore : IOrderStore
 {
     private readonly ConcurrentDictionary<Guid, Order> orders = new();
-
-    public Order Add(PlaceOrder request, decimal unitPrice)
+    public Order Create(
+        string customer,
+        string sku,
+        int quantity,
+        decimal unitPrice
+    )
     {
-        var order = new Order(Guid.NewGuid(), request.Customer, request.Sku, request.Quantity, unitPrice * request.Quantity, "Placed");
+        var order = new Order(Guid.NewGuid(), customer, sku, quantity, unitPrice * quantity, "Placed");
         orders[order.Id] = order;
         return order;
     }
 
-    public Result<Order> Find(Guid id) => orders.TryGetValue(id, out var order)
-        ? order : new NotFound("Order not found.");
-
-    public Order[] List(string customer) => orders.Values
-        .Where(order => string.Equals(order.Customer, customer, StringComparison.Ordinal))
-        .OrderBy(order => order.Id).ToArray();
-
-    public Result<Order> Cancel(Guid id)
+    public Order[] Search(Guid? id, string? customer) => orders.Values.Where(order => id is null || order.Id == id).Where(order => customer is null || string.Equals(order.Customer, customer, StringComparison.Ordinal)).OrderBy(order => order.Id).ToArray();
+    public Result<Unit> Delete(Guid id)
     {
-        while (orders.TryGetValue(id, out var order))
+        if (orders.TryRemove(id, out _))
         {
-            if (order.Status == "Cancelled")
-            {
-                return new Conflict("Order is already cancelled.");
-            }
-
-            var cancelled = order with { Status = "Cancelled" };
-            if (orders.TryUpdate(id, cancelled, order))
-            {
-                return cancelled;
-            }
+            return Unit.Default;
         }
 
         return new NotFound("Order not found.");

@@ -1,25 +1,36 @@
 using Brigade.Net.Core.Results;
+using Brigade.Net.Example.Domain.Orders.SearchV1;
 using Brigade.Net.Partie;
 
 namespace Brigade.Net.Example.Domain.Orders;
 
-public static class OrderProvider
+public sealed record OrderProviderContext([Inject] IOrderStore Store, [Inject] OrderRequestScope Scope);
+public sealed class OrderProvider : IProvider<Order[], OrderProviderContext>
 {
-    public static async ValueTask<Result<TResult>> InvokeAsync<TResult>(
-        [FromRoute("id")] Guid id,
-        IOrderStore store,
-        OrderRequestScope scope,
-        Next<Order, TResult> next
+    public static ValueTask<Result<TResult>> OnQueryAsync<TQuery, TResult>(
+        OrderProviderContext ctx,
+        TQuery query,
+        Next<Order[], TResult> next,
+        CancellationToken ct
     )
+        where TQuery : class
     {
-        scope.Events.Add("load");
-        scope.OrderLookups++;
-
-        var orderResult = store.Find(id);
-        return await orderResult.FlatMapAsync(order =>
+        if (query is not OrderSearchV1Query orderQuery)
         {
-            var nextResult = next(order);
-            return nextResult.AsTask();
-        });
+            throw new NotSupportedException("Order lookup requires OrderSearchV1Query.");
+        }
+
+        ct.ThrowIfCancellationRequested();
+        ctx.Scope.Events.Add("load");
+        ctx.Scope.OrderLookups++;
+        return next(ctx.Store.Search(orderQuery.Id, orderQuery.Customer));
     }
+
+    public static ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(
+        OrderProviderContext ctx,
+        TCommand command,
+        Next<Order[], TResult> next,
+        CancellationToken ct
+    )
+        where TCommand : class => throw new NotSupportedException("Order lookup supports queries only.");
 }

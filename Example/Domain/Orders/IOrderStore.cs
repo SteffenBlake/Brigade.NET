@@ -4,8 +4,12 @@ namespace Brigade.Net.Example.Domain.Orders;
 
 public interface IOrderStore
 {
-    Order Add(PlaceOrder request, decimal unitPrice);
-    Result<Order> Find(Guid id);
-    Order[] List(string customer);
-    Result<Order> Cancel(Guid id);
+    Order Create(
+        string customer,
+        string sku,
+        int quantity,
+        decimal unitPrice
+    );
+    Order[] Search(Guid? id, string? customer);
+    Result<Unit> Delete(Guid id);
 }

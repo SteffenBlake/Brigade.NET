@@ -7,12 +7,9 @@ namespace Brigade.Net.Partie.Engines.AspNetCore.Tests;
 
 public class RoutePoliciesTests
 {
-    private static readonly MetadataReference[] References = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
-        .Split(Path.PathSeparator)
-        .Concat([typeof(IPartieEngine).Assembly.Location, typeof(Result<>).Assembly.Location, typeof(RoutePolicyAttribute).Assembly.Location])
-        .Distinct()
-        .Select(path => MetadataReference.CreateFromFile(path)).ToArray();
-
+    private static readonly MetadataReference[] References = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator).Concat(
+        [typeof(IPartieEngine).Assembly.Location, typeof(Result<>).Assembly.Location, typeof(RoutePolicyAttribute).Assembly.Location]
+    ).Distinct().Select(path => MetadataReference.CreateFromFile(path)).ToArray();
     [Fact]
     public void Generator_EmitsRoutePolicyAttributeOnClass()
     {
@@ -21,7 +18,7 @@ public class RoutePoliciesTests
             using Brigade.Net.Core.Results;
             using Brigade.Net.Partie.Engines.AspNetCore;
             
-            public static class RequireAuth
+            public static class RequireAuthRoutePolicy
             {
                 public static void Query<TParams>(global::Microsoft.AspNetCore.Builder.RouteHandlerBuilder route)
                 {
@@ -35,28 +32,30 @@ public class RoutePoliciesTests
             }
             
             [BrigadeGroup("")]
-            [RoutePolicy(typeof(RequireAuth))]
+            [RoutePolicy(typeof(RequireAuthRoutePolicy))]
             public static partial class Routes
             {
                 [Route("", "GET"), Handler(typeof(Handler))]
                 static partial void Get();
                 
-                [Route("", "POST"), Handler(typeof(Handler))]
+                [Route("", "POST"), Handler(typeof(CommandHandler)), Partie(typeof(UnitOfWorkPartie))]
                 static partial void Post();
             }
             
-            public static class Handler
+            public sealed class Handler : IQueryHandler<EmptyQuery, int, EmptyContext>
             {
-                public static Result<int> InvokeAsync() => 42;
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(EmptyContext ctx, EmptyQuery query, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
+            }
+            public sealed class CommandHandler : ICommandHandler<EmptyQuery, int, EmptyContext>
+            {
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Brigade.Net.Core.Transactions.UnitOfWork uow, EmptyContext ctx, EmptyQuery cmd, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
             }
             """;
-
         var (_, _, result) = Generate(source);
-
         Assert.Empty(result.Diagnostics);
         var adapter = Adapter(result);
-        Assert.Contains("RequireAuth.Query", adapter);
-        Assert.Contains("RequireAuth.Command", adapter);
+        Assert.Contains("RequireAuthRoutePolicy.Query", adapter);
+        Assert.Contains("RequireAuthRoutePolicy.Command", adapter);
     }
 
     [Fact]
@@ -67,7 +66,7 @@ public class RoutePoliciesTests
             using Brigade.Net.Core.Results;
             using Brigade.Net.Partie.Engines.AspNetCore;
             
-            public static class AdminPolicy
+            public static class AdminPolicyRoutePolicy
             {
                 public static void Command<TParams, TBody>(global::Microsoft.AspNetCore.Builder.RouteHandlerBuilder route)
                 {
@@ -78,22 +77,24 @@ public class RoutePoliciesTests
             [BrigadeGroup("")]
             public static partial class Routes
             {
-                [Route("", "POST"), Handler(typeof(Handler))]
-                [RoutePolicy(typeof(AdminPolicy))]
+                [Route("", "POST"), Handler(typeof(CommandHandler)), Partie(typeof(UnitOfWorkPartie))]
+                [RoutePolicy(typeof(AdminPolicyRoutePolicy))]
                 static partial void Create();
             }
             
-            public static class Handler
+            public sealed class Handler : IQueryHandler<EmptyQuery, int, EmptyContext>
             {
-                public static Result<int> InvokeAsync() => 42;
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(EmptyContext ctx, EmptyQuery query, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
+            }
+            public sealed class CommandHandler : ICommandHandler<EmptyQuery, int, EmptyContext>
+            {
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Brigade.Net.Core.Transactions.UnitOfWork uow, EmptyContext ctx, EmptyQuery cmd, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
             }
             """;
-
         var (_, _, result) = Generate(source);
-
         Assert.Empty(result.Diagnostics);
         var adapter = Adapter(result);
-        Assert.Contains("AdminPolicy.Command", adapter);
+        Assert.Contains("AdminPolicyRoutePolicy.Command", adapter);
     }
 
     [Fact]
@@ -107,30 +108,25 @@ public class RoutePoliciesTests
             [BrigadeGroup("")]
             public static partial class Routes
             {
-                [Route("", "POST"), Handler(typeof(Handler))]
+                [Route("", "POST"), Handler(typeof(CommandHandler)), Partie(typeof(UnitOfWorkPartie))]
                 static partial void Create();
             }
             
-            public static class Handler
+            public sealed class Handler : IQueryHandler<EmptyQuery, int, EmptyContext>
             {
-                public static Result<int> InvokeAsync() => 42;
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(EmptyContext ctx, EmptyQuery query, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
+            }
+            public sealed class CommandHandler : ICommandHandler<EmptyQuery, int, EmptyContext>
+            {
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Brigade.Net.Core.Transactions.UnitOfWork uow, EmptyContext ctx, EmptyQuery cmd, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
             }
             """;
-
         var (_, _, result) = Generate(source);
-
         Assert.Empty(result.Diagnostics);
         var adapter = Adapter(result);
         // Should generate route registration code
         Assert.Contains("MapMethods", adapter);
     }
-
-
-
-
-
-
-
 
     [Fact]
     public void Generator_SelectsQueryPolicyForGetOperation()
@@ -140,7 +136,7 @@ public class RoutePoliciesTests
             using Brigade.Net.Core.Results;
             using Brigade.Net.Partie.Engines.AspNetCore;
             
-            public static class TestPolicy
+            public static class TestPolicyRoutePolicy
             {
                 public static void Query<TParams>(global::Microsoft.AspNetCore.Builder.RouteHandlerBuilder route)
                 {
@@ -154,7 +150,7 @@ public class RoutePoliciesTests
             }
             
             [BrigadeGroup("")]
-            [RoutePolicy(typeof(TestPolicy))]
+            [RoutePolicy(typeof(TestPolicyRoutePolicy))]
             public static partial class Routes
             {
                 [Get]
@@ -162,18 +158,20 @@ public class RoutePoliciesTests
                 static partial void Read();
             }
             
-            public static class Handler
+            public sealed class Handler : IQueryHandler<EmptyQuery, int, EmptyContext>
             {
-                public static Result<int> InvokeAsync() => 42;
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(EmptyContext ctx, EmptyQuery query, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
+            }
+            public sealed class CommandHandler : ICommandHandler<EmptyQuery, int, EmptyContext>
+            {
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Brigade.Net.Core.Transactions.UnitOfWork uow, EmptyContext ctx, EmptyQuery cmd, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
             }
             """;
-
         var (_, _, result) = Generate(source);
-
         Assert.Empty(result.Diagnostics);
         var adapter = Adapter(result);
-        Assert.Contains("TestPolicy.Query", adapter);
-        Assert.DoesNotContain("TestPolicy.Command", adapter);
+        Assert.Contains("TestPolicyRoutePolicy.Query", adapter);
+        Assert.DoesNotContain("TestPolicyRoutePolicy.Command", adapter);
     }
 
     [Fact]
@@ -184,7 +182,7 @@ public class RoutePoliciesTests
             using Brigade.Net.Core.Results;
             using Brigade.Net.Partie.Engines.AspNetCore;
             
-            public static class TestPolicy
+            public static class TestPolicyRoutePolicy
             {
                 public static void Query<TParams>(global::Microsoft.AspNetCore.Builder.RouteHandlerBuilder route)
                 {
@@ -198,26 +196,28 @@ public class RoutePoliciesTests
             }
             
             [BrigadeGroup("")]
-            [RoutePolicy(typeof(TestPolicy))]
+            [RoutePolicy(typeof(TestPolicyRoutePolicy))]
             public static partial class Routes
             {
-                [Post]
-                [Handler(typeof(Handler))]
+                [Post, Partie(typeof(UnitOfWorkPartie))]
+                [Handler(typeof(CommandHandler))]
                 static partial void Create();
             }
             
-            public static class Handler
+            public sealed class Handler : IQueryHandler<EmptyQuery, int, EmptyContext>
             {
-                public static Result<int> InvokeAsync() => 42;
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(EmptyContext ctx, EmptyQuery query, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
+            }
+            public sealed class CommandHandler : ICommandHandler<EmptyQuery, int, EmptyContext>
+            {
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Brigade.Net.Core.Transactions.UnitOfWork uow, EmptyContext ctx, EmptyQuery cmd, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
             }
             """;
-
         var (_, _, result) = Generate(source);
-
         Assert.Empty(result.Diagnostics);
         var adapter = Adapter(result);
-        Assert.Contains("TestPolicy.Command", adapter);
-        Assert.DoesNotContain("TestPolicy.Query", adapter);
+        Assert.Contains("TestPolicyRoutePolicy.Command", adapter);
+        Assert.DoesNotContain("TestPolicyRoutePolicy.Query", adapter);
     }
 
     [Fact]
@@ -228,7 +228,7 @@ public class RoutePoliciesTests
             using Brigade.Net.Core.Results;
             using Brigade.Net.Partie.Engines.AspNetCore;
             
-            public static class AuthPolicy
+            public static class AuthPolicyRoutePolicy
             {
                 public static void Command<TParams, TBody>(global::Microsoft.AspNetCore.Builder.RouteHandlerBuilder route)
                 {
@@ -236,7 +236,7 @@ public class RoutePoliciesTests
                 }
             }
             
-            public static class OpenApiPolicy
+            public static class OpenApiPolicyRoutePolicy
             {
                 public static void Command<TParams, TBody>(global::Microsoft.AspNetCore.Builder.RouteHandlerBuilder route)
                 {
@@ -245,27 +245,29 @@ public class RoutePoliciesTests
             }
             
             [BrigadeGroup("")]
-            [RoutePolicy(typeof(AuthPolicy))]
-            [RoutePolicy(typeof(OpenApiPolicy))]
+            [RoutePolicy(typeof(AuthPolicyRoutePolicy))]
+            [RoutePolicy(typeof(OpenApiPolicyRoutePolicy))]
             public static partial class Routes
             {
-                [Post]
-                [Handler(typeof(Handler))]
+                [Post, Partie(typeof(UnitOfWorkPartie))]
+                [Handler(typeof(CommandHandler))]
                 static partial void Create();
             }
             
-            public static class Handler
+            public sealed class Handler : IQueryHandler<EmptyQuery, int, EmptyContext>
             {
-                public static Result<int> InvokeAsync() => 42;
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(EmptyContext ctx, EmptyQuery query, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
+            }
+            public sealed class CommandHandler : ICommandHandler<EmptyQuery, int, EmptyContext>
+            {
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Brigade.Net.Core.Transactions.UnitOfWork uow, EmptyContext ctx, EmptyQuery cmd, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
             }
             """;
-
         var (_, _, result) = Generate(source);
-
         Assert.Empty(result.Diagnostics);
         var adapter = Adapter(result);
-        Assert.Contains("AuthPolicy.Command", adapter);
-        Assert.Contains("OpenApiPolicy.Command", adapter);
+        Assert.Contains("AuthPolicyRoutePolicy.Command", adapter);
+        Assert.Contains("OpenApiPolicyRoutePolicy.Command", adapter);
     }
 
     [Theory]
@@ -279,7 +281,11 @@ public class RoutePoliciesTests
     [InlineData("GET", "public static async void Query<TParams>(RouteHandlerBuilder route) { await System.Threading.Tasks.Task.Yield(); }", false)]
     [InlineData("GET", "public static void Query<TParams>() { }", false)]
     [InlineData("GET", "public static void Query<TParams>(ref RouteHandlerBuilder route) { }", false)]
-    public void Generator_RejectsInvalidPolicies(string operation, string policyMethod, bool onGroup)
+    public void Generator_RejectsInvalidPolicies(
+        string operation,
+        string policyMethod,
+        bool onGroup
+    )
     {
         var attribute = "[RoutePolicy(typeof(InvalidRoutePolicy))]";
         var source = $$"""
@@ -295,19 +301,22 @@ public class RoutePoliciesTests
             {{(onGroup ? attribute : "")}}
             public static partial class Routes
             {
-                [Route("", "{{operation}}"), Handler(typeof(Handler))]
+                [Route("", "{{operation}}"), Handler(typeof({{(operation == "GET" ? "Handler" : "CommandHandler")}})), Partie(typeof(UnitOfWorkPartie))]
                 {{(onGroup ? "" : attribute)}}
                 static partial void Go();
             }
-            public static class Handler
+            public sealed class Handler : IQueryHandler<EmptyQuery, int, EmptyContext>
             {
-                public static Result<int> InvokeAsync() => 42;
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(EmptyContext ctx, EmptyQuery query, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
+            }
+            public sealed class CommandHandler : ICommandHandler<EmptyQuery, int, EmptyContext>
+            {
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Brigade.Net.Core.Transactions.UnitOfWork uow, EmptyContext ctx, EmptyQuery cmd, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
             }
             """;
         GeneratorDriver driver = CSharpGeneratorDriver.Create(new AspNetCorePartieGenerator());
         driver = driver.RunGeneratorsAndUpdateCompilation(Compile(source), out _, out _);
         var result = driver.GetRunResult();
-
         var diagnostic = Assert.Single(result.Diagnostics);
         Assert.Equal("BRG005", diagnostic.Id);
         Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
@@ -334,14 +343,17 @@ public class RoutePoliciesTests
                 [Get, Handler(typeof(Handler))]
                 static partial void Go();
             }
-            public static class Handler
+            public sealed class Handler : IQueryHandler<EmptyQuery, int, EmptyContext>
             {
-                public static Result<int> InvokeAsync() => 42;
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(EmptyContext ctx, EmptyQuery query, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
+            }
+            public sealed class CommandHandler : ICommandHandler<EmptyQuery, int, EmptyContext>
+            {
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Brigade.Net.Core.Transactions.UnitOfWork uow, EmptyContext ctx, EmptyQuery cmd, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
             }
             """;
         GeneratorDriver driver = CSharpGeneratorDriver.Create(new AspNetCorePartieGenerator());
         var result = driver.RunGenerators(Compile(source)).GetRunResult();
-
         Assert.Equal("BRG005", Assert.Single(result.Diagnostics).Id);
         Assert.DoesNotContain("MapMethods", Adapter(result));
     }
@@ -350,15 +362,17 @@ public class RoutePoliciesTests
     {
         GeneratorDriver driver = CSharpGeneratorDriver.Create(new AspNetCorePartieGenerator());
         driver = driver.RunGeneratorsAndUpdateCompilation(Compile("using Microsoft.AspNetCore.Builder;\n" + source), out var output, out _);
-        Assert.Empty(output.GetDiagnostics().Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error));
+        Assert.Empty(
+            output.GetDiagnostics().Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+        );
         return (driver, output, driver.GetRunResult());
     }
 
-    private static string Adapter(GeneratorDriverRunResult result) => result.Results.Single().GeneratedSources
-        .Single(source => source.HintName == "PartieEngine.g.cs").SourceText.ToString();
-
+    private static string Adapter(GeneratorDriverRunResult result) => result.Results.Single().GeneratedSources.Single(source => source.HintName == "PartieEngine.g.cs").SourceText.ToString();
     private static CSharpCompilation Compile(string source) => CSharpCompilation.Create(
-        "Routes_" + Guid.NewGuid().ToString("N"), [CSharpSyntaxTree.ParseText(source)], References,
+        "Routes_" + Guid.NewGuid().ToString("N"),
+        [CSharpSyntaxTree.ParseText(source)],
+        References,
         new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
     );
 }

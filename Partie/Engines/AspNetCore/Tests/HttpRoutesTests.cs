@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using Brigade.Net.Core.Results;
+using Brigade.Net.Partie.Engines.AspNetCore.Tests.Fixtures.Items;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
@@ -24,22 +25,39 @@ public class HttpRoutesTests
         var client = app.GetTestClient();
         using var firstRequest = new HttpRequestMessage(new HttpMethod(verb), "/items/42?mode=fast")
         {
-            Content = JsonContent.Create(new Doodad("payload"))
+            Content = JsonContent.Create(new { text = "payload" })
         };
         using var first = await client.SendAsync(firstRequest);
-        var firstBody = await first.Content.ReadFromJsonAsync<Reply>();
+        var firstBody = await first.Content.ReadFromJsonAsync<JsonElement>();
         using var secondRequest = new HttpRequestMessage(new HttpMethod(verb), "/items/7?mode=slow")
         {
-            Content = JsonContent.Create(new Doodad("next"))
+            Content = JsonContent.Create(new { text = "next" })
         };
         using var second = await client.SendAsync(secondRequest);
-        var secondBody = await second.Content.ReadFromJsonAsync<Reply>();
-
+        var secondBody = await second.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal(HttpStatusCode.OK, first.StatusCode);
-        Assert.Equal(42, firstBody!.Id);
-        Assert.Equal("fast:payload", firstBody.Text);
-        Assert.True(firstBody.SameCancellation);
-        Assert.NotEqual(firstBody.Scope, secondBody!.Scope);
+        Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+        if (verb == "POST")
+        {
+            Assert.Equal(42, firstBody.GetProperty("id").GetInt32());
+            Assert.Equal(7, secondBody.GetProperty("id").GetInt32());
+            Assert.Single(firstBody.EnumerateObject());
+            Assert.Single(secondBody.EnumerateObject());
+        }
+        else
+        {
+            Assert.Empty(firstBody.EnumerateObject());
+            Assert.Empty(secondBody.EnumerateObject());
+        }
+
+        var observed = app.Services.GetRequiredService<Counts>().Observed.ToArray();
+        Assert.Equal(2, observed.Length);
+        Assert.Equal(42, observed[0].Id);
+        Assert.Equal("fast:payload", observed[0].Text);
+        Assert.Equal(7, observed[1].Id);
+        Assert.Equal("slow:next", observed[1].Text);
+        Assert.All(observed, item => Assert.True(item.SameCancellation));
+        Assert.NotEqual(observed[0].Scope, observed[1].Scope);
         Assert.Equal(2, app.Services.GetRequiredService<Counts>().ProviderRuns);
         Assert.Equal(2, app.Services.GetRequiredService<Counts>().HandlerRuns);
     }
@@ -48,11 +66,37 @@ public class HttpRoutesTests
     public async Task GeneratedGet_BindsTwoStringsFromDifferentUrlSources()
     {
         await using var app = await Start();
-
-        using var response = await app.GetTestClient().GetAsync("/items/alpha?mode=beta");
-
+        using var response = await app.GetTestClient().GetAsync("/items/search/alpha?mode=beta");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("\"alpha:beta\"", await response.Content.ReadAsStringAsync());
+        Assert.Equal(1, app.Services.GetRequiredService<Counts>().HandlerRuns);
+    }
+
+    [Theory]
+    [InlineData("POST", "/items/42?mode=fast", "Invalid item")]
+    [InlineData("GET", "/items/search/category?mode=invalid", "Invalid search")]
+    public async Task Validation_StopsInvalidCommandsAndQueries(
+        string verb,
+        string path,
+        string title
+    )
+    {
+        await using var app = await Start();
+        using var request = new HttpRequestMessage(new HttpMethod(verb), path);
+        if (verb == "POST")
+        {
+            request.Content = JsonContent.Create(new { text = "" });
+        }
+
+        using var response = await app.GetTestClient().SendAsync(request);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(title, body.GetProperty("title").GetString());
+        Assert.False(body.TryGetProperty("value", out _));
+        var counts = app.Services.GetRequiredService<Counts>();
+        Assert.Equal(0, counts.HandlerRuns);
+        Assert.Equal(0, counts.ProviderRuns);
+        Assert.Empty(counts.Observed);
     }
 
     [Theory]
@@ -61,9 +105,7 @@ public class HttpRoutesTests
     public async Task GeneratedGet_SharesProviderInputInEitherArgumentOrder(string path)
     {
         await using var app = await Start();
-
         using var response = await app.GetTestClient().GetAsync(path);
-
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("6:shared", await response.Content.ReadFromJsonAsync<string>());
     }
@@ -74,9 +116,7 @@ public class HttpRoutesTests
     public async Task GeneratedGet_PassesNullableQueryToHandler(string path, string expected)
     {
         await using var app = await Start();
-
         using var response = await app.GetTestClient().GetAsync(path);
-
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(expected, await response.Content.ReadFromJsonAsync<string>());
     }
@@ -88,9 +128,7 @@ public class HttpRoutesTests
     public async Task GeneratedRoutes_UseAspNetBadInputHandling(string path, string json)
     {
         await using var app = await Start();
-
         using var response = await app.GetTestClient().PostAsync(path, new StringContent(json, Encoding.UTF8, "application/json"));
-
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal(0, app.Services.GetRequiredService<Counts>().HandlerRuns);
     }
@@ -99,10 +137,8 @@ public class HttpRoutesTests
     public async Task Failure_IsFlatJsonWithoutStatusInference()
     {
         await using var app = await Start();
-
         using var response = await app.GetTestClient().GetAsync("/items/failure");
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(409, json.RootElement.GetProperty("status").GetInt32());
         Assert.Equal("conflict", json.RootElement.GetProperty("title").GetString());
@@ -113,9 +149,7 @@ public class HttpRoutesTests
     public async Task HandlerMayChooseStatusWithoutEngineOverridingIt()
     {
         await using var app = await Start();
-
         using var response = await app.GetTestClient().GetAsync("/items/status");
-
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
         Assert.Equal("\"accepted\"", await response.Content.ReadAsStringAsync());
     }
@@ -132,100 +166,4 @@ public class HttpRoutesTests
         await app.StartAsync();
         return app;
     }
-}
-
-public sealed record Doodad(string Text);
-public sealed record Reply(int Id, string Text, Guid Scope, bool SameCancellation);
-public sealed class ScopedValue
-{
-    public Guid Id { get; } = Guid.NewGuid();
-}
-public sealed class Counts
-{
-    public int ProviderRuns;
-    public int HandlerRuns;
-}
-public sealed record ContextValue(CancellationToken Cancellation);
-
-public static class ContextProvider
-{
-    public static ValueTask<Result<TResult>> InvokeAsync<TResult>(HttpContext context, Counts counts, Next<ContextValue, TResult> next)
-    {
-        counts.ProviderRuns++;
-        return next(new ContextValue(context.RequestAborted));
-    }
-}
-
-public static class WriteHandler
-{
-    public static ValueTask<Result<Reply>> InvokeAsync(
-        [FromRoute("id")] int arbitrary,
-        [FromQuery("mode")] string choice,
-        [FromBody] Doodad whatever,
-        ScopedValue service,
-        Counts counts,
-        ContextValue context,
-        CancellationToken cancellationToken
-    )
-    {
-        counts.HandlerRuns++;
-        return ValueTask.FromResult<Result<Reply>>(new Reply(arbitrary, choice + ":" + whatever.Text, service.Id, context.Cancellation == cancellationToken));
-    }
-}
-public static class ReadHandler
-{
-    public static Result<string> InvokeAsync([FromRoute("id")] string first, [FromQuery("mode")] string second) => first + ":" + second;
-}
-public static class FailureHandler
-{
-    public static Result<string> InvokeAsync() => new Error(Title: "conflict", Status: 409);
-}
-public static class OptionalQueryHandler
-{
-    public static Result<string> InvokeAsync([FromQuery] string? filter) => filter ?? "missing";
-}
-public static class QueryLengthProvider
-{
-    public static ValueTask<Result<TResult>> InvokeAsync<TResult>([FromQuery("input")] string input, Next<int, TResult> next) => next(input.Length);
-}
-public static class ProviderFirstHandler
-{
-    public static Result<string> InvokeAsync(int made, string reused) => made + ":" + reused;
-}
-public static class InputFirstHandler
-{
-    public static Result<string> InvokeAsync(string reused, int made) => made + ":" + reused;
-}
-public static class StatusHandler
-{
-    public static Result<string> InvokeAsync(HttpResponse response)
-    {
-        response.StatusCode = StatusCodes.Status202Accepted;
-        return "accepted";
-    }
-}
-
-[BrigadeGroup("/items"), Provider(typeof(ContextProvider))]
-public static partial class HttpRoutes
-{
-    [Post("{id}"), Handler(typeof(WriteHandler))]
-    static partial void Post();
-    [Put("{id}"), Handler(typeof(WriteHandler))]
-    static partial void Put();
-    [Patch("{id}"), Handler(typeof(WriteHandler))]
-    static partial void Patch();
-    [Delete("{id}"), Handler(typeof(WriteHandler))]
-    static partial void Delete();
-    [Get("{id}"), Handler(typeof(ReadHandler))]
-    static partial void Read();
-    [Get("failure"), Handler(typeof(FailureHandler))]
-    static partial void Failure();
-    [Get("status"), Handler(typeof(StatusHandler))]
-    static partial void Status();
-    [Get("optional"), Handler(typeof(OptionalQueryHandler))]
-    static partial void Optional();
-    [Get("provider-first"), Handler(typeof(ProviderFirstHandler)), Provider(typeof(QueryLengthProvider))]
-    static partial void ProviderFirst();
-    [Get("input-first"), Handler(typeof(InputFirstHandler)), Provider(typeof(QueryLengthProvider))]
-    static partial void InputFirst();
 }

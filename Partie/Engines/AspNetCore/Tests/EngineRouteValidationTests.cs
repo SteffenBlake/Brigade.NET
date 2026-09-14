@@ -8,7 +8,6 @@ public class EngineRouteValidationTests
     [InlineData("[BrigadeGroup(\"\")] file partial class Routes { }")]
     [InlineData("class Outer { [BrigadeGroup(\"\")] partial class Routes { } }")]
     public void Engine_RejectsInvalidGroups(string source) => EngineCompilation.Invalid(source, "BRG005");
-
     [Theory]
     [InlineData("partial void Go();")]
     [InlineData("static partial void Go<T>();")]
@@ -22,28 +21,45 @@ public class EngineRouteValidationTests
     [InlineData("static void Go(ref RouteHandlerBuilder route) { }")]
     [InlineData("static partial void Go(RouteHandlerBuilder route);")]
     public void Engine_RejectsInvalidRouteMethods(string method) => EngineCompilation.Invalid(Route(method), "BRG005");
-
     [Theory]
     [InlineData("[Route(\"\", \"GET\")]")]
     [InlineData("[Handler(typeof(Handler))]")]
     [InlineData("[Get, Handler(typeof(int[]))]")]
-    [InlineData("[Get, Handler(typeof(Handler)), Partie(typeof(int))]")]
     [InlineData("[Get, Handler(typeof(Handler)), Provider(typeof(int[]))]")]
     [InlineData("[Get, Handler(typeof(Handler)), Provider(null)]")]
     [InlineData("[Get, Handler(null)]")]
-    public void Engine_RejectsInvalidRegistrations(string attributes) => EngineCompilation.Invalid(
-        Route("static partial void Go();", attributes), "BRG005"
-    );
-
+    public void Engine_RejectsInvalidRegistrations(string attributes) => EngineCompilation.Invalid(Route("static partial void Go();", attributes), "BRG005");
     [Theory]
-    [InlineData("[FromBody] string value", "GET", "BRG005")]
-    [InlineData("[FromBody] string first, [FromBody] int second", "POST", "BRG005")]
+    [InlineData("[FromPayload] public string Value { get; set; }", "GET", "BRG005")]
+    [InlineData("[FromPayload] public string First { get; set; } [FromPayload] public int Second { get; set; }", "POST", "BRG005")]
     [InlineData("", " ", "BRG005")]
-    [InlineData("[FromRoute, FromQuery] string value", "POST", "BRG001")]
-    [InlineData("[FromRoute] string first, [FromBody] string second, string ambiguous", "POST", "BRG001")]
-    public void Engine_RejectsInvalidBindings(string parameters, string operation, string diagnosticId) => EngineCompilation.Invalid(
-        Route("static partial void Go();", $"[Route(\"\", \"{operation}\"), Handler(typeof(Handler))]", $"public static Result<int> InvokeAsync({parameters}) => 1;"), diagnosticId
-    );
+    [InlineData("[FromPath, FromParams] public string Value { get; set; }", "POST", "BRG001")]
+    [InlineData("public string Value { get; set; }", "GET", "BRG001")]
+    [InlineData("[FromMetadata] public string Value { get; set; }", "GET", "BRG001")]
+    public void Engine_RejectsInvalidBindings(
+        string properties,
+        string operation,
+        string diagnosticId
+    )
+    {
+        var command = operation != "GET";
+        EngineCompilation.Invalid(
+            $$"""
+            public sealed class Request { {{properties}} }
+            [BrigadeGroup("")]
+            public static partial class Routes
+            {
+                [Route("", "{{operation}}"), Handler(typeof(Handler)), Partie(typeof(UnitOfWorkPartie))]
+                static partial void Go();
+            }
+            public sealed class Handler : {{(command ? "ICommandHandler" : "IQueryHandler")}}<Request, int, EmptyContext>
+            {
+                public static Task<Result<int>> RunAsync({{(command ? "UnitOfWork uow, " : "")}}EmptyContext ctx, Request request, CancellationToken ct) => Task.FromResult<Result<int>>(1);
+            }
+            """,
+            diagnosticId
+        );
+    }
 
     [Theory]
     [InlineData("public static int InvokeAsync() => 0;")]
@@ -51,14 +67,12 @@ public class EngineRouteValidationTests
     [InlineData("public static Result<int> InvokeAsync<T>() => 1;")]
     [InlineData("public static Result<int> InvokeAsync(ref int input) => 1;")]
     [InlineData("private static Result<int> InvokeAsync() => 1;")]
-    public void Engine_RejectsInvalidHandlers(string handlerMethod) => EngineCompilation.Invalid(
-        Route("static partial void Go();", handlerMethod: handlerMethod), "BRG001"
-    );
-
+    public void Engine_RejectsInvalidHandlers(string handlerMethod) => EngineCompilation.Invalid(Route("static partial void Go();", handlerMethod: handlerMethod), "BRG001");
     [Theory]
     [InlineData("Handler<>", "public static class Handler<T> { public static Result<int> InvokeAsync() => 1; }")]
     [InlineData("Handler", "public static class Handler { public static Result<int> InvokeAsync() => 1; public static Result<int> InvokeAsync(int value) => value; }")]
-    public void Engine_RejectsOpenOrOverloadedHandlers(string handlerType, string declaration) => EngineCompilation.Invalid($$"""
+    public void Engine_RejectsOpenOrOverloadedHandlers(string handlerType, string declaration) => EngineCompilation.Invalid(
+        $$"""
         [BrigadeGroup("")]
         public static partial class Routes
         {
@@ -66,12 +80,13 @@ public class EngineRouteValidationTests
             static partial void Go();
         }
         {{declaration}}
-        """, "BRG005");
-
+        """,
+        "BRG001"
+    );
     private static string Route(
         string method,
         string attributes = "[Get, Handler(typeof(Handler))]",
-        string handlerMethod = "public static Result<int> InvokeAsync() => 1;"
+        string? handlerMethod = null
     ) => $$"""
         [BrigadeGroup("")]
         public static partial class Routes
@@ -79,6 +94,9 @@ public class EngineRouteValidationTests
             {{attributes}}
             {{method}}
         }
-        public class Handler { {{handlerMethod}} }
+        public sealed class Handler {{(handlerMethod is null ? ": IQueryHandler<EmptyQuery, int, EmptyContext>" : "")}}
+        {
+            {{handlerMethod ?? "public static Task<Result<int>> RunAsync(EmptyContext ctx, EmptyQuery query, CancellationToken ct) => Task.FromResult<Result<int>>(1);"}}
+        }
         """;
 }

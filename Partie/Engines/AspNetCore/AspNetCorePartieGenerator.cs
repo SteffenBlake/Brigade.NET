@@ -10,25 +10,35 @@ public sealed class AspNetCorePartieGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        context.RegisterPostInitializationOutput(static output =>
-            output.AddSource("PartieHttpAttributes.g.cs", HttpRouteAttributes.Emit())
-        );
+        context.RegisterPostInitializationOutput(static output => output.AddSource("PartieHttpAttributes.g.cs", HttpRouteAttributes.Emit()));
         BrigadeGeneratorCore.Initialize(
-            context, EmitRoute, EmitAdapter, HttpRouteAttributes.Discover,
-            HttpRouteAttributes.DiscoverPolicies, HttpRouteAttributes.DiscoverPolicyFunctions
+            context,
+            EmitRoute,
+            EmitAdapter,
+            HttpRouteAttributes.Discover,
+            HttpRouteAttributes.DiscoverPolicies,
+            HttpRouteAttributes.DiscoverPolicyFunctions,
+            EmitTypes
         );
     }
 
     private static string EmitRoute(RouteEmission route)
     {
-        var parameters = route.Inputs.Select(input => Binding(input) + input.TypeName + " " + input.MemberName);
-        var arguments = string.Join(", ", route.Inputs.Select(input => input.MemberName));
-        var baseRoute = "global::Microsoft.AspNetCore.Builder.RoutingEndpointConventionBuilderExtensions.WithName("
-            + "global::Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapMethods(app, "
-            + Literal(route.Pattern.Length == 0 ? "/" : route.Pattern) + ", new[] { " + Literal(route.Operation.ToUpperInvariant()) + " }, "
-            + "static (" + string.Join(", ", parameters) + ") => " + route.DescriptorExpression
-            + ".ExecuteAsync(new " + route.InputTypeName + "(" + arguments + "))), " + Literal(route.Name) + ")";
-
+        var parameters = route.Inputs.Select(
+            input => input.Source == "Request" ? "[global::Microsoft.AspNetCore.Http.AsParameters] " + DtoType(route) + " " + input.MemberName : Binding(input) + input.TypeName + " " + input.MemberName
+        );
+        var arguments = string.Join(
+            ", ",
+            route.Inputs.Select(
+                input => input.Source == "Request" ? "new " + route.Request!.TypeName + " { " + string.Join(
+                    ", ",
+                    route.Request.Properties.Select(
+                        property => "@" + property.Name + " = " + input.MemberName + ".@" + property.Name
+                    )
+                ) + " }" : input.MemberName
+            )
+        );
+        var baseRoute = "global::Microsoft.AspNetCore.Builder.RoutingEndpointConventionBuilderExtensions.WithName(" + "global::Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapMethods(app, " + Literal(route.Pattern.Length == 0 ? "/" : route.Pattern) + ", new[] { " + Literal(route.Operation.ToUpperInvariant()) + " }, " + "static (" + string.Join(", ", parameters) + ") => " + route.DescriptorExpression + ".ExecuteAsync(new " + route.InputTypeName + "(" + arguments + "))), " + Literal(route.Name) + ")";
         if (route.PolicyFunctions.Length == 0 && route.Policies.Length == 0)
         {
             return baseRoute + ";\n";
@@ -42,11 +52,10 @@ public sealed class AspNetCorePartieGenerator : IIncrementalGenerator
 
         foreach (var policy in route.Policies)
         {
-            var typeArguments = route.InputTypeName;
+            var typeArguments = DtoType(route);
             if (policy.MethodName == "Command")
             {
-                typeArguments += ", " + (route.Inputs.FirstOrDefault(input => input.Source == "Body")?.TypeName
-                    ?? "global::Brigade.Net.Core.Results.Unit");
+                typeArguments += ", " + (route.Request!.Properties.FirstOrDefault(property => property.Source is "Body" or "Form")?.TypeName ?? "global::Brigade.Net.Core.Results.Unit");
             }
 
             code += policy.PolicyTypeName + "." + policy.MethodName + "<" + typeArguments + ">(__routeBuilder);\n";
@@ -55,25 +64,33 @@ public sealed class AspNetCorePartieGenerator : IIncrementalGenerator
         return code + "}\n";
     }
 
+    private static string DtoType(RouteEmission route) => route.InputTypeName + "Dto";
+    private static string EmitTypes(RouteEmission route)
+    {
+        var name = DtoType(route).Split('.').Last();
+        var source = route.Request!.Metadata + "public sealed class " + name + " {\n";
+        foreach (var property in route.Request.Properties)
+        {
+            var attribute = "global::Microsoft.AspNetCore.Mvc.From" + property.Source;
+            var arguments = property.BindingName is null ? "" : "(Name = " + Literal(property.BindingName) + ")";
+            source += property.Metadata + "[" + attribute + arguments + "]\npublic " + (property.Required ? "required " : "") + property.TypeName + " @" + property.Name + " { get; set; }" + (property.Required ? "" : " = default!;") + "\n";
+        }
+
+        return source + "}\n";
+    }
+
     private static string Binding(RouteInputEmission input)
     {
-        if (input.Source == "Cancellation" || (input.Source == "Service" && IsFrameworkValue(input.TypeName)))
+        if (input.Source == "Cancellation" || IsFrameworkValue(input.TypeName))
         {
             return "";
         }
 
-        var attribute = input.Source == "Service" ? "FromServices" : "From" + input.Source;
-        var arguments = input.Source is "Route" or "Query" ? "(Name = " + Literal(input.BindingName) + ")" : "";
-        return "[global::Microsoft.AspNetCore.Mvc." + attribute + arguments + "] ";
+        return "[global::Microsoft.AspNetCore.Mvc.FromServices] ";
     }
 
-    private static bool IsFrameworkValue(string typeName) => typeName.TrimEnd('?') is
-        "global::Microsoft.AspNetCore.Http.HttpContext" or "global::Microsoft.AspNetCore.Http.HttpRequest"
-        or "global::Microsoft.AspNetCore.Http.HttpResponse" or "global::System.Security.Claims.ClaimsPrincipal"
-        or "global::System.Threading.CancellationToken";
-
+    private static bool IsFrameworkValue(string typeName) => typeName.TrimEnd('?') is "global::Microsoft.AspNetCore.Http.HttpContext" or "global::Microsoft.AspNetCore.Http.HttpRequest" or "global::Microsoft.AspNetCore.Http.HttpResponse" or "global::System.Security.Claims.ClaimsPrincipal" or "global::System.Threading.CancellationToken";
     private static string Literal(string value) => SymbolDisplay.FormatLiteral(value, true);
-
     private static string EmitAdapter(string registrations) => """
         // <auto-generated />
         #nullable enable

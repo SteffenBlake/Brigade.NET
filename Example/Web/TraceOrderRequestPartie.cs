@@ -4,15 +4,31 @@ using Brigade.Net.Partie;
 
 namespace Brigade.Net.Example.Web;
 
-public static class TraceOrderRequestPartie
+public sealed record TraceOrderContext([Inject] HttpContext Http, [Inject] OrderRequestScope Scope);
+public sealed class TraceOrderRequestPartie : IPartie<Unit, TraceOrderContext>
 {
-    public static async ValueTask<Result<TResult>> InvokeAsync<TResult>(
-        HttpContext context,
-        OrderRequestScope scope,
-        CancellationToken cancellationToken,
-        Next<Unit, TResult> next
+    public static ValueTask<Result<TResult>> OnQueryAsync<TQuery, TResult>(
+        TraceOrderContext ctx,
+        TQuery query,
+        Next<Unit, TResult> next,
+        CancellationToken ct
+    )
+        where TQuery : class => ExecuteAsync(ctx, next, ct);
+    public static ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(
+        TraceOrderContext ctx,
+        TCommand command,
+        Next<Unit, TResult> next,
+        CancellationToken ct
+    )
+        where TCommand : class => ExecuteAsync(ctx, next, ct);
+    private static async ValueTask<Result<TResult>> ExecuteAsync<TResult>(
+        TraceOrderContext ctx,
+        Next<Unit, TResult> next,
+        CancellationToken cancellationToken
     )
     {
+        var context = ctx.Http;
+        var scope = ctx.Scope;
         scope.Events.Add("before");
         context.Response.Headers["X-Request-Id"] = scope.Id.ToString();
         context.Response.Headers["X-Cancellation-Matches"] = (cancellationToken == context.RequestAborted).ToString();

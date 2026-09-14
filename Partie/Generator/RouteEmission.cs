@@ -10,9 +10,11 @@ public sealed class RouteEmission(
     string inputTypeName,
     ImmutableArray<RouteInputEmission> inputs,
     ImmutableArray<RoutePolicyEmission> policies = default,
-    ImmutableArray<string> policyFunctions = default
+    ImmutableArray<string> policyFunctions = default,
+    RequestEmission? request = null
 )
 {
+    public RequestEmission? Request { get; } = request;
     public string Name { get; } = name;
     public string Pattern { get; } = pattern;
     public string Operation { get; } = operation;
