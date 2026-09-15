@@ -9,17 +9,20 @@ public class RouteTests
     {
         var input = new PartieInput("count", "Count", typeof(int), PartieInputSource.Query);
         var metadata = new List<PartieInput> { input };
+        var path = new List<string> { "admin", "items", "list" };
         var route = new PartieRoute<int, string>(
-            "Count", "items", "run", metadata,
+            "Count", path, "run", metadata,
             static count => ValueTask.FromResult<Result<string>>(count.ToString())
         );
         metadata.Clear();
+        path.Clear();
 
         var result = await route.ExecuteAsync(42);
 
         result.Map(value => { Assert.Equal("42", value); return value; });
         Assert.Equal("Count", route.Name);
-        Assert.Equal("items", route.Pattern);
+        Assert.Equal(["admin", "items", "list"], route.Path);
+        Assert.Throws<NotSupportedException>(() => ((IList<string>)route.Path).Clear());
         Assert.Equal("run", route.Operation);
         Assert.Equal(input, Assert.Single(route.Inputs));
         Assert.Equal("count", input.Name);
@@ -44,9 +47,14 @@ public class RouteTests
     [Fact]
     public void Attributes_StoreMetadataWithoutTransportDependencies()
     {
-        Assert.Equal("items", new BrigadeGroupAttribute("items").Prefix);
+        var path = new[] { "admin", "items" };
+        var group = new BrigadeGroupAttribute(path);
+        path[0] = "changed";
+        Assert.Equal(new[] { "admin", "items" }, group.Path);
+        Assert.Throws<NotSupportedException>(() => ((IList<string>)group.Path).Clear());
+        Assert.Empty(new BrigadeGroupAttribute().Path);
         var route = new RouteAttribute("{id}", "run");
-        Assert.Equal("{id}", route.Pattern);
+        Assert.Equal("{id}", route.Path);
         Assert.Equal("run", route.Operation);
         Assert.Equal(typeof(RouteTests), new HandlerAttribute(typeof(RouteTests)).HandlerType);
         Assert.Equal(typeof(RouteTests), new PartieAttribute(typeof(RouteTests)).PartieType);

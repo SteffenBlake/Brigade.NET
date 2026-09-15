@@ -62,11 +62,15 @@ public class BrigadeRoutingGeneratorTests
                     return Task.FromResult<Result<string>>(string.Join(",", ctx.Values) + ":" + ReferenceEquals(query, ctx.Request));
                 }
             }
-            [BrigadeGroup("/items"), Provider(typeof(First)), Provider(typeof(Second))]
+            [BrigadeGroup("admin"), Provider(typeof(First))]
             public static partial class Routes
             {
-                [Route("", "run"), Partie(typeof(Fixed)), Handler(typeof(Handler))]
-                static partial void Go();
+                [BrigadeGroup("items"), Provider(typeof(Second))]
+                private static partial class Items
+                {
+                    [Route("list", "run"), Partie(typeof(Fixed)), Handler(typeof(Handler))]
+                    static partial void Go();
+                }
             }
             """;
         var (_, output, result) = Generate(source + Harness);
@@ -211,6 +215,163 @@ public class BrigadeRoutingGeneratorTests
     }
 
     [Theory]
+    [InlineData("admin", "items", "list")]
+    [InlineData("/api/v1/", "", "/items/{id}")]
+    [InlineData("", "", "")]
+    public async Task Generator_PreservesNestedPathForAnyEngine(
+        string outerPath,
+        string innerPath,
+        string routePath
+    )
+    {
+        var source = Source("").Replace("[BrigadeGroup(\"\")]", $$"""
+            [BrigadeGroup("{{outerPath}}")]
+            public static partial class Outer
+            {
+                private partial class Container
+                {
+                    [BrigadeGroup("{{innerPath}}")]
+            """).Replace("public static partial class Routes", "private static partial class Routes")
+            .Replace("[Route(\"\", \"run\")", "[Route(" + SymbolDisplay.FormatLiteral(routePath, true) + ", \"run\")")
+            + "\n} }";
+        var emissions = new List<RouteEmission>();
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(new CapturingGenerator(emissions.Add));
+        driver = driver.RunGeneratorsAndUpdateCompilation(Compile(source + Harness.Replace(
+            "return text;", "return string.Join(\";\", route.Path) + \":\" + text;"
+        )), out var output, out _);
+        Assert.Empty(driver.GetRunResult().Diagnostics);
+        AssertNoErrors(output);
+        var route = Assert.Single(emissions);
+        Assert.Equal(new[] { outerPath, innerPath, routePath }, route.Path);
+        Assert.Equal(new[] { routePath }, route.LocalPath);
+        Assert.Equal(2, route.Groups.Length);
+        Assert.Null(route.Groups[0].ParentKey);
+        Assert.Equal(route.Groups[0].Key, route.Groups[1].ParentKey);
+        Assert.Equal(new[] { innerPath }, route.Groups[1].Path);
+        Assert.Equal("Outer.Container.Routes.Go", route.Name);
+        Assert.DoesNotContain("Microsoft.AspNetCore", AllSource(driver.GetRunResult()));
+        Assert.Equal(outerPath + ";" + innerPath + ";" + routePath + ":42|", await Run(output));
+    }
+
+    [Fact]
+    public void Generator_ExposesGroupOrderAndEnumerablePathsToCustomGenerators()
+    {
+        var source = Source("").Replace("[BrigadeGroup(\"\")]", """
+            [BrigadeGroup("admin", "tools")]
+            public static partial class Commands
+            {
+                [BrigadeGroup]
+            """).Replace("[Route(\"\", \"run\")", "[Command")
+            + "\n}\npublic sealed class CommandAttribute : Attribute { }";
+        var groups = new List<RouteGroupEmission>();
+        var routes = new List<RouteEmission>();
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(new CapturingGenerator(
+            routes.Add,
+            groups.Add,
+            attribute => attribute.AttributeClass!.Name == "CommandAttribute"
+                ? new RouteDeclaration(new List<string> { "show", "details" }, "run") : null
+        ));
+        driver = driver.RunGeneratorsAndUpdateCompilation(Compile(source), out var output, out _);
+        AssertNoErrors(output);
+        Assert.Empty(driver.GetRunResult().Diagnostics);
+        Assert.Equal(new[] { "Commands", "Commands.Routes" }, groups.Select(group => group.Name));
+        Assert.Null(groups[0].ParentKey);
+        Assert.Equal(groups[0].Key, groups[1].ParentKey);
+        Assert.Empty(groups[1].Path);
+        var route = Assert.Single(routes);
+        Assert.Equal(new[] { "admin", "tools", "show", "details" }, route.Path);
+        Assert.Equal(new[] { "show", "details" }, route.LocalPath);
+        Assert.DoesNotContain("Microsoft.AspNetCore", AllSource(driver.GetRunResult()));
+    }
+
+    [Fact]
+    public void Generator_ForwardsNestedConfigurationForNonHttpEngines()
+    {
+        var source = Source("").Replace("[BrigadeGroup(\"\")]", """
+            public static partial class Commands
+            {
+                [BrigadeGroup("items")]
+            """).Replace("public static partial class Routes", "private static partial class Routes")
+            .Replace("static partial void Go();", "static void Go(CommandBuilder builder) { builder.Enabled = true; }")
+            + "\n}\npublic sealed class CommandBuilder { public bool Enabled { get; set; } }";
+        var emissions = new List<RouteEmission>();
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(new CapturingGenerator(
+            emissions.Add,
+            discoverPolicyFunctions: method => method.Parameters.Length == 1
+                && method.Parameters[0].Type.Name == "CommandBuilder"
+        ));
+        driver = driver.RunGeneratorsAndUpdateCompilation(Compile(source), out var output, out _);
+        Assert.Empty(driver.GetRunResult().Diagnostics);
+        var configure = Assert.Single(Assert.Single(emissions).PolicyFunctions);
+        Assert.StartsWith("global::Commands.Configure_", configure);
+        output = output.AddSyntaxTrees(CSharpSyntaxTree.ParseText($$"""
+            public static class Invoke
+            {
+                public static void Configure(CommandBuilder builder) => {{configure}}(builder);
+            }
+            """));
+        AssertNoErrors(output);
+        Assert.DoesNotContain("Microsoft.AspNetCore", AllSource(driver.GetRunResult()));
+    }
+
+    [Fact]
+    public void Generator_DisambiguatesOverloadsForNonHttpEngines()
+    {
+        var source = Source("").Replace("static partial void Go();", """
+            static void Go(FirstBuilder builder) { }
+            [Route("second", "run"), Handler(typeof(Handler))]
+            static void Go(SecondBuilder builder) { }
+            """) + "\npublic sealed class FirstBuilder { }\npublic sealed class SecondBuilder { }";
+        var emissions = new List<RouteEmission>();
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(new CapturingGenerator(
+            emissions.Add,
+            discoverPolicyFunctions: method => method.Parameters.Length == 1
+        ));
+        driver = driver.RunGeneratorsAndUpdateCompilation(Compile(source), out var output, out _);
+        Assert.Empty(driver.GetRunResult().Diagnostics);
+        AssertNoErrors(output);
+        Assert.Equal(new[] { "Routes.Go(FirstBuilder)", "Routes.Go(SecondBuilder)" },
+            emissions.Select(route => route.Name));
+        Assert.DoesNotContain("Microsoft.AspNetCore", AllSource(driver.GetRunResult()));
+    }
+
+    [Fact]
+    public void Generator_ReopensNamespacedPartialContainersWithoutDuplicatingTheirMembers()
+    {
+        var source = "namespace Test;\n" + Source("").Replace("[BrigadeGroup(\"\")]", """
+            public partial class Outer(int value)
+            {
+                public int Value => value;
+                [BrigadeGroup("commands")]
+            """) + "\n}";
+        var (_, output, result) = Generate(source);
+        Assert.Empty(result.Diagnostics);
+        AssertNoErrors(output);
+        Assert.Contains("Test.Outer.Routes.Go", AllSource(result));
+    }
+
+    [Fact]
+    public void Generator_UpdatesDescendantPathsWhenParentPartialDeclarationChanges()
+    {
+        var routes = Compile(Source("").Replace("[BrigadeGroup(\"\")]", """
+            public partial class Outer
+            {
+                [BrigadeGroup("items")]
+            """) + "\n}");
+        var parent = CSharpSyntaxTree.ParseText("[Brigade.Net.Partie.BrigadeGroup(\"old\")] public partial class Outer { }");
+        routes = routes.AddSyntaxTrees(parent);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(new BrigadeRoutingGenerator());
+        driver = driver.RunGenerators(routes);
+        driver = driver.RunGeneratorsAndUpdateCompilation(routes.ReplaceSyntaxTree(parent,
+            CSharpSyntaxTree.ParseText("[Brigade.Net.Partie.BrigadeGroup(\"new\")] public partial class Outer { }")
+        ), out var output, out _);
+        AssertNoErrors(output);
+        Assert.Empty(driver.GetRunResult().Diagnostics);
+        Assert.Contains("new string[] { \"new\", \"items\", \"\" }", AllSource(driver.GetRunResult()));
+        Assert.DoesNotContain("\"old\"", AllSource(driver.GetRunResult()));
+    }
+
+    [Theory]
     [InlineData("public string Value { get; set; }")]
     [InlineData("[FromPath, FromParams] public string Value { get; set; }")]
     [InlineData("[FromMetadata] public string Value { get; set; }")]
@@ -257,6 +418,11 @@ public class BrigadeRoutingGeneratorTests
     [InlineData("[BrigadeGroup(\"\")] partial class Routes<T> { }")]
     [InlineData("[BrigadeGroup(\"\")] file partial class Routes { }")]
     [InlineData("class Outer { [BrigadeGroup(\"\")] partial class Routes { } }")]
+    [InlineData("partial class Outer<T> { [BrigadeGroup(\"\")] partial class Routes { } }")]
+    [InlineData("file partial class Outer { [BrigadeGroup(\"\")] partial class Routes { } }")]
+    [InlineData("partial struct Outer { [BrigadeGroup(\"\")] partial class Routes { } }")]
+    [InlineData("partial record Outer { [BrigadeGroup(\"\")] partial class Routes { } }")]
+    [InlineData("[BrigadeGroup(null)] partial class Routes { }")]
     public void Generator_RejectsUnsupportedGroupShapes(string source) => Invalid(source, "BRG005");
     [Theory]
     [InlineData("partial void Go();")]

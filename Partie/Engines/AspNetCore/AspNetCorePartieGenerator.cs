@@ -10,7 +10,6 @@ public sealed class AspNetCorePartieGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        context.RegisterPostInitializationOutput(static output => output.AddSource("PartieHttpAttributes.g.cs", HttpRouteAttributes.Emit()));
         BrigadeGeneratorCore.Initialize(
             context,
             EmitRoute,
@@ -18,7 +17,8 @@ public sealed class AspNetCorePartieGenerator : IIncrementalGenerator
             HttpRouteAttributes.Discover,
             HttpRouteAttributes.DiscoverPolicies,
             HttpRouteAttributes.DiscoverPolicyFunctions,
-            EmitTypes
+            EmitTypes,
+            EmitGroup
         );
     }
 
@@ -38,18 +38,13 @@ public sealed class AspNetCorePartieGenerator : IIncrementalGenerator
                 ) + " }" : input.MemberName
             )
         );
-        var baseRoute = "global::Microsoft.AspNetCore.Builder.RoutingEndpointConventionBuilderExtensions.WithName(" + "global::Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapMethods(app, " + Literal(route.Pattern.Length == 0 ? "/" : route.Pattern) + ", new[] { " + Literal(route.Operation.ToUpperInvariant()) + " }, " + "static (" + string.Join(", ", parameters) + ") => " + route.DescriptorExpression + ".ExecuteAsync(new " + route.InputTypeName + "(" + arguments + "))), " + Literal(route.Name) + ")";
+        var baseRoute = "global::Microsoft.AspNetCore.Builder.RoutingEndpointConventionBuilderExtensions.WithName(" + "global::Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapMethods(" + route.Groups.Last().Key + ", " + Literal(HttpPath(route.LocalPath)) + ", new[] { " + Literal(route.Operation.ToUpperInvariant()) + " }, " + "static (" + string.Join(", ", parameters) + ") => " + route.DescriptorExpression + ".ExecuteAsync(new " + route.InputTypeName + "(" + arguments + "))), " + Literal(route.Name) + ")";
         if (route.PolicyFunctions.Length == 0 && route.Policies.Length == 0)
         {
             return baseRoute + ";\n";
         }
 
         var code = "{\nvar __routeBuilder = " + baseRoute + ";\n";
-        foreach (var policyFunc in route.PolicyFunctions)
-        {
-            code += policyFunc + "(__routeBuilder);\n";
-        }
-
         foreach (var policy in route.Policies)
         {
             var typeArguments = DtoType(route);
@@ -61,8 +56,23 @@ public sealed class AspNetCorePartieGenerator : IIncrementalGenerator
             code += policy.PolicyTypeName + "." + policy.MethodName + "<" + typeArguments + ">(__routeBuilder);\n";
         }
 
+        foreach (var policyFunc in route.PolicyFunctions)
+        {
+            code += policyFunc + "(__routeBuilder);\n";
+        }
+
         return code + "}\n";
     }
+
+    private static string HttpPath(System.Collections.Generic.IEnumerable<string> path)
+    {
+        var joined = string.Join("/", path.Select(part => part.Trim('/')).Where(part => part.Length != 0));
+        return joined.Length == 0 ? "" : "/" + joined;
+    }
+
+    private static string EmitGroup(RouteGroupEmission group) => "var " + group.Key
+        + " = global::Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapGroup("
+        + (group.ParentKey ?? "app") + ", " + Literal(HttpPath(group.Path)) + ");\n";
 
     private static string DtoType(RouteEmission route) => route.InputTypeName + "Dto";
     private static string EmitTypes(RouteEmission route)

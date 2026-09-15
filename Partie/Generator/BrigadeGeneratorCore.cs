@@ -20,7 +20,8 @@ public static class BrigadeGeneratorCore
         Func<AttributeData, RouteDeclaration?>? discoverRoute = null,
         Func<IMethodSymbol, string, Compilation, Action<ISymbol, string>, ImmutableArray<RoutePolicyEmission>>? discoverPolicies = null,
         Func<IMethodSymbol, bool>? discoverPolicyFunctions = null,
-        Func<RouteEmission, string>? emitTypes = null
+        Func<RouteEmission, string>? emitTypes = null,
+        Func<RouteGroupEmission, string>? emitGroup = null
     )
     {
         var groups = context.SyntaxProvider.ForAttributeWithMetadataName(
@@ -59,10 +60,14 @@ public static class BrigadeGeneratorCore
             var registrations = new StringBuilder();
             var members = new StringBuilder();
             var adapter = new StringBuilder();
-            foreach (var group in groups.OrderBy(group => group.Key, StringComparer.Ordinal))
+            foreach (var group in groups.OrderBy(group => group.Groups.Length).ThenBy(group => group.Key, StringComparer.Ordinal))
             {
                 registrations.Append(group.Registrations);
                 members.Append(group.Members);
+                if (emitGroup is not null && group.Groups.Length != 0)
+                {
+                    adapter.Append(emitGroup(group.Groups[group.Groups.Length - 1]));
+                }
                 adapter.Append(group.Adapter);
             }
 
@@ -103,15 +108,40 @@ public static class BrigadeGeneratorCore
         var members = new StringBuilder();
         var adapter = new StringBuilder();
         var stubs = new List<MemberDeclarationSyntax>();
-        var key = "Group_" + string.Concat(Encoding.UTF8.GetBytes(group.ToDisplayString()).Select(value => value.ToString("x2")));
-        if (group.ContainingType is not null || group.Arity != 0 || !declaration.Modifiers.Any(SyntaxKind.PartialKeyword) || declaration.Modifiers.Any(SyntaxKind.FileKeyword))
+        var policyWrappers = new List<(string Name, string ParameterType)>();
+        var key = GroupKey(group);
+        var hierarchy = ImmutableArray<RouteGroupEmission>.Empty;
+        var outermost = group;
+        for (INamedTypeSymbol? current = group; current is not null; current = current.ContainingType)
         {
-            Report(group, "Route groups must be top-level, non-generic, non-file-local partial classes");
-            return Finish("");
+            if (current.Arity != 0 || current.DeclaringSyntaxReferences.Any(reference =>
+                reference.GetSyntax(cancellationToken) is not ClassDeclarationSyntax type
+                || !type.Modifiers.Any(SyntaxKind.PartialKeyword) || type.Modifiers.Any(SyntaxKind.FileKeyword)))
+            {
+                Report(current, "Route groups and their containing types must be non-generic, non-file-local partial classes");
+                return Finish("");
+            }
+            outermost = current;
         }
 
-        var prefix = context.Attributes[0].ConstructorArguments[0].Value as string ?? "";
-        var providerAttributes = group.GetAttributes().Where(attribute => IsAttribute(attribute, "ProviderAttribute")).ToArray();
+        var groupSymbols = RouteGroupHierarchy.GetGroups(group);
+        foreach (var symbol in groupSymbols)
+        {
+            if (symbol.GetAttributes().First(RouteGroupHierarchy.IsGroup).ConstructorArguments[0].IsNull)
+            {
+                Report(symbol, "A group path must be a string array; use an empty array for a group with no path components");
+                return Finish("");
+            }
+        }
+        hierarchy = groupSymbols.Select((symbol, index) => new RouteGroupEmission(
+            GroupKey(symbol),
+            symbol.ToDisplayString(),
+            index == 0 ? null : GroupKey(groupSymbols[index - 1]),
+            symbol.GetAttributes().First(RouteGroupHierarchy.IsGroup).ConstructorArguments[0].Values
+                .Select(component => component.Value as string ?? "").ToImmutableArray()
+        )).ToImmutableArray();
+        var providerAttributes = groupSymbols.SelectMany(symbol => symbol.GetAttributes())
+            .Where(attribute => IsAttribute(attribute, "ProviderAttribute")).ToArray();
         var routeIndex = 0;
         foreach (var route in group.GetMembers().OfType<IMethodSymbol>().OrderBy(method => method.Name, StringComparer.Ordinal))
         {
@@ -119,7 +149,7 @@ public static class BrigadeGeneratorCore
             var attributes = route.GetAttributes();
             var routes = attributes.Select(
                 attribute => IsAttribute(attribute, "RouteAttribute") ? new RouteDeclaration(
-                    attribute.ConstructorArguments[0].Value as string ?? "",
+                    new[] { attribute.ConstructorArguments[0].Value as string ?? "" },
                     attribute.ConstructorArguments[1].Value as string ?? ""
                 ) : discoverRoute?.Invoke(attribute)
             ).Where(route => route is not null).ToArray();
@@ -137,7 +167,7 @@ public static class BrigadeGeneratorCore
             {
                 Report(
                     route,
-                    "Route declarations must be unimplemented static partial void methods without arguments, or implemented static void methods with one RouteHandlerBuilder parameter; neither may be async or generic"
+                    "Route declarations must be unimplemented static partial void methods without arguments, or implemented static void methods with an engine-supported configuration parameter; neither may be async or generic"
                 );
                 continue;
             }
@@ -171,10 +201,7 @@ public static class BrigadeGeneratorCore
                 continue;
             }
 
-            var pattern = string.Join(
-                "/",
-                new[] { prefix.TrimEnd('/'), routes[0]!.Pattern.TrimStart('/') }.Where(part => part.Length != 0)
-            );
+            var path = hierarchy.SelectMany(scope => scope.Path).Concat(routes[0]!.Path).ToImmutableArray();
             var operation = routes[0]!.Operation;
             if (string.IsNullOrWhiteSpace(operation))
             {
@@ -227,6 +254,9 @@ public static class BrigadeGeneratorCore
             }
 
             var suffix = key + "_" + routeIndex++;
+            var routeName = group.GetMembers(route.Name).OfType<IMethodSymbol>().Skip(1).Any()
+                ? route.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat)
+                : group.ToDisplayString() + "." + route.Name;
             var inputName = "Inputs_" + suffix;
             var executeName = "Execute_" + suffix;
             var descriptorName = "Route_" + suffix;
@@ -237,7 +267,7 @@ public static class BrigadeGeneratorCore
                 members.Append("public ").Append(input.TypeName).Append(' ').Append(input.MemberName).Append(" { get; } = ").Append(input.MemberName).Append(";\n");
             }
 
-            members.Append("}\npublic static global::Brigade.Net.Partie.PartieRoute<").Append(inputName).Append(", ").Append(graph.ResultType).Append("> ").Append(descriptorName).Append(" { get; } = new(\n").Append(Literal(group.ToDisplayString() + "." + route.Name)).Append(", ").Append(Literal(pattern)).Append(", ").Append(Literal(operation)).Append(", new global::Brigade.Net.Partie.PartieInput[] {\n");
+            members.Append("}\npublic static global::Brigade.Net.Partie.PartieRoute<").Append(inputName).Append(", ").Append(graph.ResultType).Append("> ").Append(descriptorName).Append(" { get; } = new(\n").Append(Literal(routeName)).Append(", new string[] { ").Append(string.Join(", ", path.Select(Literal))).Append(" }, ").Append(Literal(operation)).Append(", new global::Brigade.Net.Partie.PartieInput[] {\n");
             foreach (var input in graph.Inputs)
             {
                 members.Append("new(").Append(Literal(input.BindingName)).Append(", ").Append(Literal(input.MemberName)).Append(", typeof(").Append(input.RuntimeTypeName).Append("), global::Brigade.Net.Partie.PartieInputSource.").Append(input.Source).Append("),\n");
@@ -250,26 +280,30 @@ public static class BrigadeGeneratorCore
             if (emitRoute is not null)
             {
                 var policyFunctionName = "Configure_" + suffix;
-                var policyFunctionFullName = TypeName(group) + "." + policyFunctionName;
+                var policyFunctionFullName = TypeName(outermost) + "." + policyFunctionName;
                 if (hasPolicyFunction)
                 {
+                    var parameterType = TypeName(route.Parameters[0].Type);
+                    policyWrappers.Add((policyFunctionName, parameterType));
                     stubs.Add(
                         SyntaxFactory.ParseMemberDeclaration(
-                            "internal static void " + policyFunctionName + "(global::Microsoft.AspNetCore.Builder.RouteHandlerBuilder builder) { @" + route.Name + "(builder); }"
+                            "internal static void " + policyFunctionName + "(" + parameterType + " builder) { @" + route.Name + "(builder); }"
                         )!
                     );
                 }
 
                 var emission = new RouteEmission(
-                    group.ToDisplayString() + "." + route.Name,
-                    pattern,
+                    routeName,
+                    path,
                     operation,
                     "global::Brigade.Net.Partie.Generated.BrigadeRoutes." + descriptorName,
                     "global::Brigade.Net.Partie.Generated.BrigadeRoutes." + inputName,
                     graph.Inputs,
                     routePolicies,
                     hasPolicyFunction ? ImmutableArray.Create(policyFunctionFullName) : ImmutableArray<string>.Empty,
-                    graph.Request
+                    graph.Request,
+                    hierarchy,
+                    routes[0]!.Path
                 );
                 adapter.Append(emitRoute(emission));
                 members.Append(emitTypes?.Invoke(emission));
@@ -277,6 +311,17 @@ public static class BrigadeGeneratorCore
         }
 
         var stubClass = declaration.WithAttributeLists(default).WithBaseList(null).WithParameterList(null).WithMembers(SyntaxFactory.List(stubs));
+        foreach (var parent in declaration.Ancestors().OfType<ClassDeclarationSyntax>())
+        {
+            var childName = stubClass.Identifier.Text;
+            var parentMembers = new List<MemberDeclarationSyntax> { stubClass };
+            parentMembers.AddRange(policyWrappers.Select(wrapper => SyntaxFactory.ParseMemberDeclaration(
+                "internal static void " + wrapper.Name + "(" + wrapper.ParameterType + " builder) { "
+                + childName + "." + wrapper.Name + "(builder); }"
+            )!));
+            stubClass = parent.WithAttributeLists(default).WithBaseList(null).WithParameterList(null)
+                .WithMembers(SyntaxFactory.List(parentMembers));
+        }
         var stubSource = stubClass.NormalizeWhitespace().ToFullString();
         if (!group.ContainingNamespace.IsGlobalNamespace)
         {
@@ -287,12 +332,15 @@ public static class BrigadeGeneratorCore
         void Report(ISymbol symbol, string message) => diagnostics.Add(Diagnostic.Create(InvalidRoute, symbol.Locations.FirstOrDefault(), message));
         GroupOutput Finish(string stubSource) => new(
             stubSource,
-            new GroupSource(key, registrations.ToString(), members.ToString(), adapter.ToString()),
+            new GroupSource(key, registrations.ToString(), members.ToString(), adapter.ToString(), hierarchy),
             diagnostics.ToImmutable()
         );
     }
 
     private static bool IsAttribute(AttributeData attribute, string name) => attribute.AttributeClass?.ContainingNamespace.ToDisplayString() == "Brigade.Net.Partie" && attribute.AttributeClass.Name == name;
+    private static string GroupKey(INamedTypeSymbol group) => "Group_" + string.Concat(
+        Encoding.UTF8.GetBytes(group.ToDisplayString()).Select(value => value.ToString("x2"))
+    );
     private static INamedTypeSymbol? GetRegisteredType(AttributeData attribute) => attribute.ConstructorArguments.FirstOrDefault().Value as INamedTypeSymbol;
     private static string TypeName(ITypeSymbol type) => type.ToDisplayString(
         SymbolDisplayFormat.FullyQualifiedFormat.AddMiscellaneousOptions(SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier)

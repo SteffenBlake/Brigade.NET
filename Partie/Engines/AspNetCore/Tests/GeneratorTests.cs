@@ -34,6 +34,27 @@ public class GeneratorTests
         );
     }
 
+    [Fact]
+    public void HttpAttributes_ResolveFromSupportLibraryWithoutGeneratedDefinitions()
+    {
+        var source = TypedSource("Get(\"{id}\")");
+        var input = Compile(source);
+        AssertNoErrors(input);
+        var attribute = input.GetTypeByMetadataName(typeof(GetAttribute).FullName!);
+        Assert.NotNull(attribute);
+        Assert.Equal("Brigade.Net.Partie.AspNetCore", attribute.ContainingAssembly.Name);
+        Assert.All(attribute.Locations, location => Assert.True(location.IsInMetadata));
+
+        var (_, output, result) = Generate(source);
+        Assert.Empty(result.Diagnostics);
+        AssertNoErrors(output);
+        Assert.DoesNotContain(result.Results.Single().GeneratedSources,
+            generated => generated.HintName == "PartieHttpAttributes.g.cs");
+        Assert.DoesNotContain("class GetAttribute", AllSource(result));
+        Assert.Equal("Brigade.Net.Partie.AspNetCore",
+            output.GetTypeByMetadataName(typeof(GetAttribute).FullName!)!.ContainingAssembly.Name);
+    }
+
     [Theory]
     [InlineData("Microsoft.AspNetCore.Http.HttpContext")]
     [InlineData("Microsoft.AspNetCore.Http.HttpRequest")]
@@ -68,7 +89,8 @@ public class GeneratorTests
         var (_, output, result) = Generate(Source(properties, operation));
         Assert.Empty(result.Diagnostics);
         AssertNoErrors(output);
-        Assert.Contains("MapMethods(app, \"/\"", Adapter(result));
+        Assert.Contains("MapGroup(app, \"\")", Adapter(result));
+        Assert.Matches("MapMethods\\(Group_[0-9a-f]+, \"\"", Adapter(result));
     }
 
     [Theory]
@@ -134,7 +156,8 @@ public class GeneratorTests
         var (_, output, result) = Generate(TypedSource(attribute + "(\"{id}\")"));
         Assert.Empty(result.Diagnostics);
         AssertNoErrors(output);
-        Assert.Contains("MapMethods(app, \"/items/{id}\", new[] { \"" + operation + "\" }", Adapter(result));
+        Assert.Contains("MapGroup(app, \"/items\")", Adapter(result));
+        Assert.Contains("\"/{id}\", new[] { \"" + operation + "\" }", Adapter(result));
     }
 
     [Theory]
@@ -167,7 +190,8 @@ public class GeneratorTests
         var (_, output, result) = Generate(TypedSource(attribute, ""));
         Assert.Empty(result.Diagnostics);
         AssertNoErrors(output);
-        Assert.Contains("MapMethods(app, \"/items\", new[] { \"GET\" }", Adapter(result));
+        Assert.Contains("MapGroup(app, \"/items\")", Adapter(result));
+        Assert.Matches("MapMethods\\(Group_[0-9a-f]+, \"\", new\\[\\] \\{ \"GET\" \\}", Adapter(result));
     }
 
     [Fact]
@@ -186,7 +210,8 @@ public class GeneratorTests
         var (_, output, result) = Generate(source);
         Assert.Empty(result.Diagnostics);
         AssertNoErrors(output);
-        Assert.Contains("\"/items/{id}\"", Adapter(result));
+        Assert.Contains("MapGroup(app, \"/items\")", Adapter(result));
+        Assert.Contains("\"/{id}\"", Adapter(result));
         Assert.DoesNotContain("wrong", Adapter(result));
     }
 

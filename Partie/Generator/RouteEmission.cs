@@ -4,19 +4,24 @@ namespace Brigade.Net.Partie.Generator;
 
 public sealed class RouteEmission(
     string name,
-    string pattern,
+    ImmutableArray<string> path,
     string operation,
     string descriptorExpression,
     string inputTypeName,
     ImmutableArray<RouteInputEmission> inputs,
     ImmutableArray<RoutePolicyEmission> policies = default,
     ImmutableArray<string> policyFunctions = default,
-    RequestEmission? request = null
+    RequestEmission? request = null,
+    ImmutableArray<RouteGroupEmission> groups = default,
+    ImmutableArray<string> localPath = default
 )
 {
     public RequestEmission? Request { get; } = request;
     public string Name { get; } = name;
-    public string Pattern { get; } = pattern;
+    /// <summary>Gets the full path, from outer groups through the route, without transport formatting.</summary>
+    public ImmutableArray<string> Path { get; } = path;
+    public ImmutableArray<RouteGroupEmission> Groups { get; } = groups;
+    public ImmutableArray<string> LocalPath { get; } = localPath;
     public string Operation { get; } = operation;
     public string DescriptorExpression { get; } = descriptorExpression;
     public string InputTypeName { get; } = inputTypeName;

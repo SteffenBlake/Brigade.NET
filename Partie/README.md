@@ -39,7 +39,8 @@ public sealed class ChangeHandler : ICommandHandler<ChangeCommand, string, Empty
 }
 ```
 
-Declare HTTP routes in the host, where the ASP.NET analyzer supplies the verb attrs:
+Declare HTTP routes in the host, referencing the `Brigade.Net.Partie.AspNetCore`
+support library for HTTP attributes:
 
 ```csharp
 using Brigade.Net.Partie;
@@ -57,13 +58,41 @@ public static partial class ItemRoutes
 
 HTTP declarations support `[Get]`, `[Post]`, `[Put]`, `[Patch]`, `[Delete]`, `[Head]`,
 and `[Options]`. Each takes an optional path, defaulting to the group path. No verb
-string is needed. These attrs are generated into the consuming assembly by the
-ASP.NET adapter; they are not part of the shared Partie runtime or generator core.
+string is needed. These are public types declared in `Brigade.Net.Partie.AspNetCore`,
+in the `Brigade.Net.Partie.Engines.AspNetCore` namespace alongside `RoutePolicyAttribute`.
+The generator reads their metadata; it does not generate attribute definitions.
 Use exactly one route attr per method. Mixing typed attrs or combining one with
 `[Route(...)]` produces a build diagnostic.
 
 GET requires a query handler. POST/PUT/PATCH/DELETE require a command handler.
-HEAD, OPTIONS, and neutral `Route(pattern, operation)` support either contract.
+HEAD, OPTIONS, and neutral `Route(path, operation)` support either contract.
+
+Groups can nest through any number of partial classes. For example:
+
+```csharp
+[BrigadeGroup("/api/v1")]
+public static partial class Routing
+{
+    [BrigadeGroup("/items")]
+    private static partial class Items
+    {
+        [Patch("{id}")]
+        [Partie(typeof(UnitOfWorkPartie))]
+        [Handler(typeof(ChangeHandler))]
+        static partial void Change();
+    }
+}
+```
+
+Core keeps the full path as the ordered strings `["/api/v1", "/items", "{id}"]`.
+It does not split, trim, or join them. A command generator could instead consume
+`["admin", "items", "change"]`. Empty components remain in core metadata.
+ASP.NET interprets these paths and emits `app.MapGroup("/api/v1")`, then
+`parent.MapGroup("/items")`, then maps the endpoint on the child group.
+Empty group paths are supported. Path parameters and constraints from parent
+groups apply to descendants through ASP.NET's native grouping.
+`BrigadeGroup` accepts `params string[]`: `[BrigadeGroup("admin", "tools")]`
+contributes two path components, and `[BrigadeGroup]` contributes none.
 
 The outer query/command must be a non-record class with an accessible parameterless
 constructor and public readable properties with accessible setters or init accessors.
@@ -103,6 +132,7 @@ CancellationToken is passed to every handler, Partie, and provider.
 For ASP.NET, add the concrete generator project as an analyzer reference:
 
 ```xml
+<ProjectReference Include="path/to/Brigade.Net.Partie.AspNetCore.csproj" />
 <ProjectReference Include="path/to/Brigade.Net.Partie.Engines.AspNetCore.csproj"
                   OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 ```
@@ -111,9 +141,15 @@ Generated `Brigade.Net.Partie.Generated.BrigadeRoutes` exposes typed route descr
 and `Register(IPartieEngine engine)`. The catalog is internal to the consumer assembly.
 Each descriptor is a `PartieRoute<TInputs, TResult>` containing:
 
-- `Name`, `Pattern`, and `Operation`.
+- `Name`, read-only `Path` strings in outer-to-inner order, and `Operation`.
 - Read-only `Inputs` metadata: binding source, external name, CLR type, and generated member name.
 - `ExecuteAsync(TInputs)`, returning `ValueTask<Result<TResult>>`.
+
+Route names include the fully qualified group and method name. When the method
+has overloads, its signature is included as well, for example `Routes.Read()` and
+`Routes.Read(Microsoft.AspNetCore.Builder.RouteHandlerBuilder)`. These names are
+shared by the core descriptors and engine output, and do not depend on declaration
+order. Methods without overloads keep their existing names.
 
 Each generated input class has one public constructor. Its argument order matches
 `Inputs`, and each `MemberName` names both the constructor parameter and property.
@@ -141,10 +177,10 @@ app.Run();
 The generated extension lives in `Microsoft.AspNetCore.Builder`. It registers typed
 minimal API lambdas. ASP.NET binds URL values, JSON bodies, scoped services, and
 framework values such as HttpContext and CancellationToken. The example exposes
-`POST /orders` with a body such as `{"customer":"Ada","sku":"PEN","quantity":2}`.
-Creation returns `{ "id": "..." }`. `GET /orders` searches using optional `id` and
+`POST /api/v1/orders` with a body such as `{"customer":"Ada","sku":"PEN","quantity":2}`.
+Creation returns `{ "id": "..." }`. `GET /api/v1/orders` searches using optional `id` and
 `customer` query filters; both filters combine, and no filters returns all orders.
-There is no GET-by-ID route. `DELETE /orders/{id}` removes an order and returns
+There is no GET-by-ID route. `DELETE /api/v1/orders/{id}` removes an order and returns
 `Unit` (serialized as `{}`); deleting a missing order returns a NotFound payload.
 
 The Orders example groups CQRS types under `CreateV1`, `SearchV1`, and `DeleteV1`,
@@ -168,19 +204,30 @@ their success payload, not deprecation metadata.
 dependency planning, typed input generation, route descriptors and pipeline emission.
 Concrete generators pass an emitter for each `RouteEmission` plus one for their
 registration file. They can also pass `discoverRoute`, which maps an `AttributeData`
-to a neutral `RouteDeclaration(Pattern, Operation)`, or null for an unrelated attr.
+to a neutral `RouteDeclaration(IEnumerable<string> path, string operation)`, or null for an unrelated attr.
 The shared core still recognizes `[Route(...)]`; adapter discoveries use the same
 validation and dependency planner. HTTP attr names and verb mappings live only in
 the ASP.NET adapter.
 
-`RouteEmission`, `RequestEmission`, and `RouteInputEmission` contain only strings and
+`RouteEmission.Path` contains the full path; `LocalPath` contains just the route's
+components. `Groups` describes the enclosing groups in outer-to-inner order.
+Each `RouteGroupEmission` has a stable `Key`, its type `Name`, a nullable `ParentKey`,
+and its local `Path`. Pass `emitGroup` to `Initialize` to emit each group once,
+before its routes and descendants. Core owns hierarchy discovery and ordering;
+engines own the meaning and formatting of path components.
+`RouteGroupHierarchy.GetGroups` and `GetAttributes` let engine discovery callbacks
+reuse the same group scopes for engine-specific attributes.
+
+`RouteEmission`, `RouteGroupEmission`, `RequestEmission`, and `RouteInputEmission` contain only strings and
 immutable data, not Roslyn symbols. Shared output equality includes adapter source.
 Only concrete adapters implement `IIncrementalGenerator` and carry `[Generator]`.
 
 ## Chain Rules
 
 Register open or closed providers with `[Provider(typeof(Provider<>))]` on the group
-or route. Fixed `[Partie(typeof(Step))]` attributes run in source order. Each step
+or route. Descendants inherit providers from outer groups, in outer-to-inner order,
+followed by route providers; siblings do not inherit each other's providers.
+Fixed `[Partie(typeof(Step))]` attributes run in source order. Each step
 implements `IPartie<TProvided, TContext>`; `IProvider<TProvided, TContext>` inherits
 that contract for providers. Both static hooks are required:
 
@@ -226,11 +273,15 @@ It gathers provided `IEnumerable<ITxn>`, passes the UOW downstream, commits succ
 and Deprecated, and rolls back failures or downstream exceptions. Commit failures
 use Core's existing rollback handling. Results are returned unchanged.
 
-Route groups currently must be top-level, non-generic partial classes. Route
+Route groups and all their enclosing types must be non-generic, non-file-local
+partial classes. An enclosing class without `BrigadeGroup` adds no path or group
+settings. Nested groups may be private, and partial declarations may span files. Route
 declarations are unimplemented static partial void methods with no arguments, or
 static void methods accepting a RouteHandlerBuilder for inline configuration.
 Route policies still run; their TParams is now the generated request DTO, and TBody
-is the payload property type (or Unit when absent).
+is the payload property type (or Unit when absent). ASP.NET applies group policies
+outermost first, then route policies, then inline route configuration. Typed policies
+are applied to each endpoint because their generic arguments depend on its request DTO.
 The generator uses value-equatable source output so unrelated edits do not change
 the emitted route catalog.
 
@@ -238,6 +289,9 @@ The continuation model currently assumes each step calls `next` at most once.
 Repeated or concurrent calls can rerun downstream providers; this policy is not yet
 enforced. No claim of once-per-invocation execution is made for those cases.
 
-The old `Brigade.Net.Partie.AspNetCore` API remains separate; new neutral routes use
-`Brigade.Net.Partie`. Partie targets .NET 10 because its `Result<T>` dependency does.
+Neutral routing attributes use `Brigade.Net.Partie`; HTTP verb and route policy
+attributes come from the `Brigade.Net.Partie.AspNetCore` support library. The older
+HTTP verb types have been consolidated into the `Brigade.Net.Partie.Engines.AspNetCore`
+namespace; other legacy types in `Brigade.Net.Partie.AspNetCore` remain separate.
+Partie targets .NET 10 because its `Result<T>` dependency does.
 The Roslyn generator stays on .NET Standard 2.0 and does not reference the runtime.

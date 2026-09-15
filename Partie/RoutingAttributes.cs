@@ -1,23 +1,5 @@
 namespace Brigade.Net.Partie;
 
-/// <summary>Groups routes under a shared pattern prefix.</summary>
-[AttributeUsage(AttributeTargets.Class)]
-public sealed class BrigadeGroupAttribute(string prefix) : Attribute
-{
-    /// <summary>Gets the shared pattern prefix.</summary>
-    public string Prefix { get; } = prefix;
-}
-
-/// <summary>Declares a transport-neutral route and engine-defined operation.</summary>
-[AttributeUsage(AttributeTargets.Method)]
-public sealed class RouteAttribute(string pattern, string operation) : Attribute
-{
-    /// <summary>Gets the route pattern.</summary>
-    public string Pattern { get; } = pattern;
-    /// <summary>Gets the engine-defined operation.</summary>
-    public string Operation { get; } = operation;
-}
-
 /// <summary>Chooses the Handler type.</summary>
 [AttributeUsage(AttributeTargets.Method)]
 public sealed class HandlerAttribute(Type handlerType) : Attribute

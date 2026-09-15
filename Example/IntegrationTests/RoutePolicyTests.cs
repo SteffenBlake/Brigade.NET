@@ -9,7 +9,7 @@ public sealed class RoutePolicyTests(AppHostFixture host)
     [Fact]
     public async Task OrdinaryEndpoint_AllowsAnonymous()
     {
-        using var response = await host.WebClient.GetAsync("/orders?customer=anonymous-policy-test");
+        using var response = await host.WebClient.GetAsync("/api/v1/orders?customer=anonymous-policy-test");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -21,7 +21,7 @@ public sealed class RoutePolicyTests(AppHostFixture host)
     [InlineData("d", "Authorization", "X-Fake")]
     public async Task ProtectedEndpoint_RequiresItsOwnHeader(string endpoint, string header, string wrongHeader)
     {
-        var path = "/orders/policy-test/" + endpoint;
+        var path = "/api/v1/orders/policy-test/" + endpoint;
         using var missing = await host.WebClient.GetAsync(path);
         Assert.Equal(HttpStatusCode.Unauthorized, missing.StatusCode);
 
