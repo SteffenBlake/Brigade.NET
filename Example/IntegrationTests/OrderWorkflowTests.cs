@@ -24,7 +24,7 @@ public sealed class OrderWorkflowTests(AppHostFixture host)
         Assert.NotEqual(Guid.Empty, id);
         Assert.Single(order.EnumerateObject());
         AssertFlow(placed, "before;create;after", 0);
-        using var fetched = await host.WebClient.GetAsync("/api/v1/orders?id=" + id);
+        using var fetched = await host.WebClient.GetAsync("/api/v1/orders?orderId=" + id);
         var fetchedOrder = Assert.Single((await Read(fetched)).EnumerateArray());
         Assert.Equal(id, fetchedOrder.GetProperty("id").GetGuid());
         Assert.Equal(customer, fetchedOrder.GetProperty("customer").GetString());
@@ -45,7 +45,7 @@ public sealed class OrderWorkflowTests(AppHostFixture host)
         using var cancelled = await host.WebClient.DeleteAsync("/api/v1/orders/" + id);
         Assert.Empty((await Read(cancelled)).EnumerateObject());
         AssertFlow(cancelled, "before;delete;after", 0);
-        using var persisted = await host.WebClient.GetAsync("/api/v1/orders?id=" + id);
+        using var persisted = await host.WebClient.GetAsync("/api/v1/orders?orderId=" + id);
         Assert.Empty((await Read(persisted)).EnumerateArray());
         AssertFlow(persisted, "before;load;inspect:0;search;after", 1);
         using var duplicate = await host.WebClient.DeleteAsync("/api/v1/orders/" + id);
@@ -113,8 +113,8 @@ public sealed class OrderWorkflowTests(AppHostFixture host)
     }
 
     [Theory]
-    [InlineData("/api/v1/orders?id=not-a-guid")]
-    [InlineData("/api/v1/orders?id=123")]
+    [InlineData("/api/v1/orders?orderId=not-a-guid")]
+    [InlineData("/api/v1/orders?orderId=123")]
     public async Task InvalidSearchId_IsRejectedBeforeThePipeline(string path)
     {
         using var response = await host.WebClient.GetAsync(path);
@@ -128,13 +128,13 @@ public sealed class OrderWorkflowTests(AppHostFixture host)
         var customer = "filters-" + Guid.NewGuid();
         using var created = await host.WebClient.PostAsJsonAsync("/api/v1/orders", new { customer, sku = "PEN", quantity = 2 });
         var id = (await Read(created)).GetProperty("id").GetGuid();
-        using var matching = await host.WebClient.GetAsync("/api/v1/orders?id=" + id + "&customer=" + customer);
+        using var matching = await host.WebClient.GetAsync("/api/v1/orders?orderId=" + id + "&customer=" + customer);
         Assert.Equal(id, Assert.Single((await Read(matching)).EnumerateArray()).GetProperty("id").GetGuid());
         AssertFlow(matching, "before;load;inspect:1;search;after", 1);
-        using var mismatching = await host.WebClient.GetAsync("/api/v1/orders?id=" + id + "&customer=other-" + customer);
+        using var mismatching = await host.WebClient.GetAsync("/api/v1/orders?orderId=" + id + "&customer=other-" + customer);
         Assert.Empty((await Read(mismatching)).EnumerateArray());
         AssertFlow(mismatching, "before;load;inspect:0;search;after", 1);
-        using var missing = await host.WebClient.GetAsync("/api/v1/orders?id=" + Guid.NewGuid());
+        using var missing = await host.WebClient.GetAsync("/api/v1/orders?orderId=" + Guid.NewGuid());
         Assert.Empty((await Read(missing)).EnumerateArray());
         using var unfiltered = await host.WebClient.GetAsync("/api/v1/orders");
         Assert.Contains(
@@ -158,7 +158,7 @@ public sealed class OrderWorkflowTests(AppHostFixture host)
             var order = await Read(placed);
             var id = order.GetProperty("id").GetGuid();
             AssertFlow(placed, "before;create;after", 0);
-            using var fetched = await host.WebClient.GetAsync("/api/v1/orders?id=" + id);
+            using var fetched = await host.WebClient.GetAsync("/api/v1/orders?orderId=" + id);
             Assert.Equal(
                         quantity,
                         Assert.Single((await Read(fetched)).EnumerateArray()).GetProperty("quantity").GetInt32()

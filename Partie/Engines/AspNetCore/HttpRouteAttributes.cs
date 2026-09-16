@@ -9,20 +9,24 @@ namespace Brigade.Net.Partie.Engines.AspNetCore;
 internal static class HttpRouteAttributes
 {
     private const string AttributeNamespace = "Brigade.Net.Partie.Engines.AspNetCore";
-    private static readonly string[] Verbs = { "Get", "Post", "Put", "Patch", "Delete", "Head", "Options" };
 
     public static RouteDeclaration? Discover(AttributeData attribute)
     {
-        if (attribute.AttributeClass?.ContainingNamespace.ToDisplayString() != AttributeNamespace)
+        if (attribute.AttributeClass?.BaseType is { } baseType
+            && baseType.OriginalDefinition.ToDisplayString() == AttributeNamespace + ".HandlerRouteAttribute<THandler>")
         {
-            return null;
+            var pathIndex = attribute.AttributeConstructor?.Parameters.FirstOrDefault(parameter =>
+                !parameter.GetAttributes().Any(marker => marker.AttributeClass?.ToDisplayString()
+                    == "Brigade.Net.Partie.ParameterAttribute"))?.Ordinal ?? -1;
+            return new RouteDeclaration(
+                new[] { pathIndex < 0 || pathIndex >= attribute.ConstructorArguments.Length
+                    ? "" : attribute.ConstructorArguments[pathIndex].Value as string ?? "" },
+                attribute.AttributeClass.Name.Replace("Attribute", "").ToUpperInvariant(),
+                (INamedTypeSymbol)baseType.TypeArguments[0],
+                ContextParameters.Arguments(attribute)
+            );
         }
-
-        var verb = Verbs.FirstOrDefault(verb => attribute.AttributeClass.Name == verb + "Attribute");
-        return verb is null ? null : new RouteDeclaration(
-            new[] { attribute.ConstructorArguments.FirstOrDefault().Value as string ?? "" },
-            verb.ToUpperInvariant()
-        );
+        return null;
     }
 
     public static ImmutableArray<RoutePolicyEmission> DiscoverPolicies(

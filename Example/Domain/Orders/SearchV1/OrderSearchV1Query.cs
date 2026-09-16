@@ -5,7 +5,7 @@ namespace Brigade.Net.Example.Domain.Orders.SearchV1;
 public sealed class OrderSearchV1Query
 {
     /// <summary>Optional order ID.</summary>
-    [FromParams(Name = "id")]
+    [FromParams(Name = "orderId")]
     public Guid? Id { get; init; }
 
     /// <summary>The customer name.</summary>

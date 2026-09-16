@@ -35,10 +35,10 @@ public class RoutePoliciesTests
             [RoutePolicy(typeof(RequireAuthRoutePolicy))]
             public static partial class Routes
             {
-                [Route("", "GET"), Handler(typeof(Handler))]
+                [Route<Handler>("", "GET")]
                 static partial void Get();
                 
-                [Route("", "POST"), Handler(typeof(CommandHandler)), Partie(typeof(UnitOfWorkPartie))]
+                [Route<CommandHandler>("", "POST"), global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie))]
                 static partial void Post();
             }
             
@@ -77,7 +77,7 @@ public class RoutePoliciesTests
             [BrigadeGroup("")]
             public static partial class Routes
             {
-                [Route("", "POST"), Handler(typeof(CommandHandler)), Partie(typeof(UnitOfWorkPartie))]
+                [Route<CommandHandler>("", "POST"), global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie))]
                 [RoutePolicy(typeof(AdminPolicyRoutePolicy))]
                 static partial void Create();
             }
@@ -108,7 +108,7 @@ public class RoutePoliciesTests
             [BrigadeGroup("")]
             public static partial class Routes
             {
-                [Route("", "POST"), Handler(typeof(CommandHandler)), Partie(typeof(UnitOfWorkPartie))]
+                [Route<CommandHandler>("", "POST"), global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie))]
                 static partial void Create();
             }
             
@@ -153,8 +153,7 @@ public class RoutePoliciesTests
             [RoutePolicy(typeof(TestPolicyRoutePolicy))]
             public static partial class Routes
             {
-                [Get]
-                [Handler(typeof(Handler))]
+                [HandlerRoute.Get]
                 static partial void Read();
             }
             
@@ -199,8 +198,7 @@ public class RoutePoliciesTests
             [RoutePolicy(typeof(TestPolicyRoutePolicy))]
             public static partial class Routes
             {
-                [Post, Partie(typeof(UnitOfWorkPartie))]
-                [Handler(typeof(CommandHandler))]
+                [CommandHandlerRoute.Post, global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie))]
                 static partial void Create();
             }
             
@@ -249,8 +247,7 @@ public class RoutePoliciesTests
             [RoutePolicy(typeof(OpenApiPolicyRoutePolicy))]
             public static partial class Routes
             {
-                [Post, Partie(typeof(UnitOfWorkPartie))]
-                [Handler(typeof(CommandHandler))]
+                [CommandHandlerRoute.Post, global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie))]
                 static partial void Create();
             }
             
@@ -301,7 +298,7 @@ public class RoutePoliciesTests
             {{(onGroup ? attribute : "")}}
             public static partial class Routes
             {
-                [Route("", "{{operation}}"), Handler(typeof({{(operation == "GET" ? "Handler" : "CommandHandler")}})), Partie(typeof(UnitOfWorkPartie))]
+                [Route<{{(operation == "GET" ? "Handler" : "CommandHandler")}}>("", "{{operation}}"), global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie))]
                 {{(onGroup ? "" : attribute)}}
                 static partial void Go();
             }
@@ -340,7 +337,7 @@ public class RoutePoliciesTests
             [RoutePolicy({{policyType}})]
             public static partial class Routes
             {
-                [Get, Handler(typeof(Handler))]
+                [HandlerRoute.Get]
                 static partial void Go();
             }
             public sealed class Handler : IQueryHandler<EmptyQuery, int, EmptyContext>

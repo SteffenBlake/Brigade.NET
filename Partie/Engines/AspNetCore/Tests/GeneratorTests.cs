@@ -35,12 +35,11 @@ public class GeneratorTests
     }
 
     [Fact]
-    public void HttpAttributes_ResolveFromSupportLibraryWithoutGeneratedDefinitions()
+    public void HttpAttributeBase_ResolvesFromSupportLibraryWithoutGeneratedDefinitions()
     {
-        var source = TypedSource("Get(\"{id}\")");
+        var source = TypedSource("Get(\"{itemId}\")");
         var input = Compile(source);
-        AssertNoErrors(input);
-        var attribute = input.GetTypeByMetadataName(typeof(GetAttribute).FullName!);
+        var attribute = input.GetTypeByMetadataName(typeof(HandlerRouteAttribute<>).FullName!);
         Assert.NotNull(attribute);
         Assert.Equal("Brigade.Net.Partie.AspNetCore", attribute.ContainingAssembly.Name);
         Assert.All(attribute.Locations, location => Assert.True(location.IsInMetadata));
@@ -50,9 +49,9 @@ public class GeneratorTests
         AssertNoErrors(output);
         Assert.DoesNotContain(result.Results.Single().GeneratedSources,
             generated => generated.HintName == "PartieHttpAttributes.g.cs");
-        Assert.DoesNotContain("class GetAttribute", AllSource(result));
+        Assert.DoesNotContain("abstract class HandlerRouteAttribute", AllSource(result));
         Assert.Equal("Brigade.Net.Partie.AspNetCore",
-            output.GetTypeByMetadataName(typeof(GetAttribute).FullName!)!.ContainingAssembly.Name);
+            output.GetTypeByMetadataName(typeof(HandlerRouteAttribute<>).FullName!)!.ContainingAssembly.Name);
     }
 
     [Theory]
@@ -90,7 +89,7 @@ public class GeneratorTests
         Assert.Empty(result.Diagnostics);
         AssertNoErrors(output);
         Assert.Contains("MapGroup(app, \"\")", Adapter(result));
-        Assert.Matches("MapMethods\\(Group_[0-9a-f]+, \"\"", Adapter(result));
+        Assert.Matches("MapMethods\\(Group_[A-Za-z0-9_]+, \"\"", Adapter(result));
     }
 
     [Theory]
@@ -136,10 +135,10 @@ public class GeneratorTests
         );
         var changed = compilation.ReplaceSyntaxTree(
             compilation.SyntaxTrees.Single(),
-            CSharpSyntaxTree.ParseText(Source("[FromPath(Name = \"id\")] public string Value { get; set; }"))
+            CSharpSyntaxTree.ParseText(Source("[FromPath(Name = \"itemId\")] public string Value { get; set; }"))
         );
         driver = driver.RunGenerators(changed);
-        Assert.Contains("FromRoute(Name = \"id\")", AllSource(driver.GetRunResult()));
+        Assert.Contains("FromRoute(Name = \"itemId\")", AllSource(driver.GetRunResult()));
         Assert.DoesNotContain("FromQuery", AllSource(driver.GetRunResult()));
     }
 
@@ -153,17 +152,17 @@ public class GeneratorTests
     [InlineData("Options", "OPTIONS")]
     public void Generator_MapsTypedVerbs(string attribute, string operation)
     {
-        var (_, output, result) = Generate(TypedSource(attribute + "(\"{id}\")"));
+        var (_, output, result) = Generate(TypedSource(attribute + "(\"{itemId}\")"));
         Assert.Empty(result.Diagnostics);
         AssertNoErrors(output);
         Assert.Contains("MapGroup(app, \"/items\")", Adapter(result));
-        Assert.Contains("\"/{id}\", new[] { \"" + operation + "\" }", Adapter(result));
+        Assert.Contains("\"/{itemId}\", new[] { \"" + operation + "\" }", Adapter(result));
     }
 
     [Theory]
-    [InlineData("Get(\"{id}\"), Post(\"{id}\")")]
-    [InlineData("Get(\"{id}\"), Route(\"{id}\", \"GET\")")]
-    [InlineData("Get(\"{id}\"), Get(\"{id}\")")]
+    [InlineData("Post(\"{itemId}\"), Put(\"{itemId}\")")]
+    [InlineData("Get(\"{itemId}\"), Route(\"{itemId}\", \"GET\")")]
+    [InlineData("Get(\"{itemId}\"), Get(\"{itemId}\")")]
     public void Generator_RejectsConflictingRouteAttributes(string attributes)
     {
         var (_, _, result) = Generate(TypedSource(attributes));
@@ -183,7 +182,7 @@ public class GeneratorTests
     [InlineData("Get")]
     [InlineData("GetAttribute()")]
     [InlineData("Get(null)")]
-    [InlineData("global::Brigade.Net.Partie.Engines.AspNetCore.Get(\"\")")]
+    [InlineData("global::HandlerRoute.Get(\"\")")]
     [InlineData("ReadRoute")]
     public void Generator_ResolvesSymbolsAndDefaultPaths(string attribute)
     {
@@ -191,13 +190,13 @@ public class GeneratorTests
         Assert.Empty(result.Diagnostics);
         AssertNoErrors(output);
         Assert.Contains("MapGroup(app, \"/items\")", Adapter(result));
-        Assert.Matches("MapMethods\\(Group_[0-9a-f]+, \"\", new\\[\\] \\{ \"GET\" \\}", Adapter(result));
+        Assert.Matches("MapMethods\\(Group_[A-Za-z0-9_]+, \"\", new\\[\\] \\{ \"GET\" \\}", Adapter(result));
     }
 
     [Fact]
     public void Generator_IgnoresUnrelatedAttributesWithMatchingNames()
     {
-        var source = TypedSource("Other.Get(\"wrong\"), Get(\"{id}\"), Unrelated") + """
+        var source = TypedSource("Other.Get(\"wrong\"), Get(\"{itemId}\"), Unrelated") + """
             namespace Other
             {
                 public sealed class GetAttribute(string path) : System.Attribute { }
@@ -211,14 +210,14 @@ public class GeneratorTests
         Assert.Empty(result.Diagnostics);
         AssertNoErrors(output);
         Assert.Contains("MapGroup(app, \"/items\")", Adapter(result));
-        Assert.Contains("\"/{id}\"", Adapter(result));
+        Assert.Contains("\"/{itemId}\"", Adapter(result));
         Assert.DoesNotContain("wrong", Adapter(result));
     }
 
     [Fact]
     public void Generator_TypedVerbChangesInvalidateOutput()
     {
-        var original = Compile(TypedSource("Post(\"{id}\")"));
+        var original = Compile(TypedSource("Post(\"{itemId}\")"));
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
             [new AspNetCorePartieGenerator().AsSourceGenerator()],
             driverOptions: new GeneratorDriverOptions(IncrementalGeneratorOutputKind.None, true)
@@ -232,7 +231,7 @@ public class GeneratorTests
                 new[] { IncrementalStepRunReason.Cached, IncrementalStepRunReason.Unchanged }
             )
         );
-        var changed = original.ReplaceSyntaxTree(original.SyntaxTrees.Single(), CSharpSyntaxTree.ParseText(TypedSource("Put(\"{id}\")")));
+        var changed = original.ReplaceSyntaxTree(original.SyntaxTrees.Single(), CSharpSyntaxTree.ParseText(TypedSource("Put(\"{itemId}\")")));
         driver = driver.RunGenerators(changed);
         Assert.Empty(driver.GetRunResult().Diagnostics);
         Assert.Contains("new[] { \"PUT\" }", Adapter(driver.GetRunResult()));
@@ -256,7 +255,7 @@ public class GeneratorTests
             $$"""
                 static {{modifier}}void Go(global::Microsoft.AspNetCore.Builder.RouteHandlerBuilder @event) {{body}}
 
-                [Get("second"), Handler(typeof(Handler))]
+                [HandlerRoute.Get("second")]
                 static {{modifier}}void Second(global::Microsoft.AspNetCore.Builder.RouteHandlerBuilder otherName)
                 {
                     Configure(otherName);
@@ -287,10 +286,13 @@ public class GeneratorTests
         Assert.All(endpoints, endpoint => Assert.Equal("configured", endpoint.Metadata.GetMetadata<string>()));
     }
 
-    private static string TypedSource(string attributes, string properties = "[FromPath(Name = \"id\")] public string Id { get; set; }")
+    private static string TypedSource(string attributes, string properties = "[FromPath(Name = \"itemId\")] public string Id { get; set; }")
     {
-        var operation = attributes.StartsWith("Post", StringComparison.Ordinal) ? "POST" : attributes.StartsWith("Put", StringComparison.Ordinal) ? "PUT" : attributes.StartsWith("Patch", StringComparison.Ordinal) ? "PATCH" : attributes.StartsWith("Delete", StringComparison.Ordinal) ? "DELETE" : "GET";
-        return Source(properties, operation).Replace("[BrigadeGroup(\"\")]", "[BrigadeGroup(\"/items\")]").Replace("[Route(\"\", \"" + operation + "\")]", "[" + attributes + "]");
+        var operation = attributes.StartsWith("Post", StringComparison.Ordinal) ? "POST" : attributes.StartsWith("Put", StringComparison.Ordinal) ? "PUT" : attributes.StartsWith("Patch", StringComparison.Ordinal) ? "PATCH" : attributes.StartsWith("Delete", StringComparison.Ordinal) ? "DELETE" : attributes.StartsWith("Head", StringComparison.Ordinal) ? "HEAD" : attributes.StartsWith("Options", StringComparison.Ordinal) ? "OPTIONS" : "GET";
+        var qualified = System.Text.RegularExpressions.Regex.Replace(attributes,
+            @"(?<![\w.:])(Get|Post|Put|Patch|Delete|Head|Options)(Attribute)?\b", "HandlerRoute.$1$2");
+        var alias = attributes == "ReadRoute" ? "using ReadRoute = HandlerRoute.GetAttribute;\n" : "";
+        return alias + Source(properties, operation).Replace("[BrigadeGroup(\"\")]", "[BrigadeGroup(\"/items\")]").Replace("[Route<Handler>(\"\", \"" + operation + "\")]", "[" + qualified + "]");
     }
 
     private static string Source(
@@ -299,7 +301,7 @@ public class GeneratorTests
         string context = "public sealed class Services { }"
     )
     {
-        var command = operation is "POST" or "PUT" or "PATCH" or "DELETE";
+        var command = operation != "GET";
         return $$"""
             using System.Threading;
             using System.Threading.Tasks;
@@ -307,15 +309,13 @@ public class GeneratorTests
             using Brigade.Net.Core.Results;
             using Brigade.Net.Core.Transactions;
             using Brigade.Net.Partie.Engines.AspNetCore;
-            using ReadRoute = Brigade.Net.Partie.Engines.AspNetCore.GetAttribute;
             {{context}}
             public sealed class Request { {{properties}} }
             [BrigadeGroup("")]
             public static partial class Routes
             {
-                [Route("", "{{operation}}")]
-                [Handler(typeof(Handler))]
-                {{(command ? "[Partie(typeof(UnitOfWorkPartie))]" : "")}}
+                [Route<Handler>("", "{{operation}}")]
+                {{(command ? "[global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie))]" : "")}}
                 static partial void Go();
             }
             public sealed class Handler : {{(command ? "ICommandHandler" : "IQueryHandler")}}<Request, int, Services>

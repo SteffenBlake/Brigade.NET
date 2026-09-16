@@ -68,7 +68,7 @@ public class BrigadeRoutingGeneratorTests
                 [BrigadeGroup("items"), Provider(typeof(Second))]
                 private static partial class Items
                 {
-                    [Route("list", "run"), Partie(typeof(Fixed)), Handler(typeof(Handler))]
+                    [Route<Handler>("list", "run"), Partie(typeof(Fixed))]
                     static partial void Go();
                 }
             }
@@ -97,7 +97,7 @@ public class BrigadeRoutingGeneratorTests
             [BrigadeGroup("")]
             public static partial class Routes
             {
-                [Route("", "run"), Handler(typeof(Handler))]
+                [Route<Handler>("", "run")]
                 static partial void Go();
             }
             """;
@@ -158,7 +158,7 @@ public class BrigadeRoutingGeneratorTests
             [BrigadeGroup(""), Provider(typeof(RequestEvidenceProvider<>))]
             public static partial class Routes
             {
-                [Route("", "{{(command ? "POST" : "GET")}}"), Handler(typeof(Handler)), Partie(typeof(Probe)), Partie(typeof(UnitOfWorkPartie))]
+                [Route<Handler>("", "{{(command ? "POST" : "GET")}}"), Partie(typeof(Probe)), Partie(typeof(UnitOfWorkPartie))]
                 static partial void Go();
             }
             """;
@@ -216,7 +216,7 @@ public class BrigadeRoutingGeneratorTests
 
     [Theory]
     [InlineData("admin", "items", "list")]
-    [InlineData("/api/v1/", "", "/items/{id}")]
+    [InlineData("/api/v1/", "", "/items/{itemId}")]
     [InlineData("", "", "")]
     public async Task Generator_PreservesNestedPathForAnyEngine(
         string outerPath,
@@ -232,7 +232,7 @@ public class BrigadeRoutingGeneratorTests
                 {
                     [BrigadeGroup("{{innerPath}}")]
             """).Replace("public static partial class Routes", "private static partial class Routes")
-            .Replace("[Route(\"\", \"run\")", "[Route(" + SymbolDisplay.FormatLiteral(routePath, true) + ", \"run\")")
+            .Replace("[Route<Handler>(\"\", \"run\")", "[Route<Handler>(" + SymbolDisplay.FormatLiteral(routePath, true) + ", \"run\")")
             + "\n} }";
         var emissions = new List<RouteEmission>();
         GeneratorDriver driver = CSharpGeneratorDriver.Create(new CapturingGenerator(emissions.Add));
@@ -261,15 +261,16 @@ public class BrigadeRoutingGeneratorTests
             public static partial class Commands
             {
                 [BrigadeGroup]
-            """).Replace("[Route(\"\", \"run\")", "[Command")
-            + "\n}\npublic sealed class CommandAttribute : Attribute { }";
+            """).Replace("[Route<Handler>(\"\", \"run\")", "[Command<Handler>")
+            + "\n}\npublic sealed class CommandAttribute<THandler> : Attribute { }";
         var groups = new List<RouteGroupEmission>();
         var routes = new List<RouteEmission>();
         GeneratorDriver driver = CSharpGeneratorDriver.Create(new CapturingGenerator(
             routes.Add,
             groups.Add,
             attribute => attribute.AttributeClass!.Name == "CommandAttribute"
-                ? new RouteDeclaration(new List<string> { "show", "details" }, "run") : null
+                ? new RouteDeclaration(new List<string> { "show", "details" }, "run",
+                    (INamedTypeSymbol)attribute.AttributeClass.TypeArguments[0]) : null
         ));
         driver = driver.RunGeneratorsAndUpdateCompilation(Compile(source), out var output, out _);
         AssertNoErrors(output);
@@ -319,7 +320,7 @@ public class BrigadeRoutingGeneratorTests
     {
         var source = Source("").Replace("static partial void Go();", """
             static void Go(FirstBuilder builder) { }
-            [Route("second", "run"), Handler(typeof(Handler))]
+            [Route<Handler>("second", "run")]
             static void Go(SecondBuilder builder) { }
             """) + "\npublic sealed class FirstBuilder { }\npublic sealed class SecondBuilder { }";
         var emissions = new List<RouteEmission>();
@@ -436,11 +437,11 @@ public class BrigadeRoutingGeneratorTests
     public void Generator_RejectsUnsupportedRouteMethodShapes(string declaration) => Invalid(Source("").Replace("static partial void Go();", declaration), "BRG005");
     [Theory]
     [InlineData("[Route(\"\", \"run\")]")]
-    [InlineData("[Handler(typeof(Handler))]")]
-    [InlineData("[Route(\"\", \"run\"), Handler(typeof(int[]))]")]
-    [InlineData("[Route(\"\", \"run\"), Handler(null)]")]
-    [InlineData("[Route(\"\", \"run\"), Handler(typeof(Handler)), Provider(null)]")]
-    public void Generator_RejectsMissingAndInvalidTypeRegistrations(string attributes) => Invalid(Source("").Replace("[Route(\"\", \"run\"), Handler(typeof(Handler))]", attributes), "BRG005");
+    [InlineData("[Route<Handler>(\"\", \"run\"), Route<Handler>(\"\", \"run\")]")]
+    [InlineData("[Route<int[]>(\"\", \"run\")]")]
+    [InlineData("[Route<Handler>(\"\", \"run\"), Partie(null)]")]
+    [InlineData("[Route<Handler>(\"\", \"run\"), Provider(null)]")]
+    public void Generator_RejectsMissingAndInvalidTypeRegistrations(string attributes) => Invalid(Source("").Replace("[Route<Handler>(\"\", \"run\")]", attributes), "BRG005");
     [Fact]
     public void Generator_ReusesEqualSourceAfterUnrelatedEdit()
     {
@@ -494,7 +495,7 @@ public class BrigadeRoutingGeneratorTests
         [BrigadeGroup("")]
         public static partial class Routes
         {
-            [Route("", "{{operation}}"), Handler(typeof(Handler))]
+            [Route<Handler>("", "{{operation}}")]
             static partial void Go();
         }
         """;

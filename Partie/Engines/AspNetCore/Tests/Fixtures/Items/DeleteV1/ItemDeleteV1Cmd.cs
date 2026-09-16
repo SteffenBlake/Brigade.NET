@@ -5,7 +5,7 @@ namespace Brigade.Net.Partie.Engines.AspNetCore.Tests.Fixtures.Items.DeleteV1;
 public sealed record ItemDeletion(string Text);
 public sealed class ItemDeleteV1Cmd
 {
-    [FromPath(Name = "id")]
+    [FromPath(Name = "itemId")]
     public required int Id { get; init; }
 
     [FromParams(Name = "mode")]

@@ -58,12 +58,12 @@ internal static class EngineCompilation
         );
     }
 
-    public static MetadataReference Reference(string source)
+    public static MetadataReference Reference(string source, IEnumerable<MetadataReference>? additionalReferences = null)
     {
         var compilation = CSharpCompilation.Create(
             "Domain_" + Guid.NewGuid().ToString("N"),
             [CSharpSyntaxTree.ParseText(source)],
-            References,
+            References.Concat(additionalReferences ?? []),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
         );
         using var stream = new MemoryStream();

@@ -23,13 +23,15 @@ internal sealed class ContractPipelinePlanner(
     private readonly Dictionary<INamedTypeSymbol, string> providerValues = new(SymbolEqualityComparer.Default);
     private readonly List<ITypeSymbol> resolving = new();
     private INamedTypeSymbol[] providers = Array.Empty<INamedTypeSymbol>();
+    private RegistrationModel[] providerRegistrations = Array.Empty<RegistrationModel>();
     private INamedTypeSymbol requestType = null!;
     private ITypeSymbol resultType = null!;
     public ContractPipeline? Plan(
         INamedTypeSymbol handler,
-        IEnumerable<INamedTypeSymbol> parties,
-        IEnumerable<INamedTypeSymbol> registrations,
-        string operation
+        IEnumerable<RegistrationModel> parties,
+        IEnumerable<RegistrationModel> registrations,
+        string operation,
+        ImmutableDictionary<string, string> parameters
     )
     {
         var contracts = handler.AllInterfaces.Where(type => Is(type, "IQueryHandler`3") || Is(type, "ICommandHandler`3")).ToArray();
@@ -79,7 +81,18 @@ internal sealed class ContractPipelinePlanner(
             )
         );
         AddValue(request, "value0");
-        providers = registrations.Distinct<INamedTypeSymbol>(SymbolEqualityComparer.Default).ToArray();
+        providerRegistrations = registrations.ToArray();
+        foreach (var duplicates in providerRegistrations.GroupBy(registration => registration.Type, SymbolEqualityComparer.Default))
+        {
+            var first = duplicates.First().Parameters;
+            if (duplicates.Skip(1).Any(registration => !registration.Parameters.OrderBy(pair => pair.Key)
+                .SequenceEqual(first.OrderBy(pair => pair.Key))))
+            {
+                Error(duplicates.Key!, "The same Provider cannot be registered with conflicting Parameter values.", "BRG003");
+            }
+        }
+        providers = providerRegistrations.Select(registration => registration.Type)
+            .Distinct<INamedTypeSymbol>(SymbolEqualityComparer.Default).ToArray();
         foreach (var provider in providers)
         {
             var definition = provider.IsUnboundGenericType ? provider.OriginalDefinition : provider;
@@ -109,8 +122,9 @@ internal sealed class ContractPipelinePlanner(
             return null;
         }
 
-        foreach (var partie in parties)
+        foreach (var registration in parties)
         {
+            var partie = registration.Type;
             var stepContract = StepContract(partie);
             if (partie.IsUnboundGenericType)
             {
@@ -120,12 +134,12 @@ internal sealed class ContractPipelinePlanner(
 
             if (stepContract is not null)
             {
-                AddStep(partie, stepContract);
+                AddStep(partie, stepContract, registration.Parameters);
             }
         }
 
         var uow = command ? Resolve(compilation.GetTypeByMetadataName("Brigade.Net.Core.Transactions.UnitOfWork")!, handler) : "";
-        var context = Context(contract.TypeArguments[2], handler);
+        var context = Context(contract.TypeArguments[2], handler, parameters);
         var returnType = "global::System.Threading.Tasks.ValueTask<global::Brigade.Net.Core.Results.Result<" + TypeName(resultType) + ">>";
         var invoke = "global::Brigade.Net.Partie.RouteDispatch." + (command ? "Command" : "Query") + "<" + string.Join(
             ", ",
@@ -228,10 +242,22 @@ internal sealed class ContractPipelinePlanner(
             }
         }
 
-        return new RequestEmission(TypeName(request), Metadata(request), properties.ToImmutable());
+        var ns = request.ContainingNamespace.IsGlobalNamespace ? "" : request.ContainingNamespace.ToDisplayString() + ".";
+        var dtoName = request.Name + "Dto";
+        if (request.IsGenericType || request.ContainingType is not null)
+        {
+            dtoName += "_" + string.Concat(System.Text.Encoding.UTF8.GetBytes(TypeName(request))
+                .Select(value => value.ToString("x2")));
+        }
+        return new RequestEmission(TypeName(request), Metadata(request), properties.ToImmutable(),
+            "global::" + ns + dtoName, (ns.Length == 0 ? "" : ns.TrimEnd('.') + "/") + dtoName + ".g.cs");
     }
 
-    private string Context(ITypeSymbol type, ISymbol owner)
+    private string Context(
+        ITypeSymbol type,
+        ISymbol owner,
+        ImmutableDictionary<string, string> parameters
+    )
     {
         ct.ThrowIfCancellationRequested();
         if (type is not INamedTypeSymbol named || !type.IsReferenceType || named.IsAbstract)
@@ -253,21 +279,39 @@ internal sealed class ContractPipelinePlanner(
         foreach (var parameter in constructors[0].Parameters)
         {
             var attrs = parameter.GetAttributes().Where(
-                attr => attr.AttributeClass?.ToDisplayString() is "Brigade.Net.Partie.ProvideAttribute" or "Brigade.Net.Partie.InjectAttribute"
+                attr => attr.AttributeClass?.ToDisplayString() is "Brigade.Net.Partie.ProvideAttribute" or "Brigade.Net.Partie.InjectAttribute" or "Brigade.Net.Partie.ParameterAttribute"
             ).ToArray();
             if (attrs.Length != 1 || parameter.RefKind != RefKind.None)
             {
                 Error(
                     parameter,
-                    "Context arguments need exactly one Provide or Inject attribute and must be passed by value."
+                    "Context arguments need exactly one Provide, Inject or Parameter attribute and must be passed by value."
                 );
                 arguments.Add("default!");
                 continue;
             }
 
-            arguments.Add(
-                attrs[0].AttributeClass!.Name == "InjectAttribute" ? Inject(parameter.Type) : Resolve(parameter.Type, parameter)
-            );
+            if (attrs[0].AttributeClass!.Name == "ParameterAttribute")
+            {
+                if (parameters.TryGetValue(parameter.Name, out var configured))
+                {
+                    arguments.Add(configured);
+                }
+                else if (parameter.HasExplicitDefaultValue)
+                {
+                    arguments.Add(ContextParameters.DefaultValue(parameter));
+                }
+                else
+                {
+                    Error(parameter, "Required Parameter '" + parameter.Name + "' must be supplied by the registration attribute.");
+                    arguments.Add("default!");
+                }
+            }
+            else
+            {
+                arguments.Add(attrs[0].AttributeClass!.Name == "InjectAttribute"
+                    ? Inject(parameter.Type) : Resolve(parameter.Type, parameter));
+            }
         }
 
         return "new " + TypeName(type) + "(" + string.Join(", ", arguments) + ")";
@@ -345,7 +389,9 @@ internal sealed class ContractPipelinePlanner(
                     var contract = StepContract(provider);
                     if (contract is not null)
                     {
-                        var value = AddStep(provider, contract);
+                        var registration = providerRegistrations.First(candidate =>
+                            SymbolEqualityComparer.Default.Equals(candidate.Type.OriginalDefinition, provider.OriginalDefinition));
+                        var value = AddStep(provider, contract, registration.Parameters);
                         if (failed)
                         {
                             return "default!";
@@ -401,9 +447,13 @@ internal sealed class ContractPipelinePlanner(
         }
     }
 
-    private string AddStep(INamedTypeSymbol type, INamedTypeSymbol contract)
+    private string AddStep(
+        INamedTypeSymbol type,
+        INamedTypeSymbol contract,
+        ImmutableDictionary<string, string> parameters
+    )
     {
-        var context = Context(contract.TypeArguments[1], type);
+        var context = Context(contract.TypeArguments[1], type, parameters);
         var name = "value" + nextId++;
         var output = contract.TypeArguments[0];
         steps.Add(

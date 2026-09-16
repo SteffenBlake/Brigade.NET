@@ -195,7 +195,7 @@ public sealed class ContractValidationTests
         public static partial class Routes
         {
             {{registrations}}
-            [Route("", "run"), Handler(typeof(Handler))]
+            [Route<Handler>("", "run")]
             static partial void Go();
         }
         """;

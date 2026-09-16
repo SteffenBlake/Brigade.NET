@@ -4,7 +4,11 @@ using Brigade.Net.Partie;
 
 namespace Brigade.Net.Example.Web;
 
-public sealed record TraceOrderContext([Inject] HttpContext Http, [Inject] OrderRequestScope Scope);
+public sealed record TraceOrderContext(
+    [Inject] HttpContext Http,
+    [Inject] OrderRequestScope Scope,
+    [Parameter] string RequestIdHeader = "X-Request-Id"
+);
 public sealed class TraceOrderRequestPartie : IPartie<Unit, TraceOrderContext>
 {
     public static ValueTask<Result<TResult>> OnQueryAsync<TQuery, TResult>(
@@ -30,7 +34,7 @@ public sealed class TraceOrderRequestPartie : IPartie<Unit, TraceOrderContext>
         var context = ctx.Http;
         var scope = ctx.Scope;
         scope.Events.Add("before");
-        context.Response.Headers["X-Request-Id"] = scope.Id.ToString();
+        context.Response.Headers[ctx.RequestIdHeader] = scope.Id.ToString();
         context.Response.Headers["X-Cancellation-Matches"] = (cancellationToken == context.RequestAborted).ToString();
         try
         {

@@ -10,6 +10,11 @@ public sealed class BindingAttributeTests
         Assert.Null(new FromParamsAttribute().Name);
         Assert.Null(new FromParamsAttribute().ShortName);
         Assert.Equal(PayloadFormat.Json, new FromPayloadAttribute().Format);
+        Assert.IsType<ParameterAttribute>(new ParameterAttribute());
+        var registration = new RegistrationAttribute(typeof(BindingAttributeTests));
+        Assert.Equal(typeof(BindingAttributeTests), registration.Type);
+        Assert.False(registration.IsProvider);
+        Assert.True(new RegistrationAttribute(typeof(BindingAttributeTests), true).IsProvider);
     }
 
     [Fact]
@@ -17,7 +22,7 @@ public sealed class BindingAttributeTests
     {
         var path = new FromPathAttribute
         {
-            Name = "id",
+            Name = "itemId",
             ShortName = "i"
         };
         var query = new FromParamsAttribute
@@ -33,7 +38,7 @@ public sealed class BindingAttributeTests
         {
             Format = PayloadFormat.Form
         };
-        Assert.Equal("id", path.Name);
+        Assert.Equal("itemId", path.Name);
         Assert.Equal("i", path.ShortName);
         Assert.Equal("search", query.Name);
         Assert.Equal("s", query.ShortName);

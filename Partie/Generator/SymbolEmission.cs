@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis.CSharp;
 
 namespace Brigade.Net.Partie.Generator;
 
-internal static class SymbolEmission
+public static class SymbolEmission
 {
     public static string TypeName(ITypeSymbol type) => type.ToDisplayString(
         SymbolDisplayFormat.FullyQualifiedFormat.AddMiscellaneousOptions(SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier)
@@ -39,7 +39,7 @@ internal static class SymbolEmission
     }
 
     private static bool IsCompilerMetadata(AttributeData attribute) => attribute.AttributeClass?.ToDisplayString() is "System.Runtime.CompilerServices.NullableAttribute" or "System.Runtime.CompilerServices.NullableContextAttribute" or "System.Runtime.CompilerServices.RequiredMemberAttribute" or "System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute" or "System.Runtime.CompilerServices.DynamicAttribute" or "System.Runtime.CompilerServices.TupleElementNamesAttribute" or "System.Runtime.CompilerServices.NativeIntegerAttribute";
-    private static string Constant(TypedConstant value)
+    public static string Constant(TypedConstant value)
     {
         if (value.IsNull)
         {

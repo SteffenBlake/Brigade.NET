@@ -113,7 +113,7 @@ public class EngineProviderTests
         }
         """,
             "Provider<>",
-            "[Provider(typeof(Closed))]"
+            "[global::Brigade.Net.Partie.Provider(typeof(Closed))]"
         ),
         "BRG003"
     );
@@ -177,7 +177,7 @@ public class EngineProviderTests
         [BrigadeGroup("")]
         public static partial class Routes
         {
-            [Get, Handler(typeof(Handler)), {{attribute}}(typeof({{registration}}))]
+            [HandlerRoute.Get, global::Brigade.Net.Partie.{{attribute}}(typeof({{registration}}))]
             {{extraAttributes}}
             static partial void Go();
         }

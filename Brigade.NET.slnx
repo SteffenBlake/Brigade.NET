@@ -18,6 +18,7 @@
   <Project Path="Partie/AspNetCore/Tests/Brigade.Net.Partie.AspNetCore.Tests.csproj" />
   <Project Path="Partie/Generator/Brigade.Net.Partie.Generator.csproj" />
   <Project Path="Example/ServiceDefaults/Brigade.Net.Example.ServiceDefaults.csproj" />
+  <Project Path="Example/Domain/Brigade.Net.Example.Domain.csproj" />
   <Project Path="Example/Web/Brigade.Net.Example.Web.csproj" />
   <Project Path="Example/IntegrationTests/Brigade.Net.Example.IntegrationTests.csproj" />
 </Solution>

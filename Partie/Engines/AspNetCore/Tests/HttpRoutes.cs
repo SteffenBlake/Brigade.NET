@@ -17,27 +17,27 @@ using Microsoft.AspNetCore.Http;
 
 namespace Brigade.Net.Partie.Engines.AspNetCore.Tests;
 
-[BrigadeGroup("/items"), Provider(typeof(ContextProvider))]
+[BrigadeGroup("/items"), ContextProvider]
 public static partial class HttpRoutes
 {
-    [Post("{id}"), Partie(typeof(ValidationPartie)), Partie(typeof(UnitOfWorkPartie)), Handler(typeof(ItemCreateV1Handler))]
+    [ItemCreateV1HandlerRoute.Post("{itemId}"), ValidationPartie, UnitOfWorkPartie]
     static partial void Post();
-    [Put("{id}"), Partie(typeof(ValidationPartie)), Partie(typeof(UnitOfWorkPartie)), Handler(typeof(ItemUpdateV1Handler))]
+    [ItemUpdateV1HandlerRoute.Put("{itemId}"), ValidationPartie, UnitOfWorkPartie]
     static partial void Put();
-    [Patch("{id}"), Partie(typeof(ValidationPartie)), Partie(typeof(UnitOfWorkPartie)), Handler(typeof(ItemUpdateV1Handler))]
+    [ItemUpdateV1HandlerRoute.Patch("{itemId}"), ValidationPartie, UnitOfWorkPartie]
     static partial void Patch();
-    [Delete("{id}"), Partie(typeof(ValidationPartie)), Partie(typeof(UnitOfWorkPartie)), Handler(typeof(ItemDeleteV1Handler))]
+    [ItemDeleteV1HandlerRoute.Delete("{itemId}"), ValidationPartie, UnitOfWorkPartie]
     static partial void Delete();
-    [Get("search/{category}"), Partie(typeof(ValidationPartie)), Handler(typeof(ItemSearchV1Handler))]
+    [ItemSearchV1HandlerRoute.Get("search/{category}"), ValidationPartie]
     static partial void Read();
-    [Get("failure"), Handler(typeof(FailureSearchV1Handler))]
+    [FailureSearchV1HandlerRoute.Get("failure")]
     static partial void Failure();
-    [Get("status"), Handler(typeof(StatusSearchV1Handler))]
+    [StatusSearchV1HandlerRoute.Get("status")]
     static partial void Status();
-    [Get("optional"), Partie(typeof(ValidationPartie)), Handler(typeof(OptionalSearchV1Handler))]
+    [OptionalSearchV1HandlerRoute.Get("optional"), ValidationPartie]
     static partial void Optional();
-    [Get("provider-first"), Handler(typeof(TextProvidedSearchV1Handler)), Provider(typeof(TextLengthProvider))]
+    [TextProvidedSearchV1HandlerRoute.Get("provider-first"), TextLengthProvider]
     static partial void ProviderFirst();
-    [Get("input-first"), Handler(typeof(TextRequestSearchV1Handler)), Provider(typeof(TextLengthProvider))]
+    [TextRequestSearchV1HandlerRoute.Get("input-first"), TextLengthProvider]
     static partial void InputFirst();
 }

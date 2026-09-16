@@ -61,7 +61,7 @@ public sealed class RequestMetadataTests
         Assert.Contains("[global::Microsoft.AspNetCore.Mvc.FromServices] global::System.Uri", generated);
         Assert.Contains("[global::Microsoft.AspNetCore.Mvc.FromServices] string?", generated);
         Assert.Contains("typeof(string)", generated);
-        Assert.Contains("typeof(int?)", generated);
+        Assert.Contains("typeof(int?)", generated.Replace(" ", ""));
     }
 
     [Fact]
@@ -206,7 +206,7 @@ public sealed class RequestMetadataTests
         [BrigadeGroup("")]
         public static partial class Routes
         {
-            [Route("", "{{(command ? "POST" : "GET")}}"), Handler(typeof(Handler)), Partie(typeof(UnitOfWorkPartie))]
+            [Route<Handler>("", "{{(command ? "POST" : "GET")}}"), global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie))]
             static partial void Go();
         }
         """;

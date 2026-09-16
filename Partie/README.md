@@ -20,7 +20,7 @@ public record Doodad(string Text);
 
 public sealed class ChangeCommand
 {
-    [FromPath(Name = "id")]
+    [FromPath(Name = "itemId")]
     public required string Id { get; init; }
     [FromParams(Name = "mode")]
     public string? Mode { get; init; }
@@ -49,23 +49,25 @@ using Brigade.Net.Partie.Engines.AspNetCore;
 [BrigadeGroup("/items")]
 public static partial class ItemRoutes
 {
-    [Patch("{id}")]
-    [Partie(typeof(UnitOfWorkPartie))]
-    [Handler(typeof(ChangeHandler))]
+    [ChangeHandlerRoute.Patch("{itemId}")]
+    [UnitOfWorkPartie]
     static partial void Change();
 }
 ```
 
-HTTP declarations support `[Get]`, `[Post]`, `[Put]`, `[Patch]`, `[Delete]`, `[Head]`,
-and `[Options]`. Each takes an optional path, defaulting to the group path. No verb
-string is needed. These are public types declared in `Brigade.Net.Partie.AspNetCore`,
-in the `Brigade.Net.Partie.Engines.AspNetCore` namespace alongside `RoutePolicyAttribute`.
-The generator reads their metadata; it does not generate attribute definitions.
+The host generator discovers accessible handler contracts in the host and relevant
+referenced assemblies. The domain project does not install the ASP.NET generator.
+It appends `Route` to the complete handler name: `ChangeHandlerRoute`, never `ChangeRoute`.
+Query containers expose only `.Get`; command containers expose `.Post`, `.Put`,
+`.Patch`, `.Delete`, `.Head`, `.Options`, `.Trace`, and `.Connect`.
+Each takes an optional path, defaulting to the group path. No verb string, enum,
+or handler `typeof` is needed. The common attribute contract lives in the support
+library; handler-specific containers are generated in the handler's namespace.
 Use exactly one route attr per method. Mixing typed attrs or combining one with
 `[Route(...)]` produces a build diagnostic.
 
 GET requires a query handler. POST/PUT/PATCH/DELETE require a command handler.
-HEAD, OPTIONS, and neutral `Route(path, operation)` support either contract.
+The transport-neutral escape hatch is `[Route<Handler>(path, operation)]`.
 
 Groups can nest through any number of partial classes. For example:
 
@@ -76,15 +78,14 @@ public static partial class Routing
     [BrigadeGroup("/items")]
     private static partial class Items
     {
-        [Patch("{id}")]
-        [Partie(typeof(UnitOfWorkPartie))]
-        [Handler(typeof(ChangeHandler))]
+        [ChangeHandlerRoute.Patch("{itemId}")]
+        [UnitOfWorkPartie]
         static partial void Change();
     }
 }
 ```
 
-Core keeps the full path as the ordered strings `["/api/v1", "/items", "{id}"]`.
+Core keeps the full path as the ordered strings `["/api/v1", "/items", "{itemId}"]`.
 It does not split, trim, or join them. A command generator could instead consume
 `["admin", "items", "change"]`. Empty components remain in core metadata.
 ASP.NET interprets these paths and emits `app.MapGroup("/api/v1")`, then
@@ -180,7 +181,7 @@ framework values such as HttpContext and CancellationToken. The example exposes
 `POST /api/v1/orders` with a body such as `{"customer":"Ada","sku":"PEN","quantity":2}`.
 Creation returns `{ "id": "..." }`. `GET /api/v1/orders` searches using optional `id` and
 `customer` query filters; both filters combine, and no filters returns all orders.
-There is no GET-by-ID route. `DELETE /api/v1/orders/{id}` removes an order and returns
+There is no GET-by-ID route. `DELETE /api/v1/orders/{orderId}` removes an order and returns
 `Unit` (serialized as `{}`); deleting a missing order returns a NotFound payload.
 
 The Orders example groups CQRS types under `CreateV1`, `SearchV1`, and `DeleteV1`,
@@ -205,7 +206,7 @@ dependency planning, typed input generation, route descriptors and pipeline emis
 Concrete generators pass an emitter for each `RouteEmission` plus one for their
 registration file. They can also pass `discoverRoute`, which maps an `AttributeData`
 to a neutral `RouteDeclaration(IEnumerable<string> path, string operation)`, or null for an unrelated attr.
-The shared core still recognizes `[Route(...)]`; adapter discoveries use the same
+The shared core recognizes `[Route<Handler>(...)]`; adapter discoveries use the same
 validation and dependency planner. HTTP attr names and verb mappings live only in
 the ASP.NET adapter.
 
@@ -224,10 +225,38 @@ Only concrete adapters implement `IIncrementalGenerator` and carry `[Generator]`
 
 ## Chain Rules
 
-Register open or closed providers with `[Provider(typeof(Provider<>))]` on the group
+`[Parameter]` on a context constructor parameter exposes the same name, type, and
+default value on the generated registration attribute. `[Inject]` and `[Provide]`
+arguments remain runtime dependencies and are not attribute arguments.
+
+```csharp
+public sealed record TraceContext(
+    [Inject] ILogger Logger,
+    [Parameter] string Label = "request"
+);
+// For a TracePartie using this context:
+// [TracePartie] or [TracePartie(Label: "orders")]
+```
+
+Handler context parameters are also exposed on each verb attribute, before the
+optional path (a `params` array remains last). Use named arguments when specifying both configuration and a path.
+Attribute arguments must be C# attribute-compatible constants (including enums,
+types, and one-dimensional arrays); service objects still use `[Inject]`/`[Provide]`.
+
+Generated request DTOs have their own files, such as `OrderDeleteV1CmdDto.g.cs`, and
+are shared by routes using that request. Request documentation, attributes, and
+property metadata are preserved. Referenced child domain types remain references,
+not duplicate type definitions. Pipeline glue and input classes are emitted in
+separate files. All outputs are formatted with Roslyn before writing.
+
+Incremental stages pass value-equatable declarations to Roslyn. No static/manual
+caches are used. An unrelated edit may rerun semantic discovery, but unchanged
+declarations stop downstream output and attribute-syntax generation.
+
+Register providers with their generated attributes, such as `[OrderProvider]`, on the group
 or route. Descendants inherit providers from outer groups, in outer-to-inner order,
 followed by route providers; siblings do not inherit each other's providers.
-Fixed `[Partie(typeof(Step))]` attributes run in source order. Each step
+Fixed `[Step]` attributes run in source order. Each step
 implements `IPartie<TProvided, TContext>`; `IProvider<TProvided, TContext>` inherits
 that contract for providers. Both static hooks are required:
 

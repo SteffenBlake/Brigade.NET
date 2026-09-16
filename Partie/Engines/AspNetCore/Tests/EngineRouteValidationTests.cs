@@ -23,11 +23,11 @@ public class EngineRouteValidationTests
     public void Engine_RejectsInvalidRouteMethods(string method) => EngineCompilation.Invalid(Route(method), "BRG005");
     [Theory]
     [InlineData("[Route(\"\", \"GET\")]")]
-    [InlineData("[Handler(typeof(Handler))]")]
-    [InlineData("[Get, Handler(typeof(int[]))]")]
-    [InlineData("[Get, Handler(typeof(Handler)), Provider(typeof(int[]))]")]
-    [InlineData("[Get, Handler(typeof(Handler)), Provider(null)]")]
-    [InlineData("[Get, Handler(null)]")]
+    [InlineData("[HandlerRoute.Get, HandlerRoute.Get]")]
+    [InlineData("[Route<int[]>(\"\", \"GET\")]")]
+    [InlineData("[HandlerRoute.Get, global::Brigade.Net.Partie.Provider(typeof(int[]))]")]
+    [InlineData("[HandlerRoute.Get, global::Brigade.Net.Partie.Provider(null)]")]
+    [InlineData("[HandlerRoute.Get, global::Brigade.Net.Partie.Partie(null)]")]
     public void Engine_RejectsInvalidRegistrations(string attributes) => EngineCompilation.Invalid(Route("static partial void Go();", attributes), "BRG005");
     [Theory]
     [InlineData("[FromPayload] public string Value { get; set; }", "GET", "BRG005")]
@@ -49,7 +49,7 @@ public class EngineRouteValidationTests
             [BrigadeGroup("")]
             public static partial class Routes
             {
-                [Route("", "{{operation}}"), Handler(typeof(Handler)), Partie(typeof(UnitOfWorkPartie))]
+                [Route<Handler>("", "{{operation}}"), global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie))]
                 static partial void Go();
             }
             public sealed class Handler : {{(command ? "ICommandHandler" : "IQueryHandler")}}<Request, int, EmptyContext>
@@ -76,7 +76,7 @@ public class EngineRouteValidationTests
         [BrigadeGroup("")]
         public static partial class Routes
         {
-            [Get, Handler(typeof({{handlerType}}))]
+            [Route<{{handlerType}}>("", "GET")]
             static partial void Go();
         }
         {{declaration}}
@@ -85,7 +85,7 @@ public class EngineRouteValidationTests
     );
     private static string Route(
         string method,
-        string attributes = "[Get, Handler(typeof(Handler))]",
+        string attributes = "[Route<Handler>(\"\", \"GET\")]",
         string? handlerMethod = null
     ) => $$"""
         [BrigadeGroup("")]

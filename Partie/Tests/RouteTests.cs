@@ -53,10 +53,10 @@ public class RouteTests
         Assert.Equal(new[] { "admin", "items" }, group.Path);
         Assert.Throws<NotSupportedException>(() => ((IList<string>)group.Path).Clear());
         Assert.Empty(new BrigadeGroupAttribute().Path);
-        var route = new RouteAttribute("{id}", "run");
-        Assert.Equal("{id}", route.Path);
+        var route = new RouteAttribute("{itemId}", "run");
+        Assert.Equal("{itemId}", route.Path);
         Assert.Equal("run", route.Operation);
-        Assert.Equal(typeof(RouteTests), new HandlerAttribute(typeof(RouteTests)).HandlerType);
+        Assert.Equal("run", new RouteAttribute<RouteTests>("{itemId}", "run").Operation);
         Assert.Equal(typeof(RouteTests), new PartieAttribute(typeof(RouteTests)).PartieType);
         Assert.Equal(typeof(List<>), new ProviderAttribute(typeof(List<>)).ProviderType);
         Assert.Equal("id", new FromRouteAttribute("id").Name);

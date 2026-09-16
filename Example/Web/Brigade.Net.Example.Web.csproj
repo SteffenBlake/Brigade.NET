@@ -4,20 +4,20 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     <CompilerGeneratedFilesOutputPath>$(MSBuildProjectDirectory)/.generated</CompilerGeneratedFilesOutputPath>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Generated files are kept for demonstration; generators supply the compiler inputs. -->
     <Compile Remove=".generated/**/*.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Domain\Brigade.Net.Example.Domain.csproj" />
-    <ProjectReference Include="..\..\Partie\AspNetCore\Brigade.Net.Partie.AspNetCore.csproj" />
     <ProjectReference Include="..\ServiceDefaults\Brigade.Net.Example.ServiceDefaults.csproj" />
 
+    <ProjectReference Include="..\..\Partie\AspNetCore\Brigade.Net.Partie.AspNetCore.csproj" />
     <ProjectReference Include="..\..\Partie\Engines\AspNetCore\Brigade.Net.Partie.Engines.AspNetCore.csproj"
       OutputItemType="Analyzer"
       ReferenceOutputAssembly="false"/>

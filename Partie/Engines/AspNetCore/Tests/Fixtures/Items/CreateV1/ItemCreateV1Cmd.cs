@@ -5,7 +5,7 @@ namespace Brigade.Net.Partie.Engines.AspNetCore.Tests.Fixtures.Items.CreateV1;
 public sealed record ItemCreation(string Text);
 public sealed class ItemCreateV1Cmd : IValidatable
 {
-    [FromPath(Name = "id")]
+    [FromPath(Name = "itemId")]
     public required int Id { get; init; }
 
     [FromParams(Name = "mode")]

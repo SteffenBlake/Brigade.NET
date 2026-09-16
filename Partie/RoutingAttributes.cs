@@ -1,13 +1,5 @@
 namespace Brigade.Net.Partie;
 
-/// <summary>Chooses the Handler type.</summary>
-[AttributeUsage(AttributeTargets.Method)]
-public sealed class HandlerAttribute(Type handlerType) : Attribute
-{
-    /// <summary>Gets the Handler type.</summary>
-    public Type HandlerType { get; } = handlerType;
-}
-
 /// <summary>Adds a fixed step to the ordered route chain.</summary>
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
 public sealed class PartieAttribute(Type partieType) : Attribute
