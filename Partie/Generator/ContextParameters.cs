@@ -8,6 +8,10 @@ namespace Brigade.Net.Partie.Generator;
 /// <summary>Extracts the compile-time configuration portion of a context constructor.</summary>
 public static class ContextParameters
 {
+    // TODO: Avoid complex ternaries, it is unreadable
+    // Use if statements, there is no reason to play code golf, 
+    // we have infinite vertical lines but very limited horizontal
+
     public static ImmutableDictionary<string, string> Arguments(AttributeData attribute) =>
         attribute.AttributeConstructor is null || attribute.ConstructorArguments.Length != attribute.AttributeConstructor.Parameters.Length
         ? ImmutableDictionary<string, string>.Empty

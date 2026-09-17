@@ -1,4 +1,5 @@
 namespace Brigade.Net.Partie;
+
 /// <summary>Binds a request property from a path.</summary>
 [AttributeUsage(AttributeTargets.Property)]
 public sealed class FromPathAttribute : Attribute

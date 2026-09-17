@@ -1,6 +1,7 @@
 using Brigade.Net.Core.Results;
 
 namespace Brigade.Net.Partie;
+
 /// <summary>A query with a statically dispatched handler.</summary>
 public interface IQueryHandler<TQuery, TResult, TContext>
     where TQuery : class where TContext : class

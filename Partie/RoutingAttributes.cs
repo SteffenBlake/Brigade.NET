@@ -1,5 +1,7 @@
 namespace Brigade.Net.Partie;
 
+// TODO: Does any of this still need to exist? Check.
+
 /// <summary>Adds a fixed step to the ordered route chain.</summary>
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
 public sealed class PartieAttribute(Type partieType) : Attribute

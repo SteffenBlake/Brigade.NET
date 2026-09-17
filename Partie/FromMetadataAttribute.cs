@@ -1,4 +1,5 @@
 namespace Brigade.Net.Partie;
+
 /// <summary>Binds a property from named request metadata.</summary>
 [AttributeUsage(AttributeTargets.Property)]
 public sealed class FromMetadataAttribute : Attribute

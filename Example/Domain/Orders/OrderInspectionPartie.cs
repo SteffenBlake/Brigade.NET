@@ -6,6 +6,9 @@ namespace Brigade.Net.Example.Domain.Orders;
 public sealed record OrderInspectionContext([Provide] Order[] Orders, [Inject] OrderRequestScope Scope);
 public sealed class OrderInspectionPartie : IPartie<Unit, OrderInspectionContext>
 {
+    // TODO: Skill file needs updating to indicate we dont lambda like this
+    // Method definitions should only lambda if the function is very short and
+    // The whole thing can fit on one line easy
     public static ValueTask<Result<TResult>> OnQueryAsync<TQuery, TResult>(
         OrderInspectionContext ctx,
         TQuery query,

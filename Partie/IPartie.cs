@@ -1,5 +1,9 @@
 using Brigade.Net.Core.Results;
 
+// TODO: Skill file needs a minor update: 
+// An empty line should be between definitions of things
+// Note the lack of a space on the end of OnQueryAsync here
+
 namespace Brigade.Net.Partie;
 /// <summary>An ordered step that supplies a value to its continuation.</summary>
 public interface IPartie<TProvided, TContext>

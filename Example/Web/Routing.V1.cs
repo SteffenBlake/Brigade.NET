@@ -11,42 +11,47 @@ using Microsoft.AspNetCore.Builder;
 
 namespace Brigade.Net.Example.Web;
 
+// TODO: We need to make a "repo" skill file (one users can install with npm)
+// IIRC This needs to go in ./Skills/ in the repo, NOT in .codex or .github
+// ./Skills/brigade-net-partie/ I think is what we need
+// symlink ./Skills/brigade-net-partie/ -> ./.codex/Skills/brigade-net-partie/
+// symlink ./Skills/brigade-net-partie/ -> ./.github/Skills/brigade-net-partie/
 [BrigadeGroup("/api/v1")]
 public static partial class Routing
 {
-    [BrigadeGroup("/orders")]
     [OrderProvider]
+    [BrigadeGroup("/orders")]
     private static partial class Orders
     {
-        [OrderCreateV1HandlerRoute.Post]
         [TraceOrderRequestPartie(RequestIdHeader: "X-Request-Id")]
         [ValidationPartie]
         [UnitOfWorkPartie]
+        [OrderCreateV1HandlerRoute.Post]
         static void Create(RouteHandlerBuilder route) => route.AllowAnonymous();
 
-        [OrderSearchV1HandlerRoute.Get]
         [TraceOrderRequestPartie]
         [ValidationPartie]
         [OrderInspectionPartie]
+        [OrderSearchV1HandlerRoute.Get]
         static void Search(RouteHandlerBuilder route) => route.AllowAnonymous();
 
-        [OrderDeleteV1HandlerRoute.Delete("{orderId}")]
         [TraceOrderRequestPartie]
         [ValidationPartie]
         [UnitOfWorkPartie]
+        [OrderDeleteV1HandlerRoute.Delete("{orderId}")]
         static void Delete(RouteHandlerBuilder route) => route.AllowAnonymous();
 
         [BrigadeGroup("/policy-test")]
         private static partial class PolicyTests
         {
             /// <summary>Endpoint A: requires X-Fake header via attribute.</summary>
-            [TestPolicyHandlerRoute.Get("a")]
             [FakeHeaderCheckRoutePolicy]
+            [TestPolicyHandlerRoute.Get("a")]
             static partial void A();
 
             /// <summary>Endpoint B: requires Authorization via attribute.</summary>
-            [TestPolicyHandlerRoute.Get("b")]
             [FakeAuthorizationRoutePolicy]
+            [TestPolicyHandlerRoute.Get("b")]
             static partial void B();
 
             /// <summary>Endpoint C: requires X-Fake header via inline function.</summary>

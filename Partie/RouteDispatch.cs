@@ -2,6 +2,9 @@ using Brigade.Net.Core.Results;
 using Brigade.Net.Core.Transactions;
 
 namespace Brigade.Net.Partie;
+
+// TODO: Does this still need to exist? Check
+
 /// <summary>Dispatches static interface contracts, including explicit implementations.</summary>
 public static class RouteDispatch
 {

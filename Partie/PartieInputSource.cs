@@ -1,6 +1,7 @@
 using Brigade.Net.Core.Results;
 
 namespace Brigade.Net.Partie;
+
 /// <summary>Identifies where an engine obtains an external value.</summary>
 public enum PartieInputSource
 {

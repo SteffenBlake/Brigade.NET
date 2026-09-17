@@ -1,4 +1,5 @@
 namespace Brigade.Net.Partie;
+
 /// <summary>Binds a property from a request payload.</summary>
 [AttributeUsage(AttributeTargets.Property)]
 public sealed class FromPayloadAttribute : Attribute

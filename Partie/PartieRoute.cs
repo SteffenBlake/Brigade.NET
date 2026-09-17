@@ -1,6 +1,9 @@
 using Brigade.Net.Core.Results;
 
 namespace Brigade.Net.Partie;
+
+// TODO: Can this just be a record instead?
+
 /// <summary>A transport-neutral route with its statically compiled pipeline.</summary>
 /// <param name = "name">The route identity.</param>
 /// <param name = "path">The ordered group and route path components, interpreted by the engine.</param>

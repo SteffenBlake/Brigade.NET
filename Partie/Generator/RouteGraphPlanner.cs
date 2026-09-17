@@ -7,6 +7,8 @@ using Microsoft.CodeAnalysis;
 
 namespace Brigade.Net.Partie.Generator;
 
+// TODO: We are getting a bunch of warnings from this file, check them and follow their instructions
+
 public sealed class RouteGraphPlanner(Compilation compilation, int maximumProviderDepth = 256)
 {
     private static readonly DiagnosticDescriptor InvalidContract = new(

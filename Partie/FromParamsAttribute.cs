@@ -1,4 +1,5 @@
 namespace Brigade.Net.Partie;
+
 /// <summary>Binds a request property from named parameters.</summary>
 [AttributeUsage(AttributeTargets.Property)]
 public sealed class FromParamsAttribute : Attribute

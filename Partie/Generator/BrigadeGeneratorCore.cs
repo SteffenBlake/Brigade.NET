@@ -10,6 +10,15 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Brigade.Net.Partie.Generator;
 
+// TODO: Too much nesting, we need the skill file updated
+// to cover the various ways to reduce nesting.
+// 1. Guard clauses with early returns
+// 2. Inverting if statements so the "simpler" half is inside it
+// 3. Abstract out to a function
+// We want to avoid going above 3 tabs deep usually
+// Fourth tab is only allowed if its for max of 1 line.
+// Otherwise, try and refector out OUTER logic (dont just refactor out the 1 liner)
+
 public static class BrigadeGeneratorCore
 {
     private static readonly DiagnosticDescriptor InvalidRoute = new("BRG005", "Invalid Brigade route", "{0}", "Brigade.Routing", DiagnosticSeverity.Error, true);

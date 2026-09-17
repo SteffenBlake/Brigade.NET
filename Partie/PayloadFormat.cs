@@ -1,4 +1,5 @@
 namespace Brigade.Net.Partie;
+
 /// <summary>The request payload encoding.</summary>
 public enum PayloadFormat
 {
