@@ -46,10 +46,10 @@ public sealed class ContractValidationTests
     }
 
     [Theory]
-    [InlineData("class Step", "Unit", "EmptyContext", "Step", "other than Unit")]
-    [InlineData("class Step<T>", "string", "EmptyContext", "Step<>", "Every open")]
-    [InlineData("abstract class Step", "string", "EmptyContext", "Step", "Partie/Provider must")]
-    [InlineData("struct Step", "string", "EmptyContext", "Step", "Partie/Provider must")]
+    [InlineData("class Step", "Unit", "Unit", "Step", "other than Unit")]
+    [InlineData("class Step<T>", "string", "Unit", "Step<>", "Every open")]
+    [InlineData("abstract class Step", "string", "Unit", "Step", "Partie/Provider must")]
+    [InlineData("struct Step", "string", "Unit", "Step", "Partie/Provider must")]
     public void RejectsInvalidProviderContracts(
         string declaration,
         string output,
@@ -68,7 +68,7 @@ public sealed class ContractValidationTests
     public void RejectsOpenFixedPartie()
     {
         Invalid(
-            Source("[Partie(typeof(Step<>))]") + Step("class Step<T>", "T", "EmptyContext"),
+            Source("[Partie(typeof(Step<>))]") + Step("class Step<T>", "T", "Unit"),
             "Fixed Partie must be closed"
         );
     }
@@ -80,7 +80,7 @@ public sealed class ContractValidationTests
     public void RejectsAmbiguousSingleValue(string registrations)
     {
         Invalid(
-            Source(registrations).Replace("public class Context { }", "public record Context([Provide] string Value);") + Step("class First", "string", "EmptyContext") + Step("class Second", "string", "EmptyContext"),
+            Source(registrations).Replace("public class Context { }", "public record Context([Provide] string Value);") + Step("class First", "string", "Unit") + Step("class Second", "string", "Unit"),
             "Multiple providers"
         );
     }
@@ -137,7 +137,7 @@ public sealed class ContractValidationTests
         ) + "public record StepContext([Inject] Uri Service);" + Step("class Step", "string", "StepContext");
         var text = Valid(source);
         Assert.Equal(1, text.Split("PartieInputSource.Service").Length - 1);
-        Assert.Equal(1, text.Split("RouteDispatch.QueryPartie<").Length - 1);
+        Assert.Equal(1, text.Split("RouteDispatch.QueryProvider<").Length - 1);
     }
 
     [Theory]
@@ -154,10 +154,10 @@ public sealed class ContractValidationTests
         bool matches
     )
     {
-        var source = Source("[Provider(typeof(Step<>))]").Replace("public class Context { }", "public record Context([Provide] " + requested + " Value);") + "public class Outer<T> { public class Value { } }" + Step("class Step<T>", output, "EmptyContext");
+        var source = Source("[Provider(typeof(Step<>))]").Replace("public class Context { }", "public record Context([Provide] " + requested + " Value);") + "public class Outer<T> { public class Value { } }" + Step("class Step<T>", output, "Unit");
         if (matches)
         {
-            Assert.Contains("RouteDispatch.QueryPartie<global::Step<int>", Valid(source));
+            Assert.Contains("RouteDispatch.QueryProvider<global::Step<int>", Valid(source));
         }
         else
         {
@@ -180,8 +180,8 @@ public sealed class ContractValidationTests
     ) => $$"""
         public {{declaration}} : IProvider<{{output}}, {{context}}>
         {
-            public static ValueTask<Result<TOut>> OnCommandAsync<TCommand, TOut>({{context}} ctx, TCommand command, Next<{{output}}, TOut> next, CancellationToken ct) where TCommand : class => OnQueryAsync<TCommand, TOut>(ctx, command, next, ct);
-                public static ValueTask<Result<TOut>> OnQueryAsync<TQuery, TOut>({{context}} ctx, TQuery query, Next<{{output}}, TOut> next, CancellationToken ct) where TQuery : class => next(default!);
+            public static ValueTask<Result<TOut>> OnCommandAsync<TCommand, TOut>({{context}} ctx, TCommand command, Next<{{output}}, TOut> next, CancellationToken ct) => OnQueryAsync<TCommand, TOut>(ctx, command, next, ct);
+                public static ValueTask<Result<TOut>> OnQueryAsync<TQuery, TOut>({{context}} ctx, TQuery query, Next<{{output}}, TOut> next, CancellationToken ct) => next(default!);
         }
         """;
     private static string Source(string registrations = "") => $$"""

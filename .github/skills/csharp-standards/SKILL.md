@@ -78,3 +78,13 @@ var result = aFunc(
     anotherLongerVariableName,
     yetAnotherLongVariableName
 );
+
+8. Keep nesting at three levels or less. Prefer guard clauses, invert conditions so the short branch is nested, and extract the outer operation when a block still grows. A fourth level is acceptable only for one short line.
+
+9. Put a blank line between declarations. Put each generic constraint on its own line.
+
+10. Use expression bodies only when the whole declaration fits clearly on one short line. Use a block body for multiline declarations.
+
+11. Put primary-constructor parameters on separate lines when the declaration is long.
+
+12. Prefer a record for an immutable data carrier with value semantics. Keep a class when identity, mutable state, inheritance, or custom equality matters.

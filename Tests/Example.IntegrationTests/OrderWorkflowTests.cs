@@ -192,7 +192,7 @@ public sealed class OrderWorkflowTests(AppHostFixture host)
         }
             )
         );
-        Assert.Single(results.Where(result => !result.EnumerateObject().Any()));
+        Assert.Single(results, result => !result.EnumerateObject().Any());
         Assert.Equal(
             7,
             results.Count(

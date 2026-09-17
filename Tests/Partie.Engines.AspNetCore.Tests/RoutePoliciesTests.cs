@@ -42,13 +42,13 @@ public class RoutePoliciesTests
                 static partial void Post();
             }
             
-            public sealed class Handler : IQueryHandler<EmptyQuery, int, EmptyContext>
+            public sealed class Handler : IQueryHandler<Unit, int, Unit>
             {
-                public static System.Threading.Tasks.Task<Result<int>> RunAsync(EmptyContext ctx, EmptyQuery query, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Unit ctx, Unit query, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
             }
-            public sealed class CommandHandler : ICommandHandler<EmptyQuery, int, EmptyContext>
+            public sealed class CommandHandler : ICommandHandler<Unit, int, Unit>
             {
-                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Brigade.Net.Core.Transactions.UnitOfWork uow, EmptyContext ctx, EmptyQuery cmd, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Brigade.Net.Core.Transactions.UnitOfWork uow, Unit ctx, Unit cmd, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
             }
             """;
         var (_, _, result) = Generate(source);
@@ -86,13 +86,13 @@ public class RoutePoliciesTests
                 static partial void Create();
             }
             
-            public sealed class Handler : IQueryHandler<EmptyQuery, int, EmptyContext>
+            public sealed class Handler : IQueryHandler<Unit, int, Unit>
             {
-                public static System.Threading.Tasks.Task<Result<int>> RunAsync(EmptyContext ctx, EmptyQuery query, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Unit ctx, Unit query, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
             }
-            public sealed class CommandHandler : ICommandHandler<EmptyQuery, int, EmptyContext>
+            public sealed class CommandHandler : ICommandHandler<Unit, int, Unit>
             {
-                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Brigade.Net.Core.Transactions.UnitOfWork uow, EmptyContext ctx, EmptyQuery cmd, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Brigade.Net.Core.Transactions.UnitOfWork uow, Unit ctx, Unit cmd, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
             }
             """;
         var (_, _, result) = Generate(source);
@@ -116,13 +116,13 @@ public class RoutePoliciesTests
                 static partial void Create();
             }
             
-            public sealed class Handler : IQueryHandler<EmptyQuery, int, EmptyContext>
+            public sealed class Handler : IQueryHandler<Unit, int, Unit>
             {
-                public static System.Threading.Tasks.Task<Result<int>> RunAsync(EmptyContext ctx, EmptyQuery query, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Unit ctx, Unit query, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
             }
-            public sealed class CommandHandler : ICommandHandler<EmptyQuery, int, EmptyContext>
+            public sealed class CommandHandler : ICommandHandler<Unit, int, Unit>
             {
-                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Brigade.Net.Core.Transactions.UnitOfWork uow, EmptyContext ctx, EmptyQuery cmd, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Brigade.Net.Core.Transactions.UnitOfWork uow, Unit ctx, Unit cmd, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
             }
             """;
         var (_, _, result) = Generate(source);
@@ -161,13 +161,13 @@ public class RoutePoliciesTests
                 static partial void Read();
             }
             
-            public sealed class Handler : IQueryHandler<EmptyQuery, int, EmptyContext>
+            public sealed class Handler : IQueryHandler<Unit, int, Unit>
             {
-                public static System.Threading.Tasks.Task<Result<int>> RunAsync(EmptyContext ctx, EmptyQuery query, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Unit ctx, Unit query, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
             }
-            public sealed class CommandHandler : ICommandHandler<EmptyQuery, int, EmptyContext>
+            public sealed class CommandHandler : ICommandHandler<Unit, int, Unit>
             {
-                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Brigade.Net.Core.Transactions.UnitOfWork uow, EmptyContext ctx, EmptyQuery cmd, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Brigade.Net.Core.Transactions.UnitOfWork uow, Unit ctx, Unit cmd, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
             }
             """;
         var (_, _, result) = Generate(source);
@@ -206,13 +206,13 @@ public class RoutePoliciesTests
                 static partial void Create();
             }
             
-            public sealed class Handler : IQueryHandler<EmptyQuery, int, EmptyContext>
+            public sealed class Handler : IQueryHandler<Unit, int, Unit>
             {
-                public static System.Threading.Tasks.Task<Result<int>> RunAsync(EmptyContext ctx, EmptyQuery query, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Unit ctx, Unit query, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
             }
-            public sealed class CommandHandler : ICommandHandler<EmptyQuery, int, EmptyContext>
+            public sealed class CommandHandler : ICommandHandler<Unit, int, Unit>
             {
-                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Brigade.Net.Core.Transactions.UnitOfWork uow, EmptyContext ctx, EmptyQuery cmd, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Brigade.Net.Core.Transactions.UnitOfWork uow, Unit ctx, Unit cmd, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
             }
             """;
         var (_, _, result) = Generate(source);
@@ -255,13 +255,13 @@ public class RoutePoliciesTests
                 static partial void Create();
             }
             
-            public sealed class Handler : IQueryHandler<EmptyQuery, int, EmptyContext>
+            public sealed class Handler : IQueryHandler<Unit, int, Unit>
             {
-                public static System.Threading.Tasks.Task<Result<int>> RunAsync(EmptyContext ctx, EmptyQuery query, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Unit ctx, Unit query, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
             }
-            public sealed class CommandHandler : ICommandHandler<EmptyQuery, int, EmptyContext>
+            public sealed class CommandHandler : ICommandHandler<Unit, int, Unit>
             {
-                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Brigade.Net.Core.Transactions.UnitOfWork uow, EmptyContext ctx, EmptyQuery cmd, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Brigade.Net.Core.Transactions.UnitOfWork uow, Unit ctx, Unit cmd, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
             }
             """;
         var (_, _, result) = Generate(source);
@@ -302,17 +302,17 @@ public class RoutePoliciesTests
             {{(onGroup ? attribute : "")}}
             public static partial class Routes
             {
-                [Route<{{(operation == "GET" ? "Handler" : "CommandHandler")}}>("", "{{operation}}"), global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie))]
+                [Route<{{(operation == "GET" ? "Handler" : "CommandHandler")}}>("", "{{operation}}"){{(operation == "GET" ? "" : ", global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie))")}}]
                 {{(onGroup ? "" : attribute)}}
                 static partial void Go();
             }
-            public sealed class Handler : IQueryHandler<EmptyQuery, int, EmptyContext>
+            public sealed class Handler : IQueryHandler<Unit, int, Unit>
             {
-                public static System.Threading.Tasks.Task<Result<int>> RunAsync(EmptyContext ctx, EmptyQuery query, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Unit ctx, Unit query, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
             }
-            public sealed class CommandHandler : ICommandHandler<EmptyQuery, int, EmptyContext>
+            public sealed class CommandHandler : ICommandHandler<Unit, int, Unit>
             {
-                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Brigade.Net.Core.Transactions.UnitOfWork uow, EmptyContext ctx, EmptyQuery cmd, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Brigade.Net.Core.Transactions.UnitOfWork uow, Unit ctx, Unit cmd, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
             }
             """;
         GeneratorDriver driver = CSharpGeneratorDriver.Create(new AspNetCorePartieGenerator());
@@ -344,13 +344,13 @@ public class RoutePoliciesTests
                 [HandlerRoute.Get]
                 static partial void Go();
             }
-            public sealed class Handler : IQueryHandler<EmptyQuery, int, EmptyContext>
+            public sealed class Handler : IQueryHandler<Unit, int, Unit>
             {
-                public static System.Threading.Tasks.Task<Result<int>> RunAsync(EmptyContext ctx, EmptyQuery query, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Unit ctx, Unit query, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
             }
-            public sealed class CommandHandler : ICommandHandler<EmptyQuery, int, EmptyContext>
+            public sealed class CommandHandler : ICommandHandler<Unit, int, Unit>
             {
-                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Brigade.Net.Core.Transactions.UnitOfWork uow, EmptyContext ctx, EmptyQuery cmd, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Brigade.Net.Core.Transactions.UnitOfWork uow, Unit ctx, Unit cmd, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
             }
             """;
         GeneratorDriver driver = CSharpGeneratorDriver.Create(new AspNetCorePartieGenerator());

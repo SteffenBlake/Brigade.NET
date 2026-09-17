@@ -7,9 +7,9 @@ namespace Brigade.Net.Partie.Engines.AspNetCore.Tests;
 public sealed class HandlerRouteTests
 {
     private const string Query = """
-        public sealed partial class Fetch : IQueryHandler<EmptyQuery, int, EmptyContext>
+        public sealed partial class Fetch : IQueryHandler<Unit, int, Unit>
         {
-            public static Task<Result<int>> RunAsync(EmptyContext ctx, EmptyQuery query, CancellationToken ct)
+            public static Task<Result<int>> RunAsync(Unit ctx, Unit query, CancellationToken ct)
                 => Task.FromResult<Result<int>>(42);
         }
         """;
@@ -45,9 +45,9 @@ public sealed class HandlerRouteTests
     public void CommandsExposeExplicitVerbs(string verb)
     {
         var source = EngineCompilation.Valid("""
-            public sealed class SaveHandler : ICommandHandler<EmptyQuery, int, EmptyContext>
+            public sealed class SaveHandler : ICommandHandler<Unit, int, Unit>
             {
-                public static Task<Result<int>> RunAsync(UnitOfWork uow, EmptyContext ctx, EmptyQuery cmd, CancellationToken ct)
+                public static Task<Result<int>> RunAsync(UnitOfWork uow, Unit ctx, Unit cmd, CancellationToken ct)
                     => Task.FromResult<Result<int>>(42);
             }
             """ + $$"""
@@ -87,13 +87,13 @@ public sealed class HandlerRouteTests
         Assert.Empty(result.Diagnostics);
         Assert.DoesNotContain(output.GetDiagnostics(), diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
         var dto = Assert.Single(result.Results.Single().GeneratedSources,
-            source => source.HintName.EndsWith("EmptyQueryDto.g.cs", StringComparison.Ordinal));
-        Assert.Contains("public sealed class EmptyQueryDto", dto.SourceText.ToString());
+            source => source.HintName.EndsWith("UnitDto.g.cs", StringComparison.Ordinal));
+        Assert.Contains("public sealed class UnitDto", dto.SourceText.ToString());
         var adapter = Assert.Single(result.Results.Single().GeneratedSources,
             source => source.HintName == "PartieEngine.g.cs").SourceText.ToString();
         Assert.Contains("\n    public static", adapter);
         Assert.Contains("\n        var Group_", adapter);
-        Assert.DoesNotContain("class EmptyQueryDto", adapter);
+        Assert.DoesNotContain("class UnitDto", adapter);
     }
 
     [Fact]

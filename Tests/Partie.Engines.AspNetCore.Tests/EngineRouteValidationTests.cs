@@ -2,6 +2,27 @@ namespace Brigade.Net.Partie.Engines.AspNetCore.Tests;
 
 public class EngineRouteValidationTests
 {
+    [Fact]
+    public void QueryRejectsCommandOnlyPartie()
+    {
+        EngineCompilation.Invalid(
+            """
+            public sealed class Handler : IQueryHandler<Unit, int, Unit>
+            {
+                public static Task<Result<int>> RunAsync(Unit ctx, Unit query, CancellationToken ct)
+                    => Task.FromResult<Result<int>>(1);
+            }
+            [BrigadeGroup("")]
+            public static partial class Routes
+            {
+                [Route<Handler>("", "GET"), global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie))]
+                static partial void Go();
+            }
+            """,
+            "BRG001"
+        );
+    }
+
     [Theory]
     [InlineData("[BrigadeGroup(\"\")] class Routes { }")]
     [InlineData("[BrigadeGroup(\"\")] partial class Routes<T> { }")]
@@ -49,12 +70,12 @@ public class EngineRouteValidationTests
             [BrigadeGroup("")]
             public static partial class Routes
             {
-                [Route<Handler>("", "{{operation}}"), global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie))]
+                [Route<Handler>("", "{{operation}}"){{(command ? ", global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie))" : "")}}]
                 static partial void Go();
             }
-            public sealed class Handler : {{(command ? "ICommandHandler" : "IQueryHandler")}}<Request, int, EmptyContext>
+            public sealed class Handler : {{(command ? "ICommandHandler" : "IQueryHandler")}}<Request, int, Unit>
             {
-                public static Task<Result<int>> RunAsync({{(command ? "UnitOfWork uow, " : "")}}EmptyContext ctx, Request request, CancellationToken ct) => Task.FromResult<Result<int>>(1);
+                public static Task<Result<int>> RunAsync({{(command ? "UnitOfWork uow, " : "")}}Unit ctx, Request request, CancellationToken ct) => Task.FromResult<Result<int>>(1);
             }
             """,
             diagnosticId
@@ -94,9 +115,9 @@ public class EngineRouteValidationTests
             {{attributes}}
             {{method}}
         }
-        public sealed class Handler {{(handlerMethod is null ? ": IQueryHandler<EmptyQuery, int, EmptyContext>" : "")}}
+        public sealed class Handler {{(handlerMethod is null ? ": IQueryHandler<Unit, int, Unit>" : "")}}
         {
-            {{handlerMethod ?? "public static Task<Result<int>> RunAsync(EmptyContext ctx, EmptyQuery query, CancellationToken ct) => Task.FromResult<Result<int>>(1);"}}
+            {{handlerMethod ?? "public static Task<Result<int>> RunAsync(Unit ctx, Unit query, CancellationToken ct) => Task.FromResult<Result<int>>(1);"}}
         }
         """;
 }

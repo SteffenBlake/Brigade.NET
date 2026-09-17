@@ -1,9 +1,29 @@
 namespace Brigade.Net.Partie;
 
-// TODO: Dont couple IProvider to IPartie
-// While they have a similiar API now, we may want to diverge them later
-// Theres no need for them to inherit like this
+using Brigade.Net.Core.Results;
 
-/// <summary>A Partie inserted when its provided value is needed, with required query and command hooks.</summary>
-public interface IProvider<TProvided, TContext> : IPartie<TProvided, TContext> 
-    where TContext : class;
+/// <summary>A demand-driven source of a pipeline value.</summary>
+public interface IProvider<TProvided, TContext>
+{
+    /// <summary>Handles a query when the provider supports queries.</summary>
+    static virtual ValueTask<Result<TResult>> OnQueryAsync<TQuery, TResult>(
+        TContext ctx,
+        TQuery query,
+        Next<TProvided, TResult> next,
+        CancellationToken ct
+    )
+    {
+        throw new NotSupportedException();
+    }
+
+    /// <summary>Handles a command when the provider supports commands.</summary>
+    static virtual ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(
+        TContext ctx,
+        TCommand command,
+        Next<TProvided, TResult> next,
+        CancellationToken ct
+    )
+    {
+        throw new NotSupportedException();
+    }
+}

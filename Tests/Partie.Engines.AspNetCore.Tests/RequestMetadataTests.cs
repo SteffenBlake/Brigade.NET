@@ -56,7 +56,7 @@ public sealed class RequestMetadataTests
     public void InjectsOrdinaryAndNullableServicesExplicitly()
     {
         var generated = EngineCompilation.Valid(
-            Source("public sealed class Request { }").Replace("EmptyContext", "Context") + "public record Context([Inject] Uri Service, [Inject] string? Optional, [Inject] int? Number);"
+            Source("public sealed class Request { }").Replace("Unit", "Context") + "public record Context([Inject] Uri Service, [Inject] string? Optional, [Inject] int? Number);"
         );
         Assert.Contains("[global::Microsoft.AspNetCore.Mvc.FromServices] global::System.Uri", generated);
         Assert.Contains("[global::Microsoft.AspNetCore.Mvc.FromServices] string?", generated);
@@ -196,17 +196,17 @@ public sealed class RequestMetadataTests
 
     private static string Source(string request, bool command = false) => $$"""
         {{request}}
-        public sealed class Handler : {{(command ? "ICommandHandler" : "IQueryHandler")}}<Request, int, EmptyContext>
+        public sealed class Handler : {{(command ? "ICommandHandler" : "IQueryHandler")}}<Request, int, Unit>
         {
             public static Task<Result<int>> RunAsync(
                 {{(command ? "UnitOfWork uow," : "")}}
-                EmptyContext ctx, Request request, CancellationToken ct
+                Unit ctx, Request request, CancellationToken ct
             ) => Task.FromResult<Result<int>>(42);
         }
         [BrigadeGroup("")]
         public static partial class Routes
         {
-            [Route<Handler>("", "{{(command ? "POST" : "GET")}}"), global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie))]
+            [Route<Handler>("", "{{(command ? "POST" : "GET")}}"){{(command ? ", global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie))" : "")}}]
             static partial void Go();
         }
         """;

@@ -27,7 +27,7 @@ public sealed class UnitOfWorkPartieTests
             )]
         );
         Result<int> expected = deprecated ? new Deprecated<int>(42, DateTime.UnixEpoch, "old") : 42;
-        var actual = await UnitOfWorkPartie.OnCommandAsync<EmptyQuery, int>(context, new EmptyQuery(), work => ValueTask.FromResult(expected), CancellationToken.None);
+        var actual = await UnitOfWorkPartie.OnCommandAsync<Unit, int>(context, new Unit(), work => ValueTask.FromResult(expected), CancellationToken.None);
         Assert.Same(expected, actual);
         Assert.Equal(1, commits);
         Assert.Equal(0, rollbacks);
@@ -48,7 +48,7 @@ public sealed class UnitOfWorkPartieTests
             )]
         );
         Result<int> expected = new Conflict("busy");
-        var actual = await UnitOfWorkPartie.OnCommandAsync<EmptyQuery, int>(context, new EmptyQuery(), work => ValueTask.FromResult(expected), CancellationToken.None);
+        var actual = await UnitOfWorkPartie.OnCommandAsync<Unit, int>(context, new Unit(), work => ValueTask.FromResult(expected), CancellationToken.None);
         Assert.Same(expected, actual);
         Assert.Equal(1, rollbacks);
     }
@@ -70,9 +70,9 @@ public sealed class UnitOfWorkPartieTests
         );
         Exception expected = cancelled ? new OperationCanceledException() : new InvalidOperationException("failed");
         var actual = await Record.ExceptionAsync(
-            () => UnitOfWorkPartie.OnCommandAsync<EmptyQuery, int>(
+            () => UnitOfWorkPartie.OnCommandAsync<Unit, int>(
                 context,
-                new EmptyQuery(),
+                new Unit(),
                 work => ValueTask.FromException<Result<int>>(expected),
                 CancellationToken.None
             ).AsTask()
@@ -97,9 +97,9 @@ public sealed class UnitOfWorkPartieTests
             )]
         );
         var actual = await Record.ExceptionAsync(
-            () => UnitOfWorkPartie.OnCommandAsync<EmptyQuery, int>(
+            () => UnitOfWorkPartie.OnCommandAsync<Unit, int>(
                 context,
-                new EmptyQuery(),
+                new Unit(),
                 work => ValueTask.FromResult<Result<int>>(1),
                 CancellationToken.None
             ).AsTask()
@@ -112,9 +112,9 @@ public sealed class UnitOfWorkPartieTests
     public async Task EmptyUnitOfWorkAllowsAddingTransactionDownstream()
     {
         var committed = false;
-        await UnitOfWorkPartie.OnCommandAsync<EmptyQuery, int>(
+        await UnitOfWorkPartie.OnCommandAsync<Unit, int>(
             new UnitOfWorkContext([]),
-            new EmptyQuery(),
+            new Unit(),
             work =>
         {
             work.AddTxn(

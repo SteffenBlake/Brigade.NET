@@ -11,11 +11,6 @@ using Microsoft.AspNetCore.Builder;
 
 namespace Brigade.Net.Example.Web;
 
-// TODO: We need to make a "repo" skill file (one users can install with npm)
-// IIRC This needs to go in ./Skills/ in the repo, NOT in .codex or .github
-// ./Skills/brigade-net-partie/ I think is what we need
-// symlink ./Skills/brigade-net-partie/ -> ./.codex/Skills/brigade-net-partie/
-// symlink ./Skills/brigade-net-partie/ -> ./.github/Skills/brigade-net-partie/
 [BrigadeGroup("/api/v1")]
 public static partial class Routing
 {

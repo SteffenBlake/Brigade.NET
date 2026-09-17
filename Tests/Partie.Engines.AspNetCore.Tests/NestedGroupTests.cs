@@ -35,9 +35,9 @@ public class NestedGroupTests
             {
                 {{declarations}}
             }
-            public sealed class SimpleSearchV1Handler : IQueryHandler<EmptyQuery, string, EmptyContext>
+            public sealed class SimpleSearchV1Handler : IQueryHandler<Unit, string, Unit>
             {
-                public static Task<Result<string>> RunAsync(EmptyContext ctx, EmptyQuery query, CancellationToken ct)
+                public static Task<Result<string>> RunAsync(Unit ctx, Unit query, CancellationToken ct)
                     => Task.FromResult<Result<string>>("ok");
             }
             public sealed class NamesEngine : IPartieEngine
@@ -146,14 +146,14 @@ public class NestedGroupTests
             [FromPath] public required string Tenant { get; init; }
             [FromPath(Name = "itemId")] public int Id { get; init; }
         }
-        public sealed class ItemSearchV1Handler : IQueryHandler<ItemSearchV1Query, string, EmptyContext>
+        public sealed class ItemSearchV1Handler : IQueryHandler<ItemSearchV1Query, string, Unit>
         {
-            public static Task<Result<string>> RunAsync(EmptyContext ctx, ItemSearchV1Query query, CancellationToken ct)
+            public static Task<Result<string>> RunAsync(Unit ctx, ItemSearchV1Query query, CancellationToken ct)
                 => Task.FromResult<Result<string>>(query.Tenant + ":" + query.Id);
         }
-        public sealed class SimpleSearchV1Handler : IQueryHandler<EmptyQuery, string, EmptyContext>
+        public sealed class SimpleSearchV1Handler : IQueryHandler<Unit, string, Unit>
         {
-            public static Task<Result<string>> RunAsync(EmptyContext ctx, EmptyQuery query, CancellationToken ct)
+            public static Task<Result<string>> RunAsync(Unit ctx, Unit query, CancellationToken ct)
                 => Task.FromResult<Result<string>>("simple");
         }
         public static class OuterRoutePolicy

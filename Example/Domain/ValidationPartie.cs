@@ -3,21 +3,21 @@ using Brigade.Net.Partie;
 
 namespace Brigade.Net.Example.Domain;
 
-public sealed class ValidationPartie : IPartie<Unit, EmptyContext>
+public sealed class ValidationPartie : IPartie<Unit, Unit>
 {
     public static ValueTask<Result<TResult>> OnQueryAsync<TQuery, TResult>(
-        EmptyContext ctx,
+        Unit ctx,
         TQuery query,
         Next<Unit, TResult> next,
         CancellationToken ct
-    ) where TQuery : class => ValidateAsync(query, next);
+    ) => ValidateAsync(query!, next);
 
     public static ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(
-        EmptyContext ctx,
+        Unit ctx,
         TCommand command,
         Next<Unit, TResult> next,
         CancellationToken ct
-    ) where TCommand : class => ValidateAsync(command, next);
+    ) => ValidateAsync(command!, next);
 
     private static ValueTask<Result<TResult>> ValidateAsync<TResult>(object request, Next<Unit, TResult> next)
     {

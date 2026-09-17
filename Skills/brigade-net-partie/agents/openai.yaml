@@ -1,0 +1,3 @@
+interface:
+  display_name: "Brigade Net Partie"
+  short_description: "Build generated Brigade.Net Partie routes"

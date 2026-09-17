@@ -26,6 +26,8 @@ internal sealed class ContractPipelinePlanner(
     private RegistrationModel[] providerRegistrations = Array.Empty<RegistrationModel>();
     private INamedTypeSymbol requestType = null!;
     private ITypeSymbol resultType = null!;
+    private bool isCommand;
+
     public ContractPipeline? Plan(
         INamedTypeSymbol handler,
         IEnumerable<RegistrationModel> parties,
@@ -45,14 +47,14 @@ internal sealed class ContractPipelinePlanner(
         }
 
         var contract = contracts[0];
-        var command = Is(contract, "ICommandHandler`3");
-        if ((operation.Equals("GET", StringComparison.OrdinalIgnoreCase) && command) || (new[]
+        isCommand = Is(contract, "ICommandHandler`3");
+        if ((operation.Equals("GET", StringComparison.OrdinalIgnoreCase) && isCommand) || (new[]
         {
             "POST",
             "PUT",
             "PATCH",
             "DELETE"
-        }.Contains(operation.ToUpperInvariant()) && !command))
+        }.Contains(operation.ToUpperInvariant()) && !isCommand))
         {
             Error(handler, "GET requires IQueryHandler; POST/PUT/PATCH/DELETE require ICommandHandler.");
         }
@@ -134,23 +136,34 @@ internal sealed class ContractPipelinePlanner(
 
             if (stepContract is not null)
             {
+                if (!SupportsOperation(partie))
+                {
+                    Error(
+                        partie,
+                        "Registered Partie does not implement "
+                        + (isCommand ? "OnCommandAsync." : "OnQueryAsync.")
+                    );
+                    continue;
+                }
+
                 AddStep(partie, stepContract, registration.Parameters);
             }
         }
 
-        var uow = command ? Resolve(compilation.GetTypeByMetadataName("Brigade.Net.Core.Transactions.UnitOfWork")!, handler) : "";
+        var uow = isCommand ? Resolve(compilation.GetTypeByMetadataName("Brigade.Net.Core.Transactions.UnitOfWork")!, handler) : "";
         var context = Context(contract.TypeArguments[2], handler, parameters);
         var returnType = "global::System.Threading.Tasks.ValueTask<global::Brigade.Net.Core.Results.Result<" + TypeName(resultType) + ">>";
-        var invoke = "global::Brigade.Net.Partie.RouteDispatch." + (command ? "Command" : "Query") + "<" + string.Join(
+        var invoke = "global::Brigade.Net.Partie.RouteDispatch." + (isCommand ? "Command" : "Query") + "<" + string.Join(
             ", ",
             new[] { TypeName(handler), TypeName(request), TypeName(resultType), TypeName(contract.TypeArguments[2]) }
-        ) + ">(" + (command ? uow + ", " : "") + context + ", value0, value1)";
+        ) + ">(" + (isCommand ? uow + ", " : "") + context + ", value0, value1)";
         var body = "return new " + returnType + "(" + invoke + ");";
         for (var index = steps.Count - 1; index >= 0; index--)
         {
             var step = steps[index];
             var next = "Next_" + step.ValueName;
-            body = "return global::Brigade.Net.Partie.RouteDispatch." + (command ? "CommandPartie" : "QueryPartie") + "<" + step.TypeName + ", " + step.ProvidedType + ", " + step.ContextType + ", " + TypeName(requestType) + ", " + TypeName(resultType) + ">(" + step.Context + ", value0, " + next + ", value1);\n" + returnType + " " + next + "(" + step.ProvidedType + " " + step.ValueName + ") {\n" + body + "\n}";
+            var dispatch = (isCommand ? "Command" : "Query") + (step.Provider ? "Provider" : "Partie");
+            body = "return global::Brigade.Net.Partie.RouteDispatch." + dispatch + "<" + step.TypeName + ", " + step.ProvidedType + ", " + step.ContextType + ", " + TypeName(requestType) + ", " + TypeName(resultType) + ">(" + step.Context + ", value0, " + next + ", value1);\n" + returnType + " " + next + "(" + step.ProvidedType + " " + step.ValueName + ") {\n" + body + "\n}";
         }
 
         return failed ? null : new ContractPipeline(TypeName(resultType), requestModel, inputs.ToImmutableArray(), body);
@@ -158,6 +171,17 @@ internal sealed class ContractPipelinePlanner(
 
     private RequestEmission? ReadRequest(INamedTypeSymbol request)
     {
+        if (IsUnit(request))
+        {
+            return new RequestEmission(
+                TypeName(request),
+                "",
+                ImmutableArray<RequestPropertyEmission>.Empty,
+                "global::Brigade.Net.Partie.Generated.UnitDto",
+                "UnitDto.g.cs"
+            );
+        }
+
         if (request.TypeKind != TypeKind.Class || request.IsRecord || request.IsAbstract || request.IsStatic || !request.InstanceConstructors.Any(
             ctor => ctor.Parameters.Length == 0 && compilation.IsSymbolAccessibleWithin(ctor, compilation.Assembly)
         ))
@@ -260,6 +284,11 @@ internal sealed class ContractPipelinePlanner(
     )
     {
         ct.ThrowIfCancellationRequested();
+        if (IsUnit(type))
+        {
+            return "global::Brigade.Net.Core.Results.Unit.Default";
+        }
+
         if (type is not INamedTypeSymbol named || !type.IsReferenceType || named.IsAbstract)
         {
             Error(owner, "TContext must be a constructible reference type.");
@@ -457,7 +486,14 @@ internal sealed class ContractPipelinePlanner(
         var name = "value" + nextId++;
         var output = contract.TypeArguments[0];
         steps.Add(
-            new ContractStep(TypeName(type), TypeName(output), TypeName(contract.TypeArguments[1]), context, name)
+            new ContractStep(
+                TypeName(type),
+                TypeName(output),
+                TypeName(contract.TypeArguments[1]),
+                context,
+                name,
+                Is(contract, "IProvider`2")
+            )
         );
         if (!IsUnit(output))
         {
@@ -479,12 +515,13 @@ internal sealed class ContractPipelinePlanner(
 
     private INamedTypeSymbol? StepContract(INamedTypeSymbol type)
     {
-        var contracts = type.AllInterfaces.Where(contract => Is(contract, "IPartie`2")).ToArray();
+        var contracts = type.AllInterfaces.Where(contract =>
+            Is(contract, "IPartie`2") || Is(contract, "IProvider`2")).ToArray();
         if (type.TypeKind != TypeKind.Class || type.IsStatic || type.IsAbstract || contracts.Length != 1)
         {
             Error(
                 type,
-                "Partie/Provider must be a class implementing exactly one IPartie<TProvided, TContext> contract (IProvider inherits it)."
+                "Partie/Provider must be a class implementing exactly one IPartie<TProvided, TContext> or IProvider<TProvided, TContext> contract."
             );
             return null;
         }
@@ -497,7 +534,12 @@ internal sealed class ContractPipelinePlanner(
         foreach (var registration in providers)
         {
             var type = registration.IsUnboundGenericType ? registration.OriginalDefinition : registration;
-            var contract = type.AllInterfaces.Single(candidate => Is(candidate, "IPartie`2"));
+            var contract = type.AllInterfaces.Single(candidate =>
+                Is(candidate, "IPartie`2") || Is(candidate, "IProvider`2"));
+            if (!SupportsOperation(type))
+            {
+                continue;
+            }
             var bindings = new Dictionary<ITypeParameterSymbol, ITypeSymbol>(SymbolEqualityComparer.Default);
             if (!Unify(contract.TypeArguments[0], requested, bindings))
             {
@@ -516,6 +558,13 @@ internal sealed class ContractPipelinePlanner(
         type.OriginalDefinition,
         compilation.GetTypeByMetadataName("Brigade.Net.Partie." + metadataName)
     );
+
+    private bool SupportsOperation(INamedTypeSymbol type)
+    {
+        var methodName = isCommand ? "OnCommandAsync" : "OnQueryAsync";
+        return type.GetMembers().OfType<IMethodSymbol>().Any(method =>
+            method.Name == methodName || method.Name.EndsWith("." + methodName, StringComparison.Ordinal));
+    }
     private bool IsUnit(ITypeSymbol type) => SymbolEqualityComparer.Default.Equals(type, compilation.GetTypeByMetadataName("Brigade.Net.Core.Results.Unit"));
     private static bool IsBinding(AttributeData attr) => attr.AttributeClass?.ContainingNamespace.ToDisplayString() == "Brigade.Net.Partie" && attr.AttributeClass.Name is "FromPathAttribute" or "FromParamsAttribute" or "FromMetadataAttribute" or "FromPayloadAttribute";
     private void Error(

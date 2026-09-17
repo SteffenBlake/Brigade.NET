@@ -14,12 +14,12 @@ public sealed class TextLengthProvider : IProvider<int, TextLengthContext>
         Next<int, TResult> next,
         CancellationToken ct
     )
-        where TQuery : class => next(ctx.Input.Length);
+ => next(ctx.Input.Length);
     public static ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(
         TextLengthContext ctx,
         TCommand command,
         Next<int, TResult> next,
         CancellationToken ct
     )
-        where TCommand : class => next(ctx.Input.Length);
+ => next(ctx.Input.Length);
 }

@@ -8,18 +8,21 @@ namespace Brigade.Net.Partie.Generator;
 /// <summary>Extracts the compile-time configuration portion of a context constructor.</summary>
 public static class ContextParameters
 {
-    // TODO: Avoid complex ternaries, it is unreadable
-    // Use if statements, there is no reason to play code golf, 
-    // we have infinite vertical lines but very limited horizontal
+    public static ImmutableDictionary<string, string> Arguments(AttributeData attribute)
+    {
+        if (attribute.AttributeConstructor is null
+            || attribute.ConstructorArguments.Length != attribute.AttributeConstructor.Parameters.Length)
+        {
+            return ImmutableDictionary<string, string>.Empty;
+        }
 
-    public static ImmutableDictionary<string, string> Arguments(AttributeData attribute) =>
-        attribute.AttributeConstructor is null || attribute.ConstructorArguments.Length != attribute.AttributeConstructor.Parameters.Length
-        ? ImmutableDictionary<string, string>.Empty
-        : attribute.AttributeConstructor.Parameters.Select((parameter, index) => new { Parameter = parameter, Index = index })
+        return attribute.AttributeConstructor.Parameters
+            .Select((parameter, index) => new { Parameter = parameter, Index = index })
             .Where(item => item.Parameter.GetAttributes().Any(marker =>
                 marker.AttributeClass?.ToDisplayString() == "Brigade.Net.Partie.ParameterAttribute"))
             .Select(item => new { item.Parameter.Name, Value = SymbolEmission.Constant(attribute.ConstructorArguments[item.Index]) })
             .ToImmutableDictionary(parameter => parameter.Name, parameter => parameter.Value);
+    }
 
     public static ImmutableArray<IParameterSymbol> Read(ITypeSymbol context, Compilation compilation)
     {
@@ -31,10 +34,13 @@ public static class ContextParameters
             compilation.IsSymbolAccessibleWithin(ctor, compilation.Assembly)
             && !(named.IsRecord && ctor.Parameters.Length == 1
                 && SymbolEqualityComparer.Default.Equals(ctor.Parameters[0].Type, context))).ToArray();
-        return constructors.Length == 1
-            ? constructors[0].Parameters.Where(parameter => parameter.GetAttributes().Any(attribute =>
-                attribute.AttributeClass?.ToDisplayString() == "Brigade.Net.Partie.ParameterAttribute")).ToImmutableArray()
-            : ImmutableArray<IParameterSymbol>.Empty;
+        if (constructors.Length != 1)
+        {
+            return ImmutableArray<IParameterSymbol>.Empty;
+        }
+
+        return constructors[0].Parameters.Where(parameter => parameter.GetAttributes().Any(attribute =>
+            attribute.AttributeClass?.ToDisplayString() == "Brigade.Net.Partie.ParameterAttribute")).ToImmutableArray();
     }
 
     public static string Declaration(IParameterSymbol parameter) =>
@@ -50,8 +56,11 @@ public static class ContextParameters
                 ? "null" : "default";
         }
         var literal = SymbolDisplay.FormatPrimitive(parameter.ExplicitDefaultValue, true, false)!;
-        return parameter.Type.TypeKind == TypeKind.Enum
-            ? "(" + SymbolEmission.TypeName(parameter.Type) + ")" + literal
-            : literal;
+        if (parameter.Type.TypeKind == TypeKind.Enum)
+        {
+            return "(" + SymbolEmission.TypeName(parameter.Type) + ")" + literal;
+        }
+
+        return literal;
     }
 }

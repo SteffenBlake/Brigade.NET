@@ -25,10 +25,10 @@ public class BrigadeRoutingGeneratorTests
         var source = """
             public sealed class Request { [FromParams] public int Count { get; set; } }
             public sealed record Context([Provide] IEnumerable<string> Values, [Provide] Request Request);
-            public sealed class First : IProvider<string, EmptyContext>
+            public sealed class First : IProvider<string, Unit>
             {
-                public static ValueTask<Result<T>> OnCommandAsync<TCommand, T>(EmptyContext ctx, TCommand command, Next<string, T> next, CancellationToken ct) where TCommand : class => OnQueryAsync<TCommand, T>(ctx, command, next, ct);
-                public static async ValueTask<Result<T>> OnQueryAsync<TQuery, T>(EmptyContext ctx, TQuery query, Next<string, T> next, CancellationToken ct) where TQuery : class
+                public static ValueTask<Result<T>> OnCommandAsync<TCommand, T>(Unit ctx, TCommand command, Next<string, T> next, CancellationToken ct) => OnQueryAsync<TCommand, T>(ctx, command, next, ct);
+                public static async ValueTask<Result<T>> OnQueryAsync<TQuery, T>(Unit ctx, TQuery query, Next<string, T> next, CancellationToken ct)
                 {
                     Log.Text += "first;";
                     var result = await next("one");
@@ -36,19 +36,19 @@ public class BrigadeRoutingGeneratorTests
                     return result;
                 }
             }
-            public sealed class Second : IProvider<string, EmptyContext>
+            public sealed class Second : IProvider<string, Unit>
             {
-                public static ValueTask<Result<T>> OnCommandAsync<TCommand, T>(EmptyContext ctx, TCommand command, Next<string, T> next, CancellationToken ct) where TCommand : class => OnQueryAsync<TCommand, T>(ctx, command, next, ct);
-                public static ValueTask<Result<T>> OnQueryAsync<TQuery, T>(EmptyContext ctx, TQuery query, Next<string, T> next, CancellationToken ct) where TQuery : class
+                public static ValueTask<Result<T>> OnCommandAsync<TCommand, T>(Unit ctx, TCommand command, Next<string, T> next, CancellationToken ct) => OnQueryAsync<TCommand, T>(ctx, command, next, ct);
+                public static ValueTask<Result<T>> OnQueryAsync<TQuery, T>(Unit ctx, TQuery query, Next<string, T> next, CancellationToken ct)
                 {
                     Log.Text += "second;";
                     return next("two");
                 }
             }
-            public sealed class Fixed : IPartie<string, EmptyContext>
+            public sealed class Fixed : IPartie<string, Unit>
             {
-                public static ValueTask<Result<T>> OnCommandAsync<TCommand, T>(EmptyContext ctx, TCommand command, Next<string, T> next, CancellationToken ct) where TCommand : class => OnQueryAsync<TCommand, T>(ctx, command, next, ct);
-                public static ValueTask<Result<T>> OnQueryAsync<TQuery, T>(EmptyContext ctx, TQuery query, Next<string, T> next, CancellationToken ct) where TQuery : class
+                public static ValueTask<Result<T>> OnCommandAsync<TCommand, T>(Unit ctx, TCommand command, Next<string, T> next, CancellationToken ct) => OnQueryAsync<TCommand, T>(ctx, command, next, ct);
+                public static ValueTask<Result<T>> OnQueryAsync<TQuery, T>(Unit ctx, TQuery query, Next<string, T> next, CancellationToken ct)
                 {
                     Log.Text += "fixed;";
                     return next("fixed");
@@ -114,35 +114,33 @@ public class BrigadeRoutingGeneratorTests
     [InlineData(true, true)]
     public async Task Generator_DispatchesTypedRequestsToMatchingHooks(bool command, bool explicitImplementation)
     {
-        var prefix = explicitImplementation ? "static ValueTask<Result<TResult>> IPartie<RequestEvidence<TRequest>, EmptyContext>." : "public static ValueTask<Result<TResult>> ";
+        var prefix = explicitImplementation ? "static ValueTask<Result<TResult>> IProvider<RequestEvidence<TRequest>, Unit>." : "public static ValueTask<Result<TResult>> ";
         var source = $$"""
             public class Request { }
             public record RequestEvidence<TRequest>(TRequest Request, string Operation, CancellationToken Token);
             public record Context([Provide] RequestEvidence<Request> RequestEvidence);
-            public class RequestEvidenceProvider<TRequest> : IProvider<RequestEvidence<TRequest>, EmptyContext>
+            public class RequestEvidenceProvider<TRequest> : IProvider<RequestEvidence<TRequest>, Unit>
                 where TRequest : class
             {
-                {{prefix}}OnQueryAsync<TQuery, TResult>(EmptyContext ctx, TQuery query, Next<RequestEvidence<TRequest>, TResult> next, CancellationToken ct)
-                    {{(explicitImplementation ? "" : "where TQuery : class")}}
+                {{prefix}}OnQueryAsync<TQuery, TResult>(Unit ctx, TQuery query, Next<RequestEvidence<TRequest>, TResult> next, CancellationToken ct)
                     => next(new RequestEvidence<TRequest>((TRequest)(object)query, "query", ct));
-                {{prefix}}OnCommandAsync<TCommand, TResult>(EmptyContext ctx, TCommand command, Next<RequestEvidence<TRequest>, TResult> next, CancellationToken ct)
-                    {{(explicitImplementation ? "" : "where TCommand : class")}}
+                {{prefix}}OnCommandAsync<TCommand, TResult>(Unit ctx, TCommand command, Next<RequestEvidence<TRequest>, TResult> next, CancellationToken ct)
                     => next(new RequestEvidence<TRequest>((TRequest)(object)command, "command", ct));
             }
-            public class Probe : IPartie<Unit, EmptyContext>
+            public class Probe : IPartie<Unit, Unit>
             {
                 public static object? Seen;
                 public static CancellationToken SeenToken;
-                public static ValueTask<Result<TResult>> OnQueryAsync<TQuery, TResult>(EmptyContext ctx, TQuery query, Next<Unit, TResult> next, CancellationToken ct)
-                    where TQuery : class
+                public static ValueTask<Result<TResult>> OnQueryAsync<TQuery, TResult>(Unit ctx, TQuery query, Next<Unit, TResult> next, CancellationToken ct)
+
                 {
                     Log.Text += "query:" + typeof(TQuery).Name;
                     Seen = query;
                     SeenToken = ct;
                     return next(Unit.Default);
                 }
-                public static ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(EmptyContext ctx, TCommand command, Next<Unit, TResult> next, CancellationToken ct)
-                    where TCommand : class
+                public static ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(Unit ctx, TCommand command, Next<Unit, TResult> next, CancellationToken ct)
+
                 {
                     Log.Text += "command:" + typeof(TCommand).Name;
                     Seen = command;
@@ -158,7 +156,7 @@ public class BrigadeRoutingGeneratorTests
             [BrigadeGroup(""), Provider(typeof(RequestEvidenceProvider<>))]
             public static partial class Routes
             {
-                [Route<Handler>("", "{{(command ? "POST" : "GET")}}"), Partie(typeof(Probe)), Partie(typeof(UnitOfWorkPartie))]
+                [Route<Handler>("", "{{(command ? "POST" : "GET")}}"), Partie(typeof(Probe)){{(command ? ", Partie(typeof(UnitOfWorkPartie))" : "")}}]
                 static partial void Go();
             }
             """;
@@ -170,23 +168,20 @@ public class BrigadeRoutingGeneratorTests
     }
 
     [Theory]
-    [InlineData("OnQueryAsync", "OnCommandAsync")]
-    [InlineData("OnCommandAsync", "OnQueryAsync")]
-    public void BothHooksAreRequired(string implemented, string missing)
+    [InlineData("OnQueryAsync")]
+    [InlineData("OnCommandAsync")]
+    public void ProvidersMayImplementOneOperation(string implemented)
     {
         var source = Source("") + $$"""
-            public class Incomplete : IProvider<int, EmptyContext>
+            public class Incomplete : IProvider<int, Unit>
             {
-                public static ValueTask<Result<TResult>> {{implemented}}<TRequest, TResult>(EmptyContext ctx, TRequest request, Next<int, TResult> next, CancellationToken ct)
-                    where TRequest : class => next(1);
+                public static ValueTask<Result<TResult>> {{implemented}}<TRequest, TResult>(Unit ctx, TRequest request, Next<int, TResult> next, CancellationToken ct)
+                    => next(1);
             }
             """;
         var (_, output, result) = Generate(source);
         Assert.Empty(result.Diagnostics);
-        Assert.Contains(
-            output.GetDiagnostics(),
-            diagnostic => diagnostic.Id == "CS0535" && diagnostic.GetMessage().Contains(missing)
-        );
+        Assert.DoesNotContain(output.GetDiagnostics(), diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
     }
 
     [Fact]
@@ -395,10 +390,10 @@ public class BrigadeRoutingGeneratorTests
     public void Generator_InjectDoesNotUseProvidedValue()
     {
         var source = Source("").Replace("public sealed class Context { }", "public sealed record Context([Inject] string Value);").Replace("[BrigadeGroup", "[Provider(typeof(Provider))] [BrigadeGroup") + """
-            public sealed class Provider : IProvider<string, EmptyContext>
+            public sealed class Provider : IProvider<string, Unit>
             {
-                public static ValueTask<Result<T>> OnCommandAsync<TCommand, T>(EmptyContext ctx, TCommand command, Next<string, T> next, CancellationToken ct) where TCommand : class => OnQueryAsync<TCommand, T>(ctx, command, next, ct);
-                public static ValueTask<Result<T>> OnQueryAsync<TQuery, T>(EmptyContext ctx, TQuery query, Next<string, T> next, CancellationToken ct) where TQuery : class => next("provided");
+                public static ValueTask<Result<T>> OnCommandAsync<TCommand, T>(Unit ctx, TCommand command, Next<string, T> next, CancellationToken ct) => OnQueryAsync<TCommand, T>(ctx, command, next, ct);
+                public static ValueTask<Result<T>> OnQueryAsync<TQuery, T>(Unit ctx, TQuery query, Next<string, T> next, CancellationToken ct) => next("provided");
             }
             """;
         var (_, output, result) = Generate(source);

@@ -14,14 +14,14 @@ public sealed class ContextProvider : IProvider<ContextValue, ContextProviderCon
         Next<ContextValue, TResult> next,
         CancellationToken ct
     )
-        where TQuery : class => ExecuteAsync(ctx, next, ct);
+ => ExecuteAsync(ctx, next, ct);
     public static ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(
         ContextProviderContext ctx,
         TCommand command,
         Next<ContextValue, TResult> next,
         CancellationToken ct
     )
-        where TCommand : class => ExecuteAsync(ctx, next, ct);
+ => ExecuteAsync(ctx, next, ct);
     private static ValueTask<Result<TResult>> ExecuteAsync<TResult>(
         ContextProviderContext ctx,
         Next<ContextValue, TResult> next,

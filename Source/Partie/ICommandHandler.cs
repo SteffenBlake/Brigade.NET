@@ -5,9 +5,6 @@ namespace Brigade.Net.Partie;
 
 /// <summary>A command with a statically dispatched handler.</summary>
 public interface ICommandHandler<TCommand, TResult, TContext>
-// TODO: Skill file needs updating, dont declare generic constraints
-// In one line like this
-    where TCommand : class where TContext : class
 {
     /// <summary>Runs the command in the supplied unit of work.</summary>
     static abstract Task<Result<TResult>> RunAsync(

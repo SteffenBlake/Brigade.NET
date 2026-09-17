@@ -22,7 +22,7 @@ public class EngineProviderTests
     {
         var source = Source(
             $"Foo<{argument}>",
-            $"public sealed class Provider<T> : IProvider<Foo<T>, EmptyContext> where T : {constraint} {{ public static ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(EmptyContext ctx, TCommand command, Next<Foo<T>, TResult> next, CancellationToken ct) where TCommand : class => OnQueryAsync<TCommand, TResult>(ctx, command, next, ct); public static ValueTask<Result<TResult>> OnQueryAsync<TQuery, TResult>(EmptyContext ctx, TQuery query, Next<Foo<T>, TResult> next, CancellationToken ct) where TQuery : class => next(new()); }}"
+            $"public sealed class Provider<T> : IProvider<Foo<T>, Unit> where T : {constraint} {{ public static ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(Unit ctx, TCommand command, Next<Foo<T>, TResult> next, CancellationToken ct) => OnQueryAsync<TCommand, TResult>(ctx, command, next, ct); public static ValueTask<Result<TResult>> OnQueryAsync<TQuery, TResult>(Unit ctx, TQuery query, Next<Foo<T>, TResult> next, CancellationToken ct) => next(new()); }}"
         );
         CheckMatch(source, matches);
     }
@@ -43,7 +43,7 @@ public class EngineProviderTests
     {
         var source = Source(
             requested,
-            $"public sealed class Provider<T> : IProvider<{provided}, EmptyContext> {{ public static ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(EmptyContext ctx, TCommand command, Next<{provided}, TResult> next, CancellationToken ct) where TCommand : class => OnQueryAsync<TCommand, TResult>(ctx, command, next, ct); public static ValueTask<Result<TResult>> OnQueryAsync<TQuery, TResult>(EmptyContext ctx, TQuery query, Next<{provided}, TResult> next, CancellationToken ct) where TQuery : class => next(default!); }}"
+            $"public sealed class Provider<T> : IProvider<{provided}, Unit> {{ public static ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(Unit ctx, TCommand command, Next<{provided}, TResult> next, CancellationToken ct) => OnQueryAsync<TCommand, TResult>(ctx, command, next, ct); public static ValueTask<Result<TResult>> OnQueryAsync<TQuery, TResult>(Unit ctx, TQuery query, Next<{provided}, TResult> next, CancellationToken ct) => next(default!); }}"
         );
         CheckMatch(source, matches);
     }
@@ -56,10 +56,10 @@ public class EngineProviderTests
         var source = Source(
             $"Tuple<int[], {argument}>",
             """
-            public sealed class Provider<T, TOther> : IProvider<Tuple<T, TOther>, EmptyContext> where T : System.Collections.Generic.IEnumerable<TOther>
+            public sealed class Provider<T, TOther> : IProvider<Tuple<T, TOther>, Unit> where T : System.Collections.Generic.IEnumerable<TOther>
             {
-                public static ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(EmptyContext ctx, TCommand command, Next<Tuple<T, TOther>, TResult> next, CancellationToken ct) where TCommand : class => OnQueryAsync<TCommand, TResult>(ctx, command, next, ct);
-                public static ValueTask<Result<TResult>> OnQueryAsync<TQuery, TResult>(EmptyContext ctx, TQuery query, Next<Tuple<T, TOther>, TResult> next, CancellationToken ct) where TQuery : class => next(default!);
+                public static ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(Unit ctx, TCommand command, Next<Tuple<T, TOther>, TResult> next, CancellationToken ct) => OnQueryAsync<TCommand, TResult>(ctx, command, next, ct);
+                public static ValueTask<Result<TResult>> OnQueryAsync<TQuery, TResult>(Unit ctx, TQuery query, Next<Tuple<T, TOther>, TResult> next, CancellationToken ct) => next(default!);
             }
             """,
             "Provider<,>"
@@ -92,7 +92,7 @@ public class EngineProviderTests
     public void Engine_RejectsProviderCycles(string dependency) => EngineCompilation.Invalid(
         Source(
             "Foo<int>",
-            $"public sealed record ProviderContext<T>([Provide] {dependency} Input); public sealed class Provider<T> : IProvider<Foo<T>, ProviderContext<T>> {{ public static ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(ProviderContext<T> ctx, TCommand command, Next<Foo<T>, TResult> next, CancellationToken ct) where TCommand : class => OnQueryAsync<TCommand, TResult>(ctx, command, next, ct); public static ValueTask<Result<TResult>> OnQueryAsync<TQuery, TResult>(ProviderContext<T> ctx, TQuery query, Next<Foo<T>, TResult> next, CancellationToken ct) where TQuery : class => default; }}"
+            $"public sealed record ProviderContext<T>([Provide] {dependency} Input); public sealed class Provider<T> : IProvider<Foo<T>, ProviderContext<T>> {{ public static ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(ProviderContext<T> ctx, TCommand command, Next<Foo<T>, TResult> next, CancellationToken ct) => OnQueryAsync<TCommand, TResult>(ctx, command, next, ct); public static ValueTask<Result<TResult>> OnQueryAsync<TQuery, TResult>(ProviderContext<T> ctx, TQuery query, Next<Foo<T>, TResult> next, CancellationToken ct) => default; }}"
         ),
         "BRG002"
     );
@@ -101,15 +101,15 @@ public class EngineProviderTests
         Source(
             "Foo<int>",
             """
-        public sealed class Provider<T> : IProvider<Foo<T>, EmptyContext>
+        public sealed class Provider<T> : IProvider<Foo<T>, Unit>
         {
-            public static ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(EmptyContext ctx, TCommand command, Next<Foo<T>, TResult> next, CancellationToken ct) where TCommand : class => OnQueryAsync<TCommand, TResult>(ctx, command, next, ct);
-                public static ValueTask<Result<TResult>> OnQueryAsync<TQuery, TResult>(EmptyContext ctx, TQuery query, Next<Foo<T>, TResult> next, CancellationToken ct) where TQuery : class => default;
+            public static ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(Unit ctx, TCommand command, Next<Foo<T>, TResult> next, CancellationToken ct) => OnQueryAsync<TCommand, TResult>(ctx, command, next, ct);
+                public static ValueTask<Result<TResult>> OnQueryAsync<TQuery, TResult>(Unit ctx, TQuery query, Next<Foo<T>, TResult> next, CancellationToken ct) => default;
         }
-        public sealed class Closed : IProvider<Foo<int>, EmptyContext>
+        public sealed class Closed : IProvider<Foo<int>, Unit>
         {
-            public static ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(EmptyContext ctx, TCommand command, Next<Foo<int>, TResult> next, CancellationToken ct) where TCommand : class => OnQueryAsync<TCommand, TResult>(ctx, command, next, ct);
-                public static ValueTask<Result<TResult>> OnQueryAsync<TQuery, TResult>(EmptyContext ctx, TQuery query, Next<Foo<int>, TResult> next, CancellationToken ct) where TQuery : class => default;
+            public static ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(Unit ctx, TCommand command, Next<Foo<int>, TResult> next, CancellationToken ct) => OnQueryAsync<TCommand, TResult>(ctx, command, next, ct);
+                public static ValueTask<Result<TResult>> OnQueryAsync<TQuery, TResult>(Unit ctx, TQuery query, Next<Foo<int>, TResult> next, CancellationToken ct) => default;
         }
         """,
             "Provider<>",
@@ -125,8 +125,8 @@ public class EngineProviderTests
         public sealed record ProviderContext<T>([Provide] Foo<Foo<T>> Input);
         public sealed class Provider<T> : IProvider<Foo<T>, ProviderContext<T>>
         {
-            public static ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(ProviderContext<T> ctx, TCommand command, Next<Foo<T>, TResult> next, CancellationToken ct) where TCommand : class => OnQueryAsync<TCommand, TResult>(ctx, command, next, ct);
-                public static ValueTask<Result<TResult>> OnQueryAsync<TQuery, TResult>(ProviderContext<T> ctx, TQuery query, Next<Foo<T>, TResult> next, CancellationToken ct) where TQuery : class => default;
+            public static ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(ProviderContext<T> ctx, TCommand command, Next<Foo<T>, TResult> next, CancellationToken ct) => OnQueryAsync<TCommand, TResult>(ctx, command, next, ct);
+                public static ValueTask<Result<TResult>> OnQueryAsync<TQuery, TResult>(ProviderContext<T> ctx, TQuery query, Next<Foo<T>, TResult> next, CancellationToken ct) => default;
         }
         """
         ),
@@ -182,9 +182,9 @@ public class EngineProviderTests
             static partial void Go();
         }
         public sealed record HandlerContext([Provide] {{requested}} Input);
-        public sealed class Handler : IQueryHandler<EmptyQuery, {{resultType}}, HandlerContext>
+        public sealed class Handler : IQueryHandler<Unit, {{resultType}}, HandlerContext>
         {
-            public static Task<Result<{{resultType}}>> RunAsync(HandlerContext ctx, EmptyQuery query, CancellationToken ct) => Task.FromResult<Result<{{resultType}}>>(default!);
+            public static Task<Result<{{resultType}}>> RunAsync(HandlerContext ctx, Unit query, CancellationToken ct) => Task.FromResult<Result<{{resultType}}>>(default!);
         }
         """;
 }

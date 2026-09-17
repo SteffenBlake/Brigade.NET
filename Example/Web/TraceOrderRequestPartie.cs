@@ -17,14 +17,14 @@ public sealed class TraceOrderRequestPartie : IPartie<Unit, TraceOrderContext>
         Next<Unit, TResult> next,
         CancellationToken ct
     )
-        where TQuery : class => ExecuteAsync(ctx, next, ct);
+ => ExecuteAsync(ctx, next, ct);
     public static ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(
         TraceOrderContext ctx,
         TCommand command,
         Next<Unit, TResult> next,
         CancellationToken ct
     )
-        where TCommand : class => ExecuteAsync(ctx, next, ct);
+ => ExecuteAsync(ctx, next, ct);
     private static async ValueTask<Result<TResult>> ExecuteAsync<TResult>(
         TraceOrderContext ctx,
         Next<Unit, TResult> next,
