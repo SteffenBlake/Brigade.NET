@@ -2,7 +2,7 @@ using Brigade.Net.Partie;
 
 namespace Brigade.Net.Example.Domain.Orders.SearchV1;
 /// <summary>Search orders by ID, customer, or both.</summary>
-public sealed class OrderSearchV1Query
+public class OrderSearchV1Query
 {
     /// <summary>Optional order ID.</summary>
     [FromParams(Name = "orderId")]

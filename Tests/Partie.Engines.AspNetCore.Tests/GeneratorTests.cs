@@ -315,7 +315,7 @@ public class GeneratorTests
             public static partial class Routes
             {
                 [Route<Handler>("", "{{operation}}")]
-                {{(command ? "[global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie))]" : "")}}
+                {{(command ? "[global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie<,>))]" : "")}}
                 static partial void Go();
             }
             public sealed class Handler : {{(command ? "ICommandHandler" : "IQueryHandler")}}<Request, int, Services>

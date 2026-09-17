@@ -6,23 +6,32 @@ using Microsoft.AspNetCore.Http;
 namespace Brigade.Net.Partie.Engines.AspNetCore.Tests.Fixtures.Items;
 
 public sealed record ContextProviderContext([Inject] HttpContext Http, [Inject] Counts Counts);
-public sealed class ContextProvider : IProvider<ContextValue, ContextProviderContext>
+
+public sealed class ContextProvider<TRequest, TResult> :
+    IQueryProvider<ContextValue, ContextProviderContext, TRequest, TResult>,
+    ICommandProvider<ContextValue, ContextProviderContext, TRequest, TResult>
 {
-    public static ValueTask<Result<TResult>> OnQueryAsync<TQuery, TResult>(
+    public static ValueTask<Result<TResult>> OnQueryAsync(
         ContextProviderContext ctx,
-        TQuery query,
+        TRequest query,
         Next<ContextValue, TResult> next,
         CancellationToken ct
     )
- => ExecuteAsync(ctx, next, ct);
-    public static ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(
+    {
+        return ExecuteAsync(ctx, next, ct);
+    }
+
+    public static ValueTask<Result<TResult>> OnCommandAsync(
         ContextProviderContext ctx,
-        TCommand command,
+        TRequest command,
         Next<ContextValue, TResult> next,
         CancellationToken ct
     )
- => ExecuteAsync(ctx, next, ct);
-    private static ValueTask<Result<TResult>> ExecuteAsync<TResult>(
+    {
+        return ExecuteAsync(ctx, next, ct);
+    }
+
+    private static ValueTask<Result<TResult>> ExecuteAsync(
         ContextProviderContext ctx,
         Next<ContextValue, TResult> next,
         CancellationToken ct

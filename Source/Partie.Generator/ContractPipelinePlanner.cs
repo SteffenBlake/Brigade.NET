@@ -27,6 +27,7 @@ internal sealed class ContractPipelinePlanner(
     private INamedTypeSymbol requestType = null!;
     private ITypeSymbol resultType = null!;
     private bool isCommand;
+    private readonly RouteCallValidator validator = new(compilation, ct);
 
     public ContractPipeline? Plan(
         INamedTypeSymbol handler,
@@ -98,7 +99,7 @@ internal sealed class ContractPipelinePlanner(
         foreach (var provider in providers)
         {
             var definition = provider.IsUnboundGenericType ? provider.OriginalDefinition : provider;
-            var stepContract = StepContract(definition);
+            var stepContract = StepContract(definition, true);
             if (stepContract is null)
             {
                 continue;
@@ -109,14 +110,6 @@ internal sealed class ContractPipelinePlanner(
             {
                 Error(provider, "Provider must produce a value other than Unit.");
             }
-
-            foreach (var parameter in OpenParameters(definition))
-            {
-                if (!Contains(output, parameter))
-                {
-                    Error(provider, "Every open provider parameter must occur in its provided type.");
-                }
-            }
         }
 
         if (failed)
@@ -126,27 +119,13 @@ internal sealed class ContractPipelinePlanner(
 
         foreach (var registration in parties)
         {
-            var partie = registration.Type;
-            var stepContract = StepContract(partie);
-            if (partie.IsUnboundGenericType)
+            var definition = registration.Type.IsUnboundGenericType
+                ? registration.Type.OriginalDefinition : registration.Type;
+            var stepContract = StepContract(definition);
+            var partie = stepContract is null ? null : Match(definition, stepContract);
+            if (partie is not null)
             {
-                Error(partie, "Fixed Partie must be closed.");
-                continue;
-            }
-
-            if (stepContract is not null)
-            {
-                if (!SupportsOperation(partie))
-                {
-                    Error(
-                        partie,
-                        "Registered Partie does not implement "
-                        + (isCommand ? "OnCommandAsync." : "OnQueryAsync.")
-                    );
-                    continue;
-                }
-
-                AddStep(partie, stepContract, registration.Parameters);
+                AddStep(partie, StepContract(partie)!, registration.Parameters);
             }
         }
 
@@ -492,7 +471,7 @@ internal sealed class ContractPipelinePlanner(
                 TypeName(contract.TypeArguments[1]),
                 context,
                 name,
-                Is(contract, "IProvider`2")
+                StepContracts.IsProvider(contract, compilation)
             )
         );
         if (!IsUnit(output))
@@ -513,20 +492,42 @@ internal sealed class ContractPipelinePlanner(
         list.Add(value);
     }
 
-    private INamedTypeSymbol? StepContract(INamedTypeSymbol type)
+    private INamedTypeSymbol? StepContract(INamedTypeSymbol type, bool demandDriven = false)
     {
-        var contracts = type.AllInterfaces.Where(contract =>
-            Is(contract, "IPartie`2") || Is(contract, "IProvider`2")).ToArray();
-        if (type.TypeKind != TypeKind.Class || type.IsStatic || type.IsAbstract || contracts.Length != 1)
+        var contracts = type.AllInterfaces.Where(contract => StepContracts.IsStep(contract, compilation)).ToArray();
+        if (type.TypeKind != TypeKind.Class || type.IsStatic || type.IsAbstract || contracts.Length == 0
+            || contracts.GroupBy(contract => StepContracts.IsCommand(contract, compilation)).Any(group => group.Count() > 1)
+            || contracts.Any(contract => StepContracts.IsProvider(contract, compilation)
+                != StepContracts.IsProvider(contracts[0], compilation)
+                || !SymbolEqualityComparer.Default.Equals(contract.TypeArguments[0], contracts[0].TypeArguments[0])
+                || !SymbolEqualityComparer.Default.Equals(contract.TypeArguments[1], contracts[0].TypeArguments[1])))
         {
             Error(
                 type,
-                "Partie/Provider must be a class implementing exactly one IPartie<TProvided, TContext> or IProvider<TProvided, TContext> contract."
+                "Partie/Provider must be a concrete class implementing at most one query and one command step contract, "
+                + "with the same role, provided type, and context."
             );
             return null;
         }
 
-        return contracts[0];
+        var selected = contracts.SingleOrDefault(contract => StepContracts.IsCommand(contract, compilation) == isCommand);
+        if (selected is null)
+        {
+            return null;
+        }
+
+        foreach (var parameter in OpenParameters(type))
+        {
+            if (!Contains(selected.TypeArguments[2], parameter) && !Contains(selected.TypeArguments[3], parameter)
+                && !(demandDriven && Contains(selected.TypeArguments[0], parameter)))
+            {
+                Error(type, "Every open step parameter must occur in its request or result type"
+                    + (demandDriven ? " or provided type." : "."));
+                return null;
+            }
+        }
+
+        return selected;
     }
 
     private IEnumerable<INamedTypeSymbol> Matches(ITypeSymbol requested)
@@ -534,20 +535,9 @@ internal sealed class ContractPipelinePlanner(
         foreach (var registration in providers)
         {
             var type = registration.IsUnboundGenericType ? registration.OriginalDefinition : registration;
-            var contract = type.AllInterfaces.Single(candidate =>
-                Is(candidate, "IPartie`2") || Is(candidate, "IProvider`2"));
-            if (!SupportsOperation(type))
-            {
-                continue;
-            }
-            var bindings = new Dictionary<ITypeParameterSymbol, ITypeSymbol>(SymbolEqualityComparer.Default);
-            if (!Unify(contract.TypeArguments[0], requested, bindings))
-            {
-                continue;
-            }
-
-            var closed = Close(type, bindings);
-            if (new RouteCallValidator(compilation, ct).ValidateType(closed) is null)
+            var contract = StepContract(type, true);
+            var closed = contract is null ? null : Match(type, contract, requested);
+            if (closed is not null)
             {
                 yield return closed;
             }
@@ -559,11 +549,22 @@ internal sealed class ContractPipelinePlanner(
         compilation.GetTypeByMetadataName("Brigade.Net.Partie." + metadataName)
     );
 
-    private bool SupportsOperation(INamedTypeSymbol type)
+    private INamedTypeSymbol? Match(
+        INamedTypeSymbol type,
+        INamedTypeSymbol contract,
+        ITypeSymbol? requested = null
+    )
     {
-        var methodName = isCommand ? "OnCommandAsync" : "OnQueryAsync";
-        return type.GetMembers().OfType<IMethodSymbol>().Any(method =>
-            method.Name == methodName || method.Name.EndsWith("." + methodName, StringComparison.Ordinal));
+        var bindings = new Dictionary<ITypeParameterSymbol, ITypeSymbol>(SymbolEqualityComparer.Default);
+        if (!Unify(contract.TypeArguments[2], requestType, bindings)
+            || !Unify(contract.TypeArguments[3], resultType, bindings)
+            || (requested is not null && !Unify(contract.TypeArguments[0], requested, bindings)))
+        {
+            return null;
+        }
+
+        var closed = Close(type, bindings);
+        return validator.ValidateType(closed) is null ? closed : null;
     }
     private bool IsUnit(ITypeSymbol type) => SymbolEqualityComparer.Default.Equals(type, compilation.GetTypeByMetadataName("Brigade.Net.Core.Results.Unit"));
     private static bool IsBinding(AttributeData attr) => attr.AttributeClass?.ContainingNamespace.ToDisplayString() == "Brigade.Net.Partie" && attr.AttributeClass.Name is "FromPathAttribute" or "FromParamsAttribute" or "FromMetadataAttribute" or "FromPayloadAttribute";

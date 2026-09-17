@@ -143,10 +143,12 @@ You can just take in a CancellationToken from the route itself and hand that dow
 
 # Same applies to Partie and Providers
 
-These are normal classes implementing two required `static abstract` hooks, with no default implementations:
+These are normal classes implementing query and/or command interfaces with required `static abstract` hooks and no default implementations:
 
-- `OnQueryAsync<TQuery, TResult>(ctx, query, next, ct)` where `TQuery : class`
-- `OnCommandAsync<TCommand, TResult>(ctx, command, next, ct)` where `TCommand : class`
+- `IQueryProvider<TProvided, TContext, TQuery, TResult>` / `IQueryPartie<TProvided, TContext, TQuery, TResult>` declare `OnQueryAsync(ctx, query, next, ct)`.
+- `ICommandProvider<TProvided, TContext, TCommand, TResult>` / `ICommandPartie<TProvided, TContext, TCommand, TResult>` declare `OnCommandAsync(ctx, command, next, ct)`.
+
+Put request/result generics and constraints on the implementing class. The generator binds these from the handler and excludes nonmatching steps before resolving their context dependencies. Concrete contract arguments match exactly; generic base/interface constraints include derived types.
 
 The handler contract selects the hook. Each receives the original query or command directly, so request-dependent work such as validation need not fetch the request through TContext.
 

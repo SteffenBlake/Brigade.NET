@@ -6,20 +6,28 @@ using Microsoft.AspNetCore.Http;
 namespace Brigade.Net.Partie.Engines.AspNetCore.Tests.Fixtures.Text;
 
 public sealed record TextLengthContext([Provide] string Input);
-public sealed class TextLengthProvider : IProvider<int, TextLengthContext>
+
+public sealed class TextLengthProvider<TRequest, TResult> :
+    IQueryProvider<int, TextLengthContext, TRequest, TResult>,
+    ICommandProvider<int, TextLengthContext, TRequest, TResult>
 {
-    public static ValueTask<Result<TResult>> OnQueryAsync<TQuery, TResult>(
+    public static ValueTask<Result<TResult>> OnQueryAsync(
         TextLengthContext ctx,
-        TQuery query,
+        TRequest query,
         Next<int, TResult> next,
         CancellationToken ct
     )
- => next(ctx.Input.Length);
-    public static ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(
+    {
+        return next(ctx.Input.Length);
+    }
+
+    public static ValueTask<Result<TResult>> OnCommandAsync(
         TextLengthContext ctx,
-        TCommand command,
+        TRequest command,
         Next<int, TResult> next,
         CancellationToken ct
     )
- => next(ctx.Input.Length);
+    {
+        return next(ctx.Input.Length);
+    }
 }

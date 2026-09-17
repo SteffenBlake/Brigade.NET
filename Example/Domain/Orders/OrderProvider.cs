@@ -9,24 +9,20 @@ public sealed record OrderProviderContext(
     [Inject] OrderRequestScope Scope
 );
 
-public sealed class OrderProvider : IProvider<Order[], OrderProviderContext>
+public sealed class OrderProvider<TQuery, TResult> :
+    IQueryProvider<Order[], OrderProviderContext, TQuery, TResult>
+    where TQuery : OrderSearchV1Query
 {
-    public static ValueTask<Result<TResult>> OnQueryAsync<TQuery, TResult>(
+    public static ValueTask<Result<TResult>> OnQueryAsync(
         OrderProviderContext ctx,
         TQuery query,
         Next<Order[], TResult> next,
         CancellationToken ct
     )
-
     {
-        if (query is not OrderSearchV1Query orderQuery)
-        {
-            throw new NotSupportedException("Order lookup requires OrderSearchV1Query.");
-        }
-
         ct.ThrowIfCancellationRequested();
         ctx.Scope.Events.Add("load");
         ctx.Scope.OrderLookups++;
-        return next(ctx.Store.Search(orderQuery.Id, orderQuery.Customer));
+        return next(ctx.Store.Search(query.Id, query.Customer));
     }
 }

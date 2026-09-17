@@ -8,31 +8,31 @@ public sealed record OrderInspectionContext(
     [Inject] OrderRequestScope Scope
 );
 
-public sealed class OrderInspectionPartie : IPartie<Unit, OrderInspectionContext>
+public sealed class OrderInspectionPartie<TRequest, TResult> :
+    IQueryPartie<Unit, OrderInspectionContext, TRequest, TResult>,
+    ICommandPartie<Unit, OrderInspectionContext, TRequest, TResult>
 {
-    public static ValueTask<Result<TResult>> OnQueryAsync<TQuery, TResult>(
+    public static ValueTask<Result<TResult>> OnQueryAsync(
         OrderInspectionContext ctx,
-        TQuery query,
+        TRequest query,
         Next<Unit, TResult> next,
         CancellationToken ct
     )
-
     {
         return ExecuteAsync(ctx, next, ct);
     }
 
-    public static ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(
+    public static ValueTask<Result<TResult>> OnCommandAsync(
         OrderInspectionContext ctx,
-        TCommand command,
+        TRequest command,
         Next<Unit, TResult> next,
         CancellationToken ct
     )
-
     {
         return ExecuteAsync(ctx, next, ct);
     }
 
-    private static ValueTask<Result<TResult>> ExecuteAsync<TResult>(
+    private static ValueTask<Result<TResult>> ExecuteAsync(
         OrderInspectionContext ctx,
         Next<Unit, TResult> next,
         CancellationToken ct

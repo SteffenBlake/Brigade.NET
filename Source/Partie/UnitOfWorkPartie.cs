@@ -7,18 +7,21 @@ namespace Brigade.Net.Partie;
 public sealed record UnitOfWorkContext([Provide] IEnumerable<ITxn> Transactions);
 
 /// <summary>Commits successful downstream work and rolls back failed downstream work.</summary>
-public sealed class UnitOfWorkPartie : IPartie<UnitOfWork, UnitOfWorkContext>
+public sealed class UnitOfWorkPartie<TCommand, TResult> :
+    ICommandPartie<UnitOfWork, UnitOfWorkContext, TCommand, TResult>
 {
     /// <inheritdoc/>
-    public static ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(
+    public static ValueTask<Result<TResult>> OnCommandAsync(
         UnitOfWorkContext ctx,
         TCommand command,
         Next<UnitOfWork, TResult> next,
         CancellationToken ct
     )
- => ExecuteAsync(ctx, next);
+    {
+        return ExecuteAsync(ctx, next);
+    }
 
-    private static async ValueTask<Result<TResult>> ExecuteAsync<TResult>(UnitOfWorkContext ctx, Next<UnitOfWork, TResult> next)
+    private static async ValueTask<Result<TResult>> ExecuteAsync(UnitOfWorkContext ctx, Next<UnitOfWork, TResult> next)
     {
         using var work = new UnitOfWork(ctx.Transactions);
         Result<TResult> result;

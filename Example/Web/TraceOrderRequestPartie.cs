@@ -9,23 +9,32 @@ public sealed record TraceOrderContext(
     [Inject] OrderRequestScope Scope,
     [Parameter] string RequestIdHeader = "X-Request-Id"
 );
-public sealed class TraceOrderRequestPartie : IPartie<Unit, TraceOrderContext>
+
+public sealed class TraceOrderRequestPartie<TRequest, TResult> :
+    IQueryPartie<Unit, TraceOrderContext, TRequest, TResult>,
+    ICommandPartie<Unit, TraceOrderContext, TRequest, TResult>
 {
-    public static ValueTask<Result<TResult>> OnQueryAsync<TQuery, TResult>(
+    public static ValueTask<Result<TResult>> OnQueryAsync(
         TraceOrderContext ctx,
-        TQuery query,
+        TRequest query,
         Next<Unit, TResult> next,
         CancellationToken ct
     )
- => ExecuteAsync(ctx, next, ct);
-    public static ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(
+    {
+        return ExecuteAsync(ctx, next, ct);
+    }
+
+    public static ValueTask<Result<TResult>> OnCommandAsync(
         TraceOrderContext ctx,
-        TCommand command,
+        TRequest command,
         Next<Unit, TResult> next,
         CancellationToken ct
     )
- => ExecuteAsync(ctx, next, ct);
-    private static async ValueTask<Result<TResult>> ExecuteAsync<TResult>(
+    {
+        return ExecuteAsync(ctx, next, ct);
+    }
+
+    private static async ValueTask<Result<TResult>> ExecuteAsync(
         TraceOrderContext ctx,
         Next<Unit, TResult> next,
         CancellationToken cancellationToken

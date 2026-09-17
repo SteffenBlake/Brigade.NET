@@ -36,9 +36,9 @@ public static class RouteDispatch
         Next<TProvided, TResult> next,
         CancellationToken ct
     )
-        where TPartie : IPartie<TProvided, TContext>
+        where TPartie : IQueryPartie<TProvided, TContext, TQuery, TResult>
     {
-        return TPartie.OnQueryAsync<TQuery, TResult>(ctx, query, next, ct);
+        return TPartie.OnQueryAsync(ctx, query, next, ct);
     }
 
     /// <summary>Invokes the command hook of a step contract.</summary>
@@ -48,9 +48,9 @@ public static class RouteDispatch
         Next<TProvided, TResult> next,
         CancellationToken ct
     )
-        where TPartie : IPartie<TProvided, TContext>
+        where TPartie : ICommandPartie<TProvided, TContext, TCommand, TResult>
     {
-        return TPartie.OnCommandAsync<TCommand, TResult>(ctx, command, next, ct);
+        return TPartie.OnCommandAsync(ctx, command, next, ct);
     }
 
     /// <summary>Invokes the query hook of a provider contract.</summary>
@@ -60,9 +60,9 @@ public static class RouteDispatch
         Next<TProvided, TResult> next,
         CancellationToken ct
     )
-        where TProvider : IProvider<TProvided, TContext>
+        where TProvider : IQueryProvider<TProvided, TContext, TQuery, TResult>
     {
-        return TProvider.OnQueryAsync<TQuery, TResult>(ctx, query, next, ct);
+        return TProvider.OnQueryAsync(ctx, query, next, ct);
     }
 
     /// <summary>Invokes the command hook of a provider contract.</summary>
@@ -72,8 +72,8 @@ public static class RouteDispatch
         Next<TProvided, TResult> next,
         CancellationToken ct
     )
-        where TProvider : IProvider<TProvided, TContext>
+        where TProvider : ICommandProvider<TProvided, TContext, TCommand, TResult>
     {
-        return TProvider.OnCommandAsync<TCommand, TResult>(ctx, command, next, ct);
+        return TProvider.OnCommandAsync(ctx, command, next, ct);
     }
 }

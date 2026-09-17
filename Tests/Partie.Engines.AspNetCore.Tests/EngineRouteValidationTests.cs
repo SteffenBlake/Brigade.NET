@@ -3,9 +3,9 @@ namespace Brigade.Net.Partie.Engines.AspNetCore.Tests;
 public class EngineRouteValidationTests
 {
     [Fact]
-    public void QueryRejectsCommandOnlyPartie()
+    public void QueryIgnoresCommandOnlyPartie()
     {
-        EngineCompilation.Invalid(
+        var generated = EngineCompilation.Valid(
             """
             public sealed class Handler : IQueryHandler<Unit, int, Unit>
             {
@@ -15,12 +15,12 @@ public class EngineRouteValidationTests
             [BrigadeGroup("")]
             public static partial class Routes
             {
-                [Route<Handler>("", "GET"), global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie))]
+                [Route<Handler>("", "GET"), global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie<,>))]
                 static partial void Go();
             }
-            """,
-            "BRG001"
+            """
         );
+        Assert.DoesNotContain("RouteDispatch.CommandPartie", generated);
     }
 
     [Theory]
@@ -70,7 +70,7 @@ public class EngineRouteValidationTests
             [BrigadeGroup("")]
             public static partial class Routes
             {
-                [Route<Handler>("", "{{operation}}"){{(command ? ", global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie))" : "")}}]
+                [Route<Handler>("", "{{operation}}"){{(command ? ", global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie<,>))" : "")}}]
                 static partial void Go();
             }
             public sealed class Handler : {{(command ? "ICommandHandler" : "IQueryHandler")}}<Request, int, Unit>

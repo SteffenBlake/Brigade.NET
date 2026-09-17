@@ -10,27 +10,21 @@ public sealed class ParameterRegistrationTests
             [Parameter] DayOfWeek Day = DayOfWeek.Monday,
             [Parameter] Type? Kind = null,
             [Parameter] int[]? Levels = null);
-        public sealed class TracePartie : IPartie<Unit, TraceContext>
+        public sealed class TracePartie : IQueryPartie<Unit, TraceContext, Unit, string>
         {
             public static List<string> Calls = new();
-            public static ValueTask<Result<TResult>> OnQueryAsync<TQuery, TResult>(
-                TraceContext ctx, TQuery query, Next<Unit, TResult> next, CancellationToken ct)
+            public static ValueTask<Result<string>> OnQueryAsync(
+                TraceContext ctx, Unit query, Next<Unit, string> next, CancellationToken ct)
             {
                 Calls.Add(ctx.Label + ":" + ctx.Day + ":" + ctx.Kind?.Name + ":" + string.Join(",", ctx.Levels ?? []));
                 return next(Unit.Default);
             }
-            public static ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(
-                TraceContext ctx, TCommand command, Next<Unit, TResult> next, CancellationToken ct)
-                => OnQueryAsync(ctx, command, next, ct);
         }
         public sealed record SupplyContext([Parameter] string Value);
-        public sealed class Supply : IProvider<string, SupplyContext>
+        public sealed class Supply : IQueryProvider<string, SupplyContext, Unit, string>
         {
-            public static ValueTask<Result<TResult>> OnQueryAsync<TQuery, TResult>(
-                SupplyContext ctx, TQuery query, Next<string, TResult> next, CancellationToken ct)
-                => next(ctx.Value);
-            public static ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(
-                SupplyContext ctx, TCommand command, Next<string, TResult> next, CancellationToken ct)
+            public static ValueTask<Result<string>> OnQueryAsync(
+                SupplyContext ctx, Unit query, Next<string, string> next, CancellationToken ct)
                 => next(ctx.Value);
         }
         public sealed record ReadContext([Provide] string Value, [Parameter] string Suffix = "!");
@@ -175,12 +169,10 @@ public sealed class ParameterRegistrationTests
     public void OpenProviderContextDoesNotCrashDeclarationDiscovery()
     {
         EngineCompilation.Valid("""
-            public sealed class Supply<TContext> : IProvider<int, TContext> where TContext : class
+            public sealed class Supply<TContext> : IQueryProvider<int, TContext, Unit, string> where TContext : class
             {
-                public static ValueTask<Result<TResult>> OnQueryAsync<TQuery, TResult>(
-                    TContext ctx, TQuery query, Next<int, TResult> next, CancellationToken ct) => next(1);
-                public static ValueTask<Result<TResult>> OnCommandAsync<TCommand, TResult>(
-                    TContext ctx, TCommand cmd, Next<int, TResult> next, CancellationToken ct) => next(1);
+                public static ValueTask<Result<string>> OnQueryAsync(
+                    TContext ctx, Unit query, Next<int, string> next, CancellationToken ct) => next(1);
             }
             """);
     }

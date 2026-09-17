@@ -206,7 +206,7 @@ public sealed class RequestMetadataTests
         [BrigadeGroup("")]
         public static partial class Routes
         {
-            [Route<Handler>("", "{{(command ? "POST" : "GET")}}"){{(command ? ", global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie))" : "")}}]
+            [Route<Handler>("", "{{(command ? "POST" : "GET")}}"){{(command ? ", global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie<,>))" : "")}}]
             static partial void Go();
         }
         """;

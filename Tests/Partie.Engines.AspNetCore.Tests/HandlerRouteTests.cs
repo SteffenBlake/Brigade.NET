@@ -54,7 +54,7 @@ public sealed class HandlerRouteTests
             [BrigadeGroup("/commands")]
             public static partial class Routes
             {
-                [SaveHandlerRoute.{{verb}}, global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie))]
+                [SaveHandlerRoute.{{verb}}, global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie<,>))]
                 static partial void Write();
             }
             """);

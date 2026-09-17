@@ -65,11 +65,11 @@ public sealed class ContractValidationTests
     }
 
     [Fact]
-    public void RejectsOpenFixedPartie()
+    public void RejectsFixedPartieWithUnboundOutputParameter()
     {
         Invalid(
             Source("[Partie(typeof(Step<>))]") + Step("class Step<T>", "T", "Unit"),
-            "Fixed Partie must be closed"
+            "Every open step parameter"
         );
     }
 
@@ -178,10 +178,9 @@ public sealed class ContractValidationTests
         string output,
         string context
     ) => $$"""
-        public {{declaration}} : IProvider<{{output}}, {{context}}>
+        public {{declaration}} : IQueryProvider<{{output}}, {{context}}, Request, int>
         {
-            public static ValueTask<Result<TOut>> OnCommandAsync<TCommand, TOut>({{context}} ctx, TCommand command, Next<{{output}}, TOut> next, CancellationToken ct) => OnQueryAsync<TCommand, TOut>(ctx, command, next, ct);
-                public static ValueTask<Result<TOut>> OnQueryAsync<TQuery, TOut>({{context}} ctx, TQuery query, Next<{{output}}, TOut> next, CancellationToken ct) => next(default!);
+                public static ValueTask<Result<int>> OnQueryAsync({{context}} ctx, Request query, Next<{{output}}, int> next, CancellationToken ct) => next(default!);
         }
         """;
     private static string Source(string registrations = "") => $$"""
