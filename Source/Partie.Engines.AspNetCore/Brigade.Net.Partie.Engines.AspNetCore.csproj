@@ -7,8 +7,7 @@
     <IncludeBuildOutput>false</IncludeBuildOutput>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Generator\Brigade.Net.Partie.Generator.csproj" />
-    <Compile Remove="Tests/**" />
+    <ProjectReference Include="..\Partie.Generator\Brigade.Net.Partie.Generator.csproj" />
   </ItemGroup>
   <Target Name="IncludeGeneratorCore" AfterTargets="GetTargetPathWithTargetPlatformMoniker">
     <ItemGroup>

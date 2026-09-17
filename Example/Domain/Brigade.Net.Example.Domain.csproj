@@ -7,6 +7,6 @@
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Partie\Brigade.Net.Partie.csproj" />
+    <ProjectReference Include="..\..\Source\Partie\Brigade.Net.Partie.csproj" />
   </ItemGroup>
 </Project>

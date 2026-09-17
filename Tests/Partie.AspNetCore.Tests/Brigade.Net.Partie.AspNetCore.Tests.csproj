@@ -19,8 +19,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Brigade.Net.Partie.AspNetCore.csproj" />
-    <ProjectReference Include="..\..\..\Core\Brigade.Net.Core.csproj" />
+    <ProjectReference Include="../../Source/Partie.AspNetCore/Brigade.Net.Partie.AspNetCore.csproj" />
+    <ProjectReference Include="../../Source/Core/Brigade.Net.Core.csproj" />
   </ItemGroup>
 
 </Project>

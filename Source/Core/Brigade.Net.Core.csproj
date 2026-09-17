@@ -8,8 +8,4 @@
     <WarningsAsErrors>CS1591</WarningsAsErrors>
   </PropertyGroup>
 
-  <ItemGroup>
-    <Compile Remove="Tests/**" />
-  </ItemGroup>
-
 </Project>

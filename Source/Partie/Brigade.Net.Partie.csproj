@@ -11,10 +11,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Core\Brigade.Net.Core.csproj" />
-    <Compile Remove="Tests/**" />
-    <Compile Remove="AspNetCore/**" />
-    <Compile Remove="Generator/**" />
-    <Compile Remove="Engines/**" />
   </ItemGroup>
 
 </Project>

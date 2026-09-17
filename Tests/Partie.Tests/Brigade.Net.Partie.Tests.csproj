@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Brigade.Net.Partie.csproj" />
+    <ProjectReference Include="../../Source/Partie/Brigade.Net.Partie.csproj" />
   </ItemGroup>
 
 </Project>

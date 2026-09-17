@@ -13,12 +13,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="Tests/**" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Brigade.Net.Partie.csproj" />
-    <ProjectReference Include="..\..\Core\Brigade.Net.Core.csproj" />
+    <ProjectReference Include="..\Partie\Brigade.Net.Partie.csproj" />
+    <ProjectReference Include="..\Core\Brigade.Net.Core.csproj" />
   </ItemGroup>
 
 </Project>
