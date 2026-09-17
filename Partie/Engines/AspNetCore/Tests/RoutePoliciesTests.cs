@@ -11,14 +11,14 @@ public class RoutePoliciesTests
         [typeof(IPartieEngine).Assembly.Location, typeof(Result<>).Assembly.Location, typeof(RoutePolicyAttribute).Assembly.Location]
     ).Distinct().Select(path => MetadataReference.CreateFromFile(path)).ToArray();
     [Fact]
-    public void Generator_EmitsRoutePolicyAttributeOnClass()
+    public void Generator_EmitsGeneratedRoutePolicyAttributeOnClass()
     {
         var source = """
             using Brigade.Net.Partie;
             using Brigade.Net.Core.Results;
             using Brigade.Net.Partie.Engines.AspNetCore;
             
-            public static class RequireAuthRoutePolicy
+            public sealed class RequireAuthRoutePolicy : IRoutePolicy
             {
                 public static void Query<TParams>(global::Microsoft.AspNetCore.Builder.RouteHandlerBuilder route)
                 {
@@ -32,7 +32,7 @@ public class RoutePoliciesTests
             }
             
             [BrigadeGroup("")]
-            [RoutePolicy(typeof(RequireAuthRoutePolicy))]
+            [RequireAuthRoutePolicy]
             public static partial class Routes
             {
                 [Route<Handler>("", "GET")]
@@ -53,6 +53,10 @@ public class RoutePoliciesTests
             """;
         var (_, _, result) = Generate(source);
         Assert.Empty(result.Diagnostics);
+        var attribute = result.Results.Single().GeneratedSources.Single(generated =>
+            generated.HintName == "RequireAuthRoutePolicyAttribute.g.cs").SourceText.ToString();
+        Assert.Contains("class @RequireAuthRoutePolicyAttribute", attribute);
+        Assert.DoesNotContain("RequireAuthRoutePolicyAttribute(", attribute);
         var adapter = Adapter(result);
         Assert.Contains("RequireAuthRoutePolicy.Query", adapter);
         Assert.Contains("RequireAuthRoutePolicy.Command", adapter);

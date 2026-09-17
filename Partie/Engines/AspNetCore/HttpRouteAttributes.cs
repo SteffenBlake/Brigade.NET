@@ -38,23 +38,30 @@ internal static class HttpRouteAttributes
     {
         var policies = ImmutableArray.CreateBuilder<RoutePolicyEmission>();
         var attributes = RouteGroupHierarchy.GetAttributes(method);
-        foreach (var attribute in attributes.Where(attribute => attribute.AttributeClass?.ToDisplayString() == AttributeNamespace + ".RoutePolicyAttribute"))
+        foreach (var attribute in attributes.Where(attribute => IsPolicy(attribute)))
         {
-            if (attribute.ConstructorArguments.FirstOrDefault().Value is not INamedTypeSymbol policyType)
+            var generated = GeneratedPolicyType(attribute);
+            var policyType = generated
+                ?? attribute.ConstructorArguments.FirstOrDefault().Value as INamedTypeSymbol;
+            if (policyType is null)
             {
                 report(method, "RoutePolicy must name a static, closed policy type");
                 continue;
             }
 
-            var methodNames = GetPolicyMethodNames(policyType, operation, compilation);
+            var methodNames = GetPolicyMethodNames(policyType, operation, compilation, generated is not null);
             if (methodNames.Length != 1)
             {
-                var signature = operation.Equals("GET", StringComparison.OrdinalIgnoreCase) ? "Query<TParams>" : "Command<TParams, TBody>";
-                report(method, $"RoutePolicy '{policyType.ToDisplayString()}' must be static and closed and declare exactly one accessible, non-async static void {signature}(RouteHandlerBuilder route) method");
+                var signature = operation.Equals("GET", StringComparison.OrdinalIgnoreCase)
+                    ? "Query<TParams>"
+                    : "Command<TParams, TBody>";
+                report(method, $"RoutePolicy '{policyType.ToDisplayString()}' must declare exactly one accessible, non-async static void {signature}(RouteHandlerBuilder route) method");
                 continue;
             }
-
-            policies.Add(new RoutePolicyEmission(policyType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat), methodNames[0]));
+            policies.Add(new RoutePolicyEmission(
+                policyType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                methodNames[0]
+            ));
         }
 
         return policies.ToImmutable();
@@ -64,9 +71,25 @@ internal static class HttpRouteAttributes
         && method.Parameters[0].RefKind == RefKind.None
         && method.Parameters[0].Type.ToDisplayString() == "Microsoft.AspNetCore.Builder.RouteHandlerBuilder";
 
-    private static string[] GetPolicyMethodNames(INamedTypeSymbol policyType, string operation, Compilation compilation)
+    private static bool IsPolicy(AttributeData attribute) =>
+        attribute.AttributeClass?.ToDisplayString() == AttributeNamespace + ".RoutePolicyAttribute"
+        || GeneratedPolicyType(attribute) is not null;
+
+    private static INamedTypeSymbol? GeneratedPolicyType(AttributeData attribute)
     {
-        if (!policyType.IsStatic || policyType.IsUnboundGenericType)
+        var marker = attribute.AttributeClass?.GetAttributes().FirstOrDefault(candidate =>
+            candidate.AttributeClass?.ToDisplayString() == AttributeNamespace + ".RoutePolicyAttribute");
+        return marker?.ConstructorArguments.FirstOrDefault().Value as INamedTypeSymbol;
+    }
+
+    private static string[] GetPolicyMethodNames(
+        INamedTypeSymbol policyType,
+        string operation,
+        Compilation compilation,
+        bool implementsContract
+    )
+    {
+        if ((!implementsContract && !policyType.IsStatic) || policyType.IsUnboundGenericType)
         {
             return Array.Empty<string>();
         }

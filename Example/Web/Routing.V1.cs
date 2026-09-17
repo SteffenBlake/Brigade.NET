@@ -41,12 +41,12 @@ public static partial class Routing
         {
             /// <summary>Endpoint A: requires X-Fake header via attribute.</summary>
             [TestPolicyHandlerRoute.Get("a")]
-            [RoutePolicy(typeof(FakeHeaderCheckRoutePolicy))]
+            [FakeHeaderCheckRoutePolicy]
             static partial void A();
 
             /// <summary>Endpoint B: requires Authorization via attribute.</summary>
             [TestPolicyHandlerRoute.Get("b")]
-            [RoutePolicy(typeof(FakeAuthorizationRoutePolicy))]
+            [FakeAuthorizationRoutePolicy]
             static partial void B();
 
             /// <summary>Endpoint C: requires X-Fake header via inline function.</summary>
