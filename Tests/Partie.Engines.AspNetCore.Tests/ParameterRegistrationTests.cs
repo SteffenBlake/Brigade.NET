@@ -118,22 +118,17 @@ public sealed class ParameterRegistrationTests
     }
 
     [Theory]
-    [InlineData("same", true)]
-    [InlineData("different", false)]
-    public void DuplicateProvidersMustAgreeOnParameters(string second, bool valid)
+    [InlineData("same")]
+    [InlineData("different")]
+    public void RepeatedProviderRegistrationsUseTheirOwnParameters(string second)
     {
         var source = Contracts + $$"""
             [BrigadeGroup, Supply("same"), Supply("{{second}}")]
             public static partial class Routes { [ReadRoute.Get] static partial void Run(); }
             """;
-        if (valid)
-        {
-            EngineCompilation.Valid(source);
-        }
-        else
-        {
-            EngineCompilation.Invalid(source, "BRG003");
-        }
+        var generated = EngineCompilation.Valid(source);
+        Assert.Contains("new global::SupplyContext(\"" + second + "\")", generated);
+        Assert.Equal(1, generated.Split("RouteDispatch.QueryProvider<").Length - 1);
     }
 
     [Fact]

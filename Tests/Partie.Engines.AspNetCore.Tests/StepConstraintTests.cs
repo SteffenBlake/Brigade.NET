@@ -80,14 +80,16 @@ public sealed class StepConstraintTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void OverlappingEligibleProvidersRemainAmbiguous(bool command)
+    public void LatestEligibleProviderWins(bool command)
     {
         var steps = Step(command, true)
             + Step(command, true, "where TRequest : BaseRequest").Replace("class Step<", "class Other<");
         var source = Source(command, true, steps)
             .Replace("IEnumerable<string> Values", "string Value")
             .Replace("[Step]", "[Step, Other]");
-        EngineCompilation.Invalid(source, "BRG003");
+        var generated = EngineCompilation.Valid(source);
+        Assert.Contains("Provider<global::Other<", generated);
+        Assert.DoesNotContain("Provider<global::Step<", generated);
     }
 
     [Theory]

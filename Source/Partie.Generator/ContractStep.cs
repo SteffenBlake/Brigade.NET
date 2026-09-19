@@ -6,5 +6,6 @@ internal sealed record ContractStep(
     string ContextType,
     string Context,
     string ValueName,
-    bool Provider
+    bool Provider,
+    int Position
 );

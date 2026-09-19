@@ -75,7 +75,7 @@ public class BrigadeRoutingGeneratorTests
         AssertNoErrors(output);
         Assert.DoesNotContain("Microsoft.AspNetCore", AllSource(result));
         Assert.DoesNotContain("GetService", AllSource(result));
-        Assert.Equal("fixed,one,two:True|fixed;first;second;handler;after;", await Run(output));
+        Assert.Equal("one,two,fixed:True|first;second;fixed;handler;after;", await Run(output));
     }
 
     [Theory]

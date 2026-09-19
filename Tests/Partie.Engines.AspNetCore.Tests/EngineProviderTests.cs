@@ -88,34 +88,62 @@ public class EngineProviderTests
     [Theory]
     [InlineData("Foo<int>")]
     [InlineData("Foo<string>")]
-    public void Engine_RejectsProviderCycles(string dependency) => EngineCompilation.Invalid(
+    public void Engine_RejectsProviderDependenciesWithoutAnEarlierSource(string dependency) => EngineCompilation.Invalid(
         Source(
             "Foo<int>",
             $"public sealed record ProviderContext<T>([Provide] {dependency} Input); public sealed class Provider<T> : IQueryProvider<Foo<T>, ProviderContext<T>, Unit, int> {{ public static ValueTask<Result<int>> OnQueryAsync(ProviderContext<T> ctx, Unit query, Next<Foo<T>, int> next, CancellationToken ct) => default; }}"
         ),
-        "BRG002"
+        "BRG001"
     );
     [Fact]
-    public void Engine_RejectsAmbiguousProviders() => EngineCompilation.Invalid(
-        Source(
-            "Foo<int>",
+    public void Engine_SelectsLatestMatchingProvider()
+    {
+        var generated = EngineCompilation.Valid(
+            Source(
+                "Foo<int>",
+                """
+                public sealed class Provider<T> : IQueryProvider<Foo<T>, Unit, Unit, int>
+                {
+                    public static ValueTask<Result<int>> OnQueryAsync(Unit ctx, Unit query, Next<Foo<T>, int> next, CancellationToken ct) => default;
+                }
+                public sealed class Closed : IQueryProvider<Foo<int>, Unit, Unit, int>
+                {
+                    public static ValueTask<Result<int>> OnQueryAsync(Unit ctx, Unit query, Next<Foo<int>, int> next, CancellationToken ct) => default;
+                }
+                """,
+                "Provider<>",
+                "[global::Brigade.Net.Partie.Provider(typeof(Closed))]"
+            )
+        );
+        Assert.Contains("QueryProvider<global::Closed,", generated);
+        Assert.DoesNotContain("QueryProvider<global::Provider<int>,", generated);
+    }
+
+    [Fact]
+    public void Engine_CachesEachConstructedProviderTypeSeparately()
+    {
+        var generated = EngineCompilation.Valid(Source(
+            "Foo<int> First, [Provide] Foo<string> Second, [Provide] Foo<int>",
             """
-        public sealed class Provider<T> : IQueryProvider<Foo<T>, Unit, Unit, int>
-        {
-            public static ValueTask<Result<int>> OnQueryAsync(Unit ctx, Unit query, Next<Foo<T>, int> next, CancellationToken ct) => default;
-        }
-        public sealed class Closed : IQueryProvider<Foo<int>, Unit, Unit, int>
-        {
-            public static ValueTask<Result<int>> OnQueryAsync(Unit ctx, Unit query, Next<Foo<int>, int> next, CancellationToken ct) => default;
-        }
-        """,
-            "Provider<>",
-            "[global::Brigade.Net.Partie.Provider(typeof(Closed))]"
-        ),
-        "BRG003"
-    );
+            public sealed class Provider<T> : IQueryProvider<Foo<T>, Unit, Unit, int>
+            {
+                public static ValueTask<Result<int>> OnQueryAsync(
+                    Unit ctx,
+                    Unit query,
+                    Next<Foo<T>, int> next,
+                    CancellationToken ct
+                ) => next(new Foo<T>());
+            }
+            """
+        ));
+
+        Assert.Contains("QueryProvider<global::Provider<int>,", generated);
+        Assert.Contains("QueryProvider<global::Provider<string>,", generated);
+        Assert.Equal(2, generated.Split("RouteDispatch.QueryProvider<").Length - 1);
+    }
+
     [Fact]
-    public void Engine_RejectsUnboundedProviderExpansion() => EngineCompilation.Invalid(
+    public void Engine_RejectsSelfExpansionWithoutAnEarlierProvider() => EngineCompilation.Invalid(
         Source(
             "Foo<int>",
             """
@@ -126,7 +154,7 @@ public class EngineProviderTests
         }
         """
         ),
-        "BRG004"
+        "BRG001"
     );
     [Theory]
     [InlineData("Provider")]

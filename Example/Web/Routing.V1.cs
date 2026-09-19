@@ -14,7 +14,6 @@ namespace Brigade.Net.Example.Web;
 [BrigadeGroup("/api/v1")]
 public static partial class Routing
 {
-    [OrderProvider]
     [BrigadeGroup("/orders")]
     private static partial class Orders
     {
@@ -26,6 +25,7 @@ public static partial class Routing
 
         [TraceOrderRequestPartie]
         [ValidationPartie]
+        [OrderProvider]
         [OrderInspectionPartie]
         [OrderSearchV1HandlerRoute.Get]
         static void Search(RouteHandlerBuilder route) => route.AllowAnonymous();

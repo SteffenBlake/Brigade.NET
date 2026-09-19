@@ -246,9 +246,9 @@ public static class BrigadeGeneratorCore
             }
 
             var handler = routes[0]!.Handler;
-            var parties = attributes.Where(attribute => IsRegistration(attribute, false)).Select(Registration).ToArray();
-            var providers = providerAttributes.Concat(attributes.Where(attribute => IsRegistration(attribute, true))).Select(Registration).ToArray();
-            if (handler is null || parties.Any(method => method is null) || providers.Any(type => type is null))
+            var orderedRegistrations = providerAttributes.Concat(attributes.Where(attribute =>
+                IsRegistration(attribute, false) || IsRegistration(attribute, true))).Select(Registration).ToArray();
+            if (handler is null || orderedRegistrations.Any(registration => registration is null))
             {
                 Report(route, "Route types must resolve to named Handler, Partie and Provider types");
                 continue;
@@ -290,7 +290,7 @@ public static class BrigadeGeneratorCore
                     )
                 ),
                 cancellationToken
-            ).Plan(handler, parties.Select(type => type!), providers.Select(type => type!), operation, routes[0]!.Parameters);
+            ).Plan(handler, orderedRegistrations.Select(registration => registration!), operation, routes[0]!.Parameters);
             if (graph is null)
             {
                 continue;
@@ -411,7 +411,7 @@ public static class BrigadeGeneratorCore
     private static RegistrationModel? Registration(AttributeData attribute)
     {
         var type = (RegistrationMetadata(attribute) ?? attribute).ConstructorArguments.FirstOrDefault().Value as INamedTypeSymbol;
-        return type is null ? null : new RegistrationModel(type, attribute);
+        return type is null ? null : new RegistrationModel(type, attribute, IsRegistration(attribute, true));
     }
     private static string TypeName(ITypeSymbol type) => type.ToDisplayString(
         SymbolDisplayFormat.FullyQualifiedFormat.AddMiscellaneousOptions(SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier)

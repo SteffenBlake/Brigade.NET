@@ -76,24 +76,32 @@ public sealed class ContractValidationTests
     [Theory]
     [InlineData("[Provider(typeof(First)), Provider(typeof(Second))]")]
     [InlineData("[Partie(typeof(First)), Provider(typeof(Second))]")]
+    [InlineData("[Provider(typeof(First)), Partie(typeof(Second))]")]
     [InlineData("[Partie(typeof(First)), Partie(typeof(Second))]")]
-    public void RejectsAmbiguousSingleValue(string registrations)
+    public void SelectsLatestSingleValue(string registrations)
+    {
+        var generated = Valid(
+            Source(registrations).Replace("public class Context { }", "public record Context([Provide] string Value);") + Step("class First", "string", "Unit") + Step("class Second", "string", "Unit")
+        );
+        Assert.Contains("QueryProvider<global::Second,", generated);
+    }
+
+    [Fact]
+    public void RejectsSelfDependencyWithoutAnEarlierSource()
     {
         Invalid(
-            Source(registrations).Replace("public class Context { }", "public record Context([Provide] string Value);") + Step("class First", "string", "Unit") + Step("class Second", "string", "Unit"),
-            "Multiple providers"
+            Source("[Provider(typeof(Step))]").Replace("public class Context { }", "public record Context([Provide] string Value);") + "public record StepContext([Provide] string Value);" + Step("class Step", "string", "StepContext"),
+            "No earlier Provider or Partie"
         );
     }
 
-    [Theory]
-    [InlineData("string")]
-    [InlineData("IEnumerable<string>")]
-    public void RejectsCyclesIncludingCollections(string dependency)
+    [Fact]
+    public void CollectionDependencyDoesNotIncludeTheProviderItself()
     {
-        Invalid(
-            Source("[Provider(typeof(Step))]").Replace("public class Context { }", "public record Context([Provide] string Value);") + "public record StepContext([Provide] " + dependency + " Value);" + Step("class Step", "string", "StepContext"),
-            "cycle"
+        var generated = Valid(
+            Source("[Provider(typeof(Step))]").Replace("public class Context { }", "public record Context([Provide] string Value);") + "public record StepContext([Provide] IEnumerable<string> Values);" + Step("class Step", "string", "StepContext")
         );
+        Assert.Contains("new global::StepContext(new string[] { })", generated);
     }
 
     [Fact]
@@ -129,7 +137,7 @@ public sealed class ContractValidationTests
     }
 
     [Fact]
-    public void ReusesInjectedServiceAndProvidedValueAcrossSteps()
+    public void ReusesInjectedServiceAcrossDistinctProviderRegistrations()
     {
         var source = Source("[Provider(typeof(Step)), Provider(typeof(Step))]").Replace(
             "public class Context { }",
@@ -137,7 +145,7 @@ public sealed class ContractValidationTests
         ) + "public record StepContext([Inject] Uri Service);" + Step("class Step", "string", "StepContext");
         var text = Valid(source);
         Assert.Equal(1, text.Split("PartieInputSource.Service").Length - 1);
-        Assert.Equal(1, text.Split("RouteDispatch.QueryProvider<").Length - 1);
+        Assert.Equal(2, text.Split("RouteDispatch.QueryProvider<").Length - 1);
     }
 
     [Theory]
@@ -161,7 +169,7 @@ public sealed class ContractValidationTests
         }
         else
         {
-            Invalid(source, "No Provider");
+            Invalid(source, "No earlier Provider or Partie");
         }
     }
 

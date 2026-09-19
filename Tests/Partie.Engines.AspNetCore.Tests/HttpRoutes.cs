@@ -17,18 +17,18 @@ using Microsoft.AspNetCore.Http;
 
 namespace Brigade.Net.Partie.Engines.AspNetCore.Tests;
 
-[BrigadeGroup("/items"), ContextProvider]
+[BrigadeGroup("/items")]
 public static partial class HttpRoutes
 {
-    [ItemCreateV1HandlerRoute.Post("{itemId}"), ValidationPartie, UnitOfWorkPartie]
+    [ItemCreateV1HandlerRoute.Post("{itemId}"), ValidationPartie, UnitOfWorkPartie, ContextProvider]
     static partial void Post();
-    [ItemUpdateV1HandlerRoute.Put("{itemId}"), ValidationPartie, UnitOfWorkPartie]
+    [ItemUpdateV1HandlerRoute.Put("{itemId}"), ValidationPartie, UnitOfWorkPartie, ContextProvider]
     static partial void Put();
-    [ItemUpdateV1HandlerRoute.Patch("{itemId}"), ValidationPartie, UnitOfWorkPartie]
+    [ItemUpdateV1HandlerRoute.Patch("{itemId}"), ValidationPartie, UnitOfWorkPartie, ContextProvider]
     static partial void Patch();
-    [ItemDeleteV1HandlerRoute.Delete("{itemId}"), ValidationPartie, UnitOfWorkPartie]
+    [ItemDeleteV1HandlerRoute.Delete("{itemId}"), ValidationPartie, UnitOfWorkPartie, ContextProvider]
     static partial void Delete();
-    [ItemSearchV1HandlerRoute.Get("search/{category}"), ValidationPartie]
+    [ItemSearchV1HandlerRoute.Get("search/{category}"), ValidationPartie, ContextProvider]
     static partial void Read();
     [FailureSearchV1HandlerRoute.Get("failure")]
     static partial void Failure();

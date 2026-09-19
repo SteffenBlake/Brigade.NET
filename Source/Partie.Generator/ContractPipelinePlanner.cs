@@ -18,12 +18,12 @@ internal sealed class ContractPipelinePlanner(
     private int nextId = 2;
     private readonly List<ContractStep> steps = new();
     private readonly List<RouteInputEmission> inputs = new();
-    private readonly Dictionary<ITypeSymbol, List<string>> values = new(SymbolEqualityComparer.Default);
+    private readonly Dictionary<ITypeSymbol, List<OrderedValue>> values = new(SymbolEqualityComparer.Default);
     private readonly Dictionary<ITypeSymbol, string> services = new(SymbolEqualityComparer.Default);
-    private readonly Dictionary<INamedTypeSymbol, string> providerValues = new(SymbolEqualityComparer.Default);
-    private readonly List<ITypeSymbol> resolving = new();
-    private INamedTypeSymbol[] providers = Array.Empty<INamedTypeSymbol>();
-    private RegistrationModel[] providerRegistrations = Array.Empty<RegistrationModel>();
+    private readonly Dictionary<int, HashSet<INamedTypeSymbol>> resolvedProviders = new();
+    private int resolutionDepth;
+    private RegistrationModel[] registrations = Array.Empty<RegistrationModel>();
+    private int currentPosition;
     private INamedTypeSymbol requestType = null!;
     private ITypeSymbol resultType = null!;
     private bool isCommand;
@@ -31,8 +31,7 @@ internal sealed class ContractPipelinePlanner(
 
     public ContractPipeline? Plan(
         INamedTypeSymbol handler,
-        IEnumerable<RegistrationModel> parties,
-        IEnumerable<RegistrationModel> registrations,
+        IEnumerable<RegistrationModel> orderedRegistrations,
         string operation,
         ImmutableDictionary<string, string> parameters
     )
@@ -83,21 +82,12 @@ internal sealed class ContractPipelinePlanner(
                 "Cancellation"
             )
         );
-        AddValue(request, "value0");
-        providerRegistrations = registrations.ToArray();
-        foreach (var duplicates in providerRegistrations.GroupBy(registration => registration.Type, SymbolEqualityComparer.Default))
+        AddValue(request, "value0", -1);
+        registrations = orderedRegistrations.ToArray();
+        currentPosition = registrations.Length;
+        foreach (var registration in registrations.Where(registration => registration.IsProvider))
         {
-            var first = duplicates.First().Parameters;
-            if (duplicates.Skip(1).Any(registration => !registration.Parameters.OrderBy(pair => pair.Key)
-                .SequenceEqual(first.OrderBy(pair => pair.Key))))
-            {
-                Error(duplicates.Key!, "The same Provider cannot be registered with conflicting Parameter values.", "BRG003");
-            }
-        }
-        providers = providerRegistrations.Select(registration => registration.Type)
-            .Distinct<INamedTypeSymbol>(SymbolEqualityComparer.Default).ToArray();
-        foreach (var provider in providers)
-        {
+            var provider = registration.Type;
             var definition = provider.IsUnboundGenericType ? provider.OriginalDefinition : provider;
             var stepContract = StepContract(definition, true);
             if (stepContract is null)
@@ -117,15 +107,21 @@ internal sealed class ContractPipelinePlanner(
             return null;
         }
 
-        foreach (var registration in parties)
+        for (var position = 0; position < registrations.Length; position++)
         {
+            var registration = registrations[position];
+            if (registration.IsProvider)
+            {
+                continue;
+            }
+
             var definition = registration.Type.IsUnboundGenericType
                 ? registration.Type.OriginalDefinition : registration.Type;
             var stepContract = StepContract(definition);
             var partie = stepContract is null ? null : Match(definition, stepContract);
             if (partie is not null)
             {
-                AddStep(partie, StepContract(partie)!, registration.Parameters);
+                AddStep(partie, StepContract(partie)!, position);
             }
         }
 
@@ -137,9 +133,12 @@ internal sealed class ContractPipelinePlanner(
             new[] { TypeName(handler), TypeName(request), TypeName(resultType), TypeName(contract.TypeArguments[2]) }
         ) + ">(" + (isCommand ? uow + ", " : "") + context + ", value0, value1)";
         var body = "return new " + returnType + "(" + invoke + ");";
-        for (var index = steps.Count - 1; index >= 0; index--)
+        // A provider can be demanded after a later Partie was planned. Emit both roles
+        // in registration order so every selected value is in scope for its consumer.
+        var orderedSteps = steps.OrderBy(step => step.Position).ToArray();
+        for (var index = orderedSteps.Length - 1; index >= 0; index--)
         {
-            var step = steps[index];
+            var step = orderedSteps[index];
             var next = "Next_" + step.ValueName;
             var dispatch = (isCommand ? "Command" : "Query") + (step.Provider ? "Provider" : "Partie");
             body = "return global::Brigade.Net.Partie.RouteDispatch." + dispatch + "<" + step.TypeName + ", " + step.ProvidedType + ", " + step.ContextType + ", " + TypeName(requestType) + ", " + TypeName(resultType) + ">(" + step.Context + ", value0, " + next + ", value1);\n" + returnType + " " + next + "(" + step.ProvidedType + " " + step.ValueName + ") {\n" + body + "\n}";
@@ -349,23 +348,13 @@ internal sealed class ContractPipelinePlanner(
     private string Resolve(ITypeSymbol requested, ISymbol owner)
     {
         ct.ThrowIfCancellationRequested();
-        if (resolving.Any(type => SymbolEqualityComparer.Default.Equals(type, requested)))
-        {
-            Error(
-                owner,
-                "Provider dependency cycle: " + string.Join(" -> ", resolving.Concat(new[] { requested }).Select(TypeName)),
-                "BRG002"
-            );
-            return "default!";
-        }
-
-        if (resolving.Count >= 256)
+        if (resolutionDepth >= 256)
         {
             Error(owner, "Provider graph exceeded depth 256.", "BRG004");
             return "default!";
         }
 
-        resolving.Add(requested);
+        resolutionDepth++;
         try
         {
             var isList = requested is INamedTypeSymbol list && SymbolEqualityComparer.Default.Equals(
@@ -374,51 +363,40 @@ internal sealed class ContractPipelinePlanner(
             );
             var element = isList ? ((INamedTypeSymbol)requested).TypeArguments[0] : requested;
             var matches = Matches(element).ToArray();
-            values.TryGetValue(element, out var existing);
-            if (!isList && (existing?.Count ?? 0) + matches.Count(provider => !providerValues.ContainsKey(provider)) > 1)
+            var existing = EarlierValues(element);
+            if (!isList)
             {
-                Error(
-                    owner,
-                    "Multiple providers make '" + TypeName(element) + "'. Request IEnumerable<T> instead.",
-                    "BRG003"
-                );
-                return "default!";
-            }
+                var latestValue = existing.LastOrDefault();
+                var latestProvider = matches.LastOrDefault();
+                if (latestValue is not null && (latestProvider.Type is null || latestValue.Position >= latestProvider.Position))
+                {
+                    return latestValue.Name;
+                }
 
-            if (!isList && existing is { Count: > 0 })
-            {
-                return existing[existing.Count - 1];
+                // Only the latest source is demanded for a single value. Its context
+                // resolves at its own position, so same-type replacement chains work.
+                matches = latestProvider.Type is null
+                    ? Array.Empty<(INamedTypeSymbol Type, int Position)>()
+                    : new[] { latestProvider };
             }
 
             foreach (var provider in matches)
             {
-                if (!providerValues.ContainsKey(provider))
+                if (!AddProvider(provider.Type, provider.Position))
                 {
-                    var contract = StepContract(provider);
-                    if (contract is not null)
-                    {
-                        var registration = providerRegistrations.First(candidate =>
-                            SymbolEqualityComparer.Default.Equals(candidate.Type.OriginalDefinition, provider.OriginalDefinition));
-                        var value = AddStep(provider, contract, registration.Parameters);
-                        if (failed)
-                        {
-                            return "default!";
-                        }
-
-                        providerValues.Add(provider, value);
-                    }
+                    return "default!";
                 }
             }
 
-            values.TryGetValue(element, out existing);
+            existing = EarlierValues(element);
             if (isList)
             {
-                return "new " + TypeName(element) + "[] { " + string.Join(", ", existing ?? new List<string>()) + " }";
+                return "new " + TypeName(element) + "[] { " + string.Join(", ", existing.Select(value => value.Name)) + " }";
             }
 
-            if (existing is { Count: > 0 })
+            if (existing.Length > 0)
             {
-                return existing[existing.Count - 1];
+                return existing[existing.Length - 1].Name;
             }
 
             // Bound request values remain available to steps, as in the original pipeline.
@@ -430,14 +408,21 @@ internal sealed class ContractPipelinePlanner(
 
             Error(
                 owner,
-                properties.Length > 1 ? "Several request properties have this type; provide the whole query/command instead." : "No Provider or earlier Partie provides '" + TypeName(requested) + "'."
+                properties.Length > 1 ? "Several request properties have this type; provide the whole query/command instead." : "No earlier Provider or Partie provides '" + TypeName(requested) + "'. Register sources before their consumers."
             );
             return "default!";
         }
         finally
         {
-            resolving.RemoveAt(resolving.Count - 1);
+            resolutionDepth--;
         }
+    }
+
+    private OrderedValue[] EarlierValues(ITypeSymbol type)
+    {
+        return values.TryGetValue(type, out var existing)
+            ? existing.Where(value => value.Position < currentPosition).OrderBy(value => value.Position).ToArray()
+            : Array.Empty<OrderedValue>();
     }
 
     private IEnumerable<IPropertySymbol> RequestProperties()
@@ -455,13 +440,47 @@ internal sealed class ContractPipelinePlanner(
         }
     }
 
-    private string AddStep(
+    private bool AddProvider(INamedTypeSymbol type, int position)
+    {
+        if (!resolvedProviders.TryGetValue(position, out var resolved))
+        {
+            resolved = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+            resolvedProviders.Add(position, resolved);
+        }
+
+        if (resolved.Contains(type))
+        {
+            return true;
+        }
+
+        AddStep(type, StepContract(type)!, position);
+        if (failed)
+        {
+            return false;
+        }
+
+        resolved.Add(type);
+        return true;
+    }
+
+    private void AddStep(
         INamedTypeSymbol type,
         INamedTypeSymbol contract,
-        ImmutableDictionary<string, string> parameters
+        int position
     )
     {
-        var context = Context(contract.TypeArguments[1], type, parameters);
+        var consumerPosition = currentPosition;
+        currentPosition = position;
+        string context;
+        try
+        {
+            context = Context(contract.TypeArguments[1], type, registrations[position].Parameters);
+        }
+        finally
+        {
+            currentPosition = consumerPosition;
+        }
+
         var name = "value" + nextId++;
         var output = contract.TypeArguments[0];
         steps.Add(
@@ -471,25 +490,28 @@ internal sealed class ContractPipelinePlanner(
                 TypeName(contract.TypeArguments[1]),
                 context,
                 name,
-                StepContracts.IsProvider(contract, compilation)
+                StepContracts.IsProvider(contract, compilation),
+                position
             )
         );
         if (!IsUnit(output))
         {
-            AddValue(output, name);
+            AddValue(output, name, position);
         }
-
-        return name;
     }
 
-    private void AddValue(ITypeSymbol type, string value)
+    private void AddValue(
+        ITypeSymbol type,
+        string value,
+        int position
+    )
     {
         if (!values.TryGetValue(type, out var list))
         {
-            values.Add(type, list = new List<string>());
+            values.Add(type, list = new List<OrderedValue>());
         }
 
-        list.Add(value);
+        list.Add(new OrderedValue(value, position));
     }
 
     private INamedTypeSymbol? StepContract(INamedTypeSymbol type, bool demandDriven = false)
@@ -530,16 +552,22 @@ internal sealed class ContractPipelinePlanner(
         return selected;
     }
 
-    private IEnumerable<INamedTypeSymbol> Matches(ITypeSymbol requested)
+    private IEnumerable<(INamedTypeSymbol Type, int Position)> Matches(ITypeSymbol requested)
     {
-        foreach (var registration in providers)
+        for (var position = 0; position < currentPosition; position++)
         {
-            var type = registration.IsUnboundGenericType ? registration.OriginalDefinition : registration;
+            var registration = registrations[position];
+            if (!registration.IsProvider)
+            {
+                continue;
+            }
+
+            var type = registration.Type.IsUnboundGenericType ? registration.Type.OriginalDefinition : registration.Type;
             var contract = StepContract(type, true);
             var closed = contract is null ? null : Match(type, contract, requested);
             if (closed is not null)
             {
-                yield return closed;
+                yield return (closed, position);
             }
         }
     }
