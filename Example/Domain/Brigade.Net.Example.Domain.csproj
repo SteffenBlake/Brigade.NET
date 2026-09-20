@@ -8,5 +8,9 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Source\Partie\Brigade.Net.Partie.csproj" />
+    <ProjectReference Include="..\..\Source\Expo\Brigade.Net.Expo.csproj" />
+    <ProjectReference Include="..\..\Source\Expo.Engines.Domain\Brigade.Net.Expo.Engines.Domain.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
   </ItemGroup>
 </Project>

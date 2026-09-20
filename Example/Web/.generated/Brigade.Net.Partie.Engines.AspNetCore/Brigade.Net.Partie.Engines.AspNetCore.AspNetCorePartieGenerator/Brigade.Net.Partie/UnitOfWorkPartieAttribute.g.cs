@@ -2,7 +2,7 @@
 #nullable enable
 namespace Brigade.Net.Partie;
 [global::Brigade.Net.Partie.Registration(typeof(global::Brigade.Net.Partie.UnitOfWorkPartie<, >), false)]
-[global::System.AttributeUsage(global::System.AttributeTargets.Method, AllowMultiple = true, Inherited = false)]
+[global::System.AttributeUsage(global::System.AttributeTargets.Method | global::System.AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
 internal sealed class @UnitOfWorkPartieAttribute() : global::System.Attribute
 {
 }

@@ -18,14 +18,15 @@ public class RoutePoliciesTests
             using Brigade.Net.Core.Results;
             using Brigade.Net.Partie.Engines.AspNetCore;
             
-            public sealed class RequireAuthRoutePolicy : IRoutePolicy
+            public sealed class RequireAuthRoutePolicy<TRequest>
+                : IQueryRoutePolicy<TRequest>, ICommandRoutePolicy<TRequest>
             {
-                public static void Query<TParams>(global::Microsoft.AspNetCore.Builder.RouteHandlerBuilder route)
+                public static void Query(global::Microsoft.AspNetCore.Builder.RouteHandlerBuilder route)
                 {
                     route.RequireAuthorization();
                 }
-                
-                public static void Command<TParams, TBody>(global::Microsoft.AspNetCore.Builder.RouteHandlerBuilder route)
+
+                public static void Command(global::Microsoft.AspNetCore.Builder.RouteHandlerBuilder route)
                 {
                     route.RequireAuthorization();
                 }
@@ -58,8 +59,10 @@ public class RoutePoliciesTests
         Assert.Contains("class @RequireAuthRoutePolicyAttribute", attribute);
         Assert.DoesNotContain("RequireAuthRoutePolicyAttribute(", attribute);
         var adapter = Adapter(result);
-        Assert.Contains("RequireAuthRoutePolicy.Query", adapter);
-        Assert.Contains("RequireAuthRoutePolicy.Command", adapter);
+        Assert.Contains("RequireAuthRoutePolicy<", adapter);
+        Assert.Contains("RequireAuthRoutePolicy<global::Brigade.Net.Core.Results.Unit>", adapter);
+        Assert.Contains(".Query(__routeBuilder)", adapter);
+        Assert.Contains(".Command(__routeBuilder)", adapter);
     }
 
     [Fact]
@@ -269,6 +272,112 @@ public class RoutePoliciesTests
         var adapter = Adapter(result);
         Assert.Contains("AuthPolicyRoutePolicy.Command", adapter);
         Assert.Contains("OpenApiPolicyRoutePolicy.Command", adapter);
+    }
+
+    [Fact]
+    public void Generator_AppliesOnlyQueryRoutePoliciesWithMatchingConstraints()
+    {
+        var source = """
+            using Brigade.Net.Partie;
+            using Brigade.Net.Core.Results;
+            using Brigade.Net.Partie.Engines.AspNetCore;
+
+            public sealed class ClassQueryRoutePolicy<TQuery> : IQueryRoutePolicy<TQuery>
+                where TQuery : class
+            {
+                public static void Query(Microsoft.AspNetCore.Builder.RouteHandlerBuilder route) { }
+            }
+
+            public sealed class StructQueryRoutePolicy<TQuery> : IQueryRoutePolicy<TQuery>
+                where TQuery : struct
+            {
+                public static void Query(Microsoft.AspNetCore.Builder.RouteHandlerBuilder route) { }
+            }
+
+            [BrigadeGroup("")]
+            [ClassQueryRoutePolicy]
+            [StructQueryRoutePolicy]
+            public static partial class Routes
+            {
+                [HandlerRoute.Get]
+                static partial void Read();
+            }
+
+            public sealed class Query { }
+
+            public sealed class Handler : IQueryHandler<Query, int, Unit>
+            {
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Unit ctx, Query query, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
+            }
+            """;
+
+        var (_, _, result) = Generate(source);
+        var adapter = Adapter(result);
+
+        Assert.Contains("ClassQueryRoutePolicy<", adapter);
+        Assert.DoesNotContain("StructQueryRoutePolicy<", adapter);
+    }
+
+    [Fact]
+    public void Generator_AppliesOnlyCommandRoutePoliciesWithMatchingBodyConstraints()
+    {
+        var source = """
+            using Brigade.Net.Partie;
+            using Brigade.Net.Core.Results;
+            using Brigade.Net.Partie.Engines.AspNetCore;
+
+            public interface ITagged { }
+            public sealed class TaggedBody : ITagged { }
+            public sealed class PlainBody { }
+
+            public sealed class TaggedCommandRoutePolicy<TCommand> : ICommandRoutePolicy<TCommand>
+                where TCommand : ITagged
+            {
+                public static void Command(Microsoft.AspNetCore.Builder.RouteHandlerBuilder route) { }
+            }
+
+            public sealed class TaggedRequest : ITagged
+            {
+                [FromPayload]
+                public TaggedBody Body { get; set; } = new();
+            }
+
+            public sealed class PlainRequest
+            {
+                [FromPayload]
+                public PlainBody Body { get; set; } = new();
+            }
+
+            [BrigadeGroup("")]
+            [TaggedCommandRoutePolicy]
+            public static partial class Routes
+            {
+                [TaggedHandlerRoute.Post, global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie<,>))]
+                static partial void Tagged();
+
+                [PlainHandlerRoute.Post, global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie<,>))]
+                static partial void Plain();
+            }
+
+            public sealed class TaggedHandler : ICommandHandler<TaggedRequest, int, Unit>
+            {
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Brigade.Net.Core.Transactions.UnitOfWork uow, Unit ctx, TaggedRequest cmd, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
+            }
+
+            public sealed class PlainHandler : ICommandHandler<PlainRequest, int, Unit>
+            {
+                public static System.Threading.Tasks.Task<Result<int>> RunAsync(Brigade.Net.Core.Transactions.UnitOfWork uow, Unit ctx, PlainRequest cmd, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<Result<int>>(42);
+            }
+            """;
+
+        var (_, _, result) = Generate(source);
+        var adapter = Adapter(result);
+
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(
+            adapter,
+            "TaggedCommandRoutePolicy<"
+        ));
+        Assert.Contains("TaggedCommandRoutePolicy<global::TaggedRequest>", adapter);
     }
 
     [Theory]

@@ -18,6 +18,7 @@
     <ProjectReference Include="..\ServiceDefaults\Brigade.Net.Example.ServiceDefaults.csproj" />
 
     <ProjectReference Include="..\..\Source\Partie.AspNetCore\Brigade.Net.Partie.AspNetCore.csproj" />
+    <ProjectReference Include="..\..\Source\Partie.Extensions.Expo\Brigade.Net.Partie.Extensions.Expo.csproj" />
     <ProjectReference Include="..\..\Source\Partie.Engines.AspNetCore\Brigade.Net.Partie.Engines.AspNetCore.csproj"
       OutputItemType="Analyzer"
       ReferenceOutputAssembly="false"/>

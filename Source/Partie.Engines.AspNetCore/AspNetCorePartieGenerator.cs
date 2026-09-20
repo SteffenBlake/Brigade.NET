@@ -48,13 +48,22 @@ public sealed class AspNetCorePartieGenerator : IIncrementalGenerator
         var code = "{\nvar __routeBuilder = " + baseRoute + ";\n";
         foreach (var policy in route.Policies)
         {
-            var typeArguments = DtoType(route);
-            if (policy.MethodName == "Command")
+            var typeArguments = "";
+            if (policy.GenericMethod)
             {
-                typeArguments += ", " + (route.Request!.Properties.FirstOrDefault(property => property.Source is "Body" or "Form")?.TypeName ?? "global::Brigade.Net.Core.Results.Unit");
+                typeArguments = "<" + DtoType(route);
+                if (policy.MethodName == "Command")
+                {
+                    typeArguments += ", " + (route.Request!.Properties.FirstOrDefault(property =>
+                        property.Source is "Body" or "Form")?.TypeName
+                        ?? "global::Brigade.Net.Core.Results.Unit");
+                }
+
+                typeArguments += ">";
             }
 
-            code += policy.PolicyTypeName + "." + policy.MethodName + "<" + typeArguments + ">(__routeBuilder);\n";
+            code += policy.PolicyTypeName + "." + policy.MethodName + typeArguments
+                + "(__routeBuilder);\n";
         }
 
         foreach (var policyFunc in route.PolicyFunctions)

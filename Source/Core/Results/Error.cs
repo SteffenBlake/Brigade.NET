@@ -9,14 +9,29 @@ namespace Brigade.Net.Core.Results;
 /// <param name="Detail">A human-readable explanation specific to this occurrence of the problem.</param>
 /// <param name="Instance">A URI reference identifying the specific occurrence of the problem.</param>
 /// <param name="Extensions">Additional problem-specific data.</param>
+/// <param name="ErrorDetails">Specific problems and their JSON Pointer locations.</param>
 public sealed class Error(
     string? Type = null,
     string? Title = null,
     int? Status = null,
     string? Detail = null,
     string? Instance = null,
-    IDictionary<string, object?>? Extensions = null) : FailureBase
+    IDictionary<string, object?>? Extensions = null,
+    IEnumerable<ErrorDetail>? ErrorDetails = null
+) : FailureBase
 {
+    /// <summary>Creates an error containing one specific problem.</summary>
+    public Error(string detail, string pointer)
+        : this(ErrorDetails: [new ErrorDetail(detail, pointer)])
+    {
+    }
+
+    /// <summary>Creates an error containing the supplied specific problems.</summary>
+    public Error(IEnumerable<ErrorDetail> errorDetails)
+        : this(ErrorDetails: errorDetails)
+    {
+    }
+
     /// <summary>
     /// A URI reference identifying the problem type.
     /// </summary>
@@ -46,6 +61,11 @@ public sealed class Error(
     /// Additional problem-specific data.
     /// </summary>
     public IDictionary<string, object?>? Extensions { get; } = Extensions;
+
+    /// <summary>
+    /// Specific problems and the JSON Pointer location of each problem.
+    /// </summary>
+    public IReadOnlyList<ErrorDetail> ErrorDetails { get; } = ErrorDetails?.ToArray() ?? [];
 
     /// <inheritdoc />
     public override bool IsError(out Error error)

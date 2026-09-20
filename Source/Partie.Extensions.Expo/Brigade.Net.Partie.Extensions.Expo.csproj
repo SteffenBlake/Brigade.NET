@@ -1,14 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\Core\Brigade.Net.Core.csproj" />
-    <ProjectReference Include="..\Partie\Brigade.Net.Partie.csproj" />
+    <ProjectReference Include="..\Expo\Brigade.Net.Expo.csproj" />
+    <ProjectReference Include="..\Partie.AspNetCore\Brigade.Net.Partie.AspNetCore.csproj" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
   </ItemGroup>
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <WarningsAsErrors>CS1591</WarningsAsErrors>
   </PropertyGroup>
 
 </Project>

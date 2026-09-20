@@ -1,13 +1,16 @@
 using Brigade.Net.Core.Results;
+using Brigade.Net.Expo;
 using Brigade.Net.Partie;
 
-namespace Brigade.Net.Example.Domain;
+namespace Brigade.Net.Partie.Extensions.Expo;
 
-public sealed class ValidationPartie<TRequest, TResult> :
+/// <summary>Stops query and command pipelines when Expo validation fails.</summary>
+public sealed class ExpoValidationPartie<TRequest, TResult> :
     IQueryPartie<Unit, Unit, TRequest, TResult>,
     ICommandPartie<Unit, Unit, TRequest, TResult>
-    where TRequest : IValidatable
+    where TRequest : IExpoValidatable
 {
+    /// <inheritdoc />
     public static ValueTask<Result<TResult>> OnQueryAsync(
         Unit ctx,
         TRequest query,
@@ -18,6 +21,7 @@ public sealed class ValidationPartie<TRequest, TResult> :
         return ValidateAsync(query, next);
     }
 
+    /// <inheritdoc />
     public static ValueTask<Result<TResult>> OnCommandAsync(
         Unit ctx,
         TRequest command,
@@ -28,10 +32,16 @@ public sealed class ValidationPartie<TRequest, TResult> :
         return ValidateAsync(command, next);
     }
 
-    private static ValueTask<Result<TResult>> ValidateAsync(TRequest request, Next<Unit, TResult> next)
+    private static ValueTask<Result<TResult>> ValidateAsync(
+        TRequest request,
+        Next<Unit, TResult> next
+    )
     {
-        return new ValueTask<Result<TResult>>(
-            request.Validate().FlatMapAsync(value => next(value).AsTask())
-        );
+        if (request.TryValidate(out var errors))
+        {
+            return next(Unit.Default);
+        }
+
+        return ValueTask.FromResult<Result<TResult>>(new Error(errors));
     }
 }

@@ -25,7 +25,7 @@ public static class RegistrationDeclarations
         source.Append("[global::Brigade.Net.Partie.Registration(typeof(")
             .Append(SymbolEmission.TypeName(registeredType)).Append("), ").Append(provider ? "true" : "false").Append(")]\n")
             .Append("[global::System.AttributeUsage(global::System.AttributeTargets.Method")
-            .Append(provider ? " | global::System.AttributeTargets.Class" : "")
+            .Append(" | global::System.AttributeTargets.Class")
             .Append(", AllowMultiple = true, Inherited = false)]\ninternal sealed class @")
             .Append(type.Name).Append("Attribute(").Append(string.Join(", ", parameters.Select(ContextParameters.Declaration)))
             .Append(") : global::System.Attribute\n{\n");

@@ -19,6 +19,11 @@ public static partial class Routing
         {
             @Search(builder);
         }
+
+        internal static void Configure_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eOrders_3(global::Microsoft.AspNetCore.Builder.RouteHandlerBuilder builder)
+        {
+            @Validate(builder);
+        }
     }
 
     internal static void Configure_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eOrders_0(global::Microsoft.AspNetCore.Builder.RouteHandlerBuilder builder)
@@ -34,5 +39,10 @@ public static partial class Routing
     internal static void Configure_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eOrders_2(global::Microsoft.AspNetCore.Builder.RouteHandlerBuilder builder)
     {
         Orders.Configure_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eOrders_2(builder);
+    }
+
+    internal static void Configure_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eOrders_3(global::Microsoft.AspNetCore.Builder.RouteHandlerBuilder builder)
+    {
+        Orders.Configure_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eOrders_3(builder);
     }
 }

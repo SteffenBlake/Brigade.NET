@@ -62,10 +62,10 @@ public class BrigadeRoutingGeneratorTests
             [BrigadeGroup("admin"), Provider(typeof(First))]
             public static partial class Routes
             {
-                [BrigadeGroup("items"), Provider(typeof(Second))]
+                [BrigadeGroup("items"), Provider(typeof(Second)), Partie(typeof(Fixed))]
                 private static partial class Items
                 {
-                    [Route<Handler>("list", "run"), Partie(typeof(Fixed))]
+                    [Route<Handler>("list", "run")]
                     static partial void Go();
                 }
             }

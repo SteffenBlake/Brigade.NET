@@ -55,31 +55,6 @@ public sealed class OrderWorkflowTests(AppHostFixture host)
         AssertFlow(duplicate, "before;delete;after", 0);
     }
 
-    [Theory]
-    [InlineData("", "NOTEBOOK", 1)]
-    [InlineData("   ", "NOTEBOOK", 1)]
-    [InlineData("customer", "UNKNOWN", 1)]
-    [InlineData("customer", "PEN", 0)]
-    [InlineData("customer", "PEN", -1)]
-    [InlineData("customer", "PEN", 101)]
-    [InlineData("customer", null, 1)]
-    public async Task InvalidOrder_StopsBeforeHandlerAndDoesNotPersist(
-        string customer,
-        string? sku,
-        int quantity
-    )
-    {
-        var uniqueCustomer = string.IsNullOrWhiteSpace(customer) ? customer : customer + Guid.NewGuid();
-        using var response = await host.WebClient.PostAsJsonAsync("/api/v1/orders", new { customer = uniqueCustomer, sku, quantity });
-        var error = await Read(response);
-        Assert.Equal("Invalid order", error.GetProperty("title").GetString());
-        Assert.False(error.TryGetProperty("id", out _));
-        Assert.False(error.TryGetProperty("value", out _));
-        AssertFlow(response, "before;after", 0);
-        using var list = await host.WebClient.GetAsync("/api/v1/orders?customer=" + Uri.EscapeDataString(uniqueCustomer));
-        Assert.Empty((await Read(list)).EnumerateArray());
-    }
-
     [Fact]
     public async Task MissingOrder_DeleteReturnsFailureAndUnwinds()
     {

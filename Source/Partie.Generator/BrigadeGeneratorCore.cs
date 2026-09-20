@@ -18,7 +18,7 @@ public static class BrigadeGeneratorCore
         Func<RouteEmission, string>? emitRoute = null,
         Func<string, string>? emitAdapter = null,
         Func<AttributeData, RouteDeclaration?>? discoverRoute = null,
-        Func<IMethodSymbol, string, Compilation, Action<ISymbol, string>, ImmutableArray<RoutePolicyEmission>>? discoverPolicies = null,
+        Func<IMethodSymbol, string, RequestEmission, Compilation, Action<ISymbol, string>, ImmutableArray<RoutePolicyEmission>>? discoverPolicies = null,
         Func<IMethodSymbol, bool>? discoverPolicyFunctions = null,
         Func<RouteEmission, GeneratedDeclaration>? emitTypes = null,
         Func<RouteGroupEmission, string>? emitGroup = null,
@@ -150,7 +150,7 @@ public static class BrigadeGeneratorCore
         CancellationToken cancellationToken,
         Func<RouteEmission, string>? emitRoute,
         Func<AttributeData, RouteDeclaration?>? discoverRoute,
-        Func<IMethodSymbol, string, Compilation, Action<ISymbol, string>, ImmutableArray<RoutePolicyEmission>>? discoverPolicies,
+        Func<IMethodSymbol, string, RequestEmission, Compilation, Action<ISymbol, string>, ImmutableArray<RoutePolicyEmission>>? discoverPolicies,
         Func<IMethodSymbol, bool>? discoverPolicyFunctions,
         Func<RouteEmission, GeneratedDeclaration>? emitTypes
     )
@@ -193,8 +193,9 @@ public static class BrigadeGeneratorCore
             symbol.GetAttributes().First(RouteGroupHierarchy.IsGroup).ConstructorArguments[0].Values
                 .Select(component => component.Value as string ?? "").ToImmutableArray()
         )).ToImmutableArray();
-        var providerAttributes = groupSymbols.SelectMany(symbol => symbol.GetAttributes())
-            .Where(attribute => IsRegistration(attribute, true)).ToArray();
+        var groupRegistrations = groupSymbols.SelectMany(symbol => symbol.GetAttributes())
+            .Where(attribute => IsRegistration(attribute, false) || IsRegistration(attribute, true))
+            .ToArray();
         var routeIndex = 0;
         foreach (var route in group.GetMembers().OfType<IMethodSymbol>().OrderBy(method => method.Name, StringComparer.Ordinal))
         {
@@ -246,7 +247,7 @@ public static class BrigadeGeneratorCore
             }
 
             var handler = routes[0]!.Handler;
-            var orderedRegistrations = providerAttributes.Concat(attributes.Where(attribute =>
+            var orderedRegistrations = groupRegistrations.Concat(attributes.Where(attribute =>
                 IsRegistration(attribute, false) || IsRegistration(attribute, true))).Select(Registration).ToArray();
             if (handler is null || orderedRegistrations.Any(registration => registration is null))
             {
@@ -259,13 +260,6 @@ public static class BrigadeGeneratorCore
             if (string.IsNullOrWhiteSpace(operation))
             {
                 Report(route, "A route operation must not be empty");
-                continue;
-            }
-
-            var diagnosticCount = diagnostics.Count;
-            var routePolicies = discoverPolicies?.Invoke(route, operation, compilation, Report) ?? ImmutableArray<RoutePolicyEmission>.Empty;
-            if (diagnostics.Count != diagnosticCount)
-            {
                 continue;
             }
 
@@ -292,6 +286,19 @@ public static class BrigadeGeneratorCore
                 cancellationToken
             ).Plan(handler, orderedRegistrations.Select(registration => registration!), operation, routes[0]!.Parameters);
             if (graph is null)
+            {
+                continue;
+            }
+
+            var diagnosticCount = diagnostics.Count;
+            var routePolicies = discoverPolicies?.Invoke(
+                route,
+                operation,
+                graph.Request,
+                compilation,
+                Report
+            ) ?? ImmutableArray<RoutePolicyEmission>.Empty;
+            if (diagnostics.Count != diagnosticCount)
             {
                 continue;
             }

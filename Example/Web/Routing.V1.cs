@@ -1,40 +1,44 @@
-using Brigade.Net.Example.Domain;
 using Brigade.Net.Example.Domain.Orders;
 using Brigade.Net.Example.Domain.Orders.CreateV1;
 using Brigade.Net.Example.Domain.Orders.DeleteV1;
 using Brigade.Net.Example.Domain.Orders.SearchV1;
+using Brigade.Net.Example.Domain.Orders.ValidateV1;
 using Brigade.Net.Example.Domain.PolicyTesting;
 using Brigade.Net.Example.Web.RoutePolicies;
 using Brigade.Net.Partie;
 using Brigade.Net.Partie.Engines.AspNetCore;
+using Brigade.Net.Partie.Extensions.Expo;
 using Microsoft.AspNetCore.Builder;
 
 namespace Brigade.Net.Example.Web;
 
 [BrigadeGroup("/api/v1")]
+[ExpoValidationRoutePolicy]
+[ExpoValidationPartie]
 public static partial class Routing
 {
     [BrigadeGroup("/orders")]
     private static partial class Orders
     {
         [TraceOrderRequestPartie(RequestIdHeader: "X-Request-Id")]
-        [ValidationPartie]
         [UnitOfWorkPartie]
         [OrderCreateV1HandlerRoute.Post]
         static void Create(RouteHandlerBuilder route) => route.AllowAnonymous();
 
         [TraceOrderRequestPartie]
-        [ValidationPartie]
         [OrderProvider]
         [OrderInspectionPartie]
         [OrderSearchV1HandlerRoute.Get]
         static void Search(RouteHandlerBuilder route) => route.AllowAnonymous();
 
         [TraceOrderRequestPartie]
-        [ValidationPartie]
         [UnitOfWorkPartie]
         [OrderDeleteV1HandlerRoute.Delete("{orderId}")]
         static void Delete(RouteHandlerBuilder route) => route.AllowAnonymous();
+
+        [UnitOfWorkPartie]
+        [OrderValidateV1HandlerRoute.Post("validate")]
+        static void Validate(RouteHandlerBuilder route) => route.AllowAnonymous();
 
         [BrigadeGroup("/policy-test")]
         private static partial class PolicyTests

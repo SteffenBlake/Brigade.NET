@@ -2,7 +2,7 @@
 #nullable enable
 namespace Brigade.Net.Example.Web;
 [global::Brigade.Net.Partie.Registration(typeof(global::Brigade.Net.Example.Web.TraceOrderRequestPartie<, >), false)]
-[global::System.AttributeUsage(global::System.AttributeTargets.Method, AllowMultiple = true, Inherited = false)]
+[global::System.AttributeUsage(global::System.AttributeTargets.Method | global::System.AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
 internal sealed class @TraceOrderRequestPartieAttribute([global::Brigade.Net.Partie.Parameter] string @RequestIdHeader = "X-Request-Id") : global::System.Attribute
 {
     public string @RequestIdHeader { get; } = @RequestIdHeader;

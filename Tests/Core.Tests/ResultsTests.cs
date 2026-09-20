@@ -46,6 +46,31 @@ public class ResultsTests
         Assert.Equal("detail", error.Detail);
         Assert.Equal("instance", error.Instance);
         Assert.Equal(extensions, error.Extensions);
+        Assert.Empty(error.ErrorDetails);
+    }
+
+    [Fact]
+    public void Error_CanContainOneDetailAndPointer()
+    {
+        var error = new Error("Name is required", "/name");
+
+        var detail = Assert.Single(error.ErrorDetails);
+        Assert.Equal("Name is required", detail.Detail);
+        Assert.Equal("/name", detail.Pointer);
+    }
+
+    [Fact]
+    public void Error_CanContainManyDetails()
+    {
+        ErrorDetail[] details =
+        [
+            new("Name is required", "/name"),
+            new("Age must be positive", "/age")
+        ];
+
+        var error = new Error(details);
+
+        Assert.Equal(details, error.ErrorDetails);
     }
 
     [Fact]
