@@ -1,5 +1,6 @@
 using Brigade.Net.Expo;
 using Brigade.Net.Partie;
+using System.Text.RegularExpressions;
 
 namespace Brigade.Net.Example.Domain.Orders.ValidateV1;
 
@@ -61,6 +62,15 @@ public partial class OrderValidationPayload
 
     [CustomValidation]
     public string CustomCode { get; init; } = string.Empty;
+
+    [IsEmail]
+    public string? ContactEmail { get; init; }
+
+    [GeneratedRegex(@"^REF-\d{4}$", RegexOptions.CultureInvariant)]
+    private static partial Regex ReferenceCodeRegex();
+
+    [MatchesReferenceCodeRegex("ReferenceCode must look like REF-1234.")]
+    public string? ReferenceCode { get; init; }
 
     [IsRequired]
     public OrderValidationAddress? Address { get; init; }

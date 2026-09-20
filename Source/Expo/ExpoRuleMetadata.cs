@@ -5,5 +5,7 @@ public sealed record ExpoRuleMetadata(
     object? ConstantValue = null,
     string? ComparedPropertyName = null,
     string? Message = null,
-    string? CustomRuleName = null
+    string? CustomRuleName = null,
+    string? Pattern = null,
+    string? Format = null
 );

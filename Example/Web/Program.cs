@@ -14,10 +14,12 @@ builder.Services
 builder.Services.AddAuthorizationBuilder()
     .AddDefaultPolicy("FakeAuth", policy => policy.AddAuthenticationSchemes("FakeAuth").RequireAuthenticatedUser())
     .AddPolicy("FakeHeader", policy => policy.AddAuthenticationSchemes("FakeHeader").RequireAuthenticatedUser());
+builder.Services.AddOpenApi();
 
 var app = builder.Build();
 app.MapDefaultEndpoints();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UsePartieRoutes();
+app.MapOpenApi();
 app.Run();

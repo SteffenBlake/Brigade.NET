@@ -19,6 +19,12 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
     private const string ValidatableName = "Brigade.Net.Expo.IExpoValidatable";
     private const string ValidationAttributeName = "Brigade.Net.Expo.IExpoValidationAttribute";
     private const string ExpoAttributeName = "Brigade.Net.Expo.ExpoAttribute";
+    private const string GeneratedRegexAttributeName =
+        "System.Text.RegularExpressions.GeneratedRegexAttribute";
+    private const string LengthAttributeName = "Brigade.Net.Expo.LengthValidationAttribute";
+    private const string NotEmptyAttributeName = "Brigade.Net.Expo.IsNotEmptyAttribute";
+    private const string NotWhiteSpaceAttributeName = "Brigade.Net.Expo.IsNotWhiteSpaceAttribute";
+    private const string DefinedEnumAttributeName = "Brigade.Net.Expo.IsDefinedEnumAttribute";
 
     private static readonly DiagnosticDescriptor MustBePartial = new(
         "EXPO001", "Expo model must be partial",
@@ -116,9 +122,10 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
             source.Append("\n{\n");
         }
 
-        AppendHelperAttributes(source, properties);
-        AppendMetadata(source, properties);
-        AppendTryValidate(source, properties);
+        var regexes = GetGeneratedRegexes(model);
+        AppendHelperAttributes(source, properties, regexes);
+        AppendMetadata(source, properties, regexes);
+        AppendTryValidate(source, properties, regexes);
         for (var index = 0; index < hierarchy.Count; index++)
         {
             source.Append("}\n");
@@ -132,7 +139,8 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
 
     private static void AppendHelperAttributes(
         StringBuilder source,
-        IEnumerable<IPropertySymbol> properties
+        IEnumerable<IPropertySymbol> properties,
+        IEnumerable<GeneratedRegex> regexes
     )
     {
         foreach (var property in properties)
@@ -155,11 +163,19 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
                     .Append(property.Name).Append("();\n");
             }
         }
+        foreach (var regex in regexes)
+        {
+            source.Append("[global::System.AttributeUsage(global::System.AttributeTargets.Property, Inherited = true)]\n")
+                .Append("private sealed class Matches").Append(regex.Name)
+                .Append("Attribute(string? message = null) : global::System.Attribute\n{")
+                .Append("public string? Message { get; } = message;\n}\n");
+        }
     }
 
     private static void AppendMetadata(
         StringBuilder source,
-        IEnumerable<IPropertySymbol> properties
+        IEnumerable<IPropertySymbol> properties,
+        IReadOnlyCollection<GeneratedRegex> regexes
     )
     {
         source.Append("public static global::Brigade.Net.Expo.ExpoModelMetadata Metadata { get; } = new(\n")
@@ -169,38 +185,45 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
             source.Append("new(").Append(Literal(property.Name)).Append(", ")
                 .Append(Literal(Pointer(property.Name)))
                 .Append(", new global::Brigade.Net.Expo.ExpoRuleMetadata[]\n{\n");
-            foreach (var rule in GetRules(property))
+            foreach (var rule in GetRules(property, regexes))
             {
                 source.Append("new(global::Brigade.Net.Expo.ExpoRuleKind.").Append(rule.Kind)
                     .Append(", ").Append(rule.Constant)
                     .Append(", ").Append(NullableLiteral(rule.ComparedProperty))
                     .Append(", ").Append(NullableLiteral(rule.Message))
-                    .Append(", ").Append(NullableLiteral(rule.CustomRule)).Append("),\n");
+                    .Append(", ").Append(NullableLiteral(rule.CustomRule))
+                    .Append(", ").Append(NullableLiteral(rule.Pattern))
+                    .Append(", ").Append(NullableLiteral(rule.Format)).Append("),\n");
             }
-            source.Append("}, ").Append(IsValidatable(property.Type) ? "true" : "false").Append("),\n");
+            source.Append("}, ").Append(IsNestedValidatable(property.Type) ? "true" : "false").Append("),\n");
         }
         source.Append("});\n");
     }
 
     private static void AppendTryValidate(
         StringBuilder source,
-        IEnumerable<IPropertySymbol> properties
+        IEnumerable<IPropertySymbol> properties,
+        IReadOnlyCollection<GeneratedRegex> regexes
     )
     {
         source.Append("public bool TryValidate(out global::System.Collections.Generic.IEnumerable<global::Brigade.Net.Core.Results.ErrorDetail> errors)\n")
             .Append("{\nvar validationErrors = new global::System.Collections.Generic.List<global::Brigade.Net.Core.Results.ErrorDetail>();\n");
         foreach (var property in properties)
         {
-            AppendPropertyValidation(source, property);
+            AppendPropertyValidation(source, property, regexes);
         }
         source.Append("errors = validationErrors;\nreturn validationErrors.Count == 0;\n}\n");
     }
 
-    private static void AppendPropertyValidation(StringBuilder source, IPropertySymbol property)
+    private static void AppendPropertyValidation(
+        StringBuilder source,
+        IPropertySymbol property,
+        IReadOnlyCollection<GeneratedRegex> regexes
+    )
     {
         var propertyAccess = "this." + Escape(property.Name);
         var pointer = Literal(Pointer(property.Name));
-        foreach (var rule in GetRules(property))
+        foreach (var rule in GetRules(property, regexes))
         {
             var message = Literal(rule.Message ?? DefaultMessage(property.Name, rule));
             if (rule.Kind == "CustomPartial")
@@ -215,9 +238,47 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
             {
                 invalidExpression = propertyAccess + " is null";
             }
-            else if (rule.Kind == "Custom")
+            else if (rule.RegexMember is not null)
+            {
+                invalidExpression = propertyAccess + " is not null && !" + rule.RegexMember
+                    + ".IsMatch(" + propertyAccess + ")";
+            }
+            else if (rule.AttributeType is not null)
             {
                 invalidExpression = "!" + rule.AttributeType + ".IsValid(" + propertyAccess + ")";
+            }
+            else if (rule.Kind == "MinimumLength")
+            {
+                invalidExpression = propertyAccess + " is not null && " + LengthExpression(property, propertyAccess)
+                    + " < " + rule.Constant;
+            }
+            else if (rule.Kind == "MaximumLength")
+            {
+                invalidExpression = propertyAccess + " is not null && " + LengthExpression(property, propertyAccess)
+                    + " > " + rule.Constant;
+            }
+            else if (rule.Kind == "ExactLength")
+            {
+                invalidExpression = propertyAccess + " is not null && " + LengthExpression(property, propertyAccess)
+                    + " != " + rule.Constant;
+            }
+            else if (rule.Kind == "NotEmpty")
+            {
+                invalidExpression = propertyAccess + " is not null && " + LengthExpression(property, propertyAccess)
+                    + " == 0";
+            }
+            else if (rule.Kind == "NotWhiteSpace")
+            {
+                invalidExpression = propertyAccess
+                    + " is not null && global::System.String.IsNullOrWhiteSpace(" + propertyAccess + ")";
+            }
+            else if (rule.Kind == "DefinedEnum")
+            {
+                var enumType = UnwrapNullable(property.Type);
+                var nullGuard = CanBeNull(property.Type) ? propertyAccess + " is not null && " : string.Empty;
+                invalidExpression = nullGuard + "!global::System.Enum.IsDefined(typeof("
+                    + enumType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) + "), "
+                    + propertyAccess + ")";
             }
             else if (rule.ComparedProperty is not null)
             {
@@ -243,6 +304,20 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
                 .Append("{\nforeach (var childError in childErrors)\n{")
                 .Append("validationErrors.Add(new(childError.Detail, ").Append(pointer)
                 .Append(" + childError.Pointer));\n}\n}\n");
+        }
+        else if (GetEnumerableElementType(property.Type) is { } elementType
+            && IsValidatable(elementType))
+        {
+            var indexName = "childIndex" + property.Name;
+            source.Append("if (").Append(propertyAccess).Append(" is not null)\n{\n")
+                .Append("var ").Append(indexName).Append(" = 0;\n")
+                .Append("foreach (var child in ").Append(propertyAccess).Append(")\n{\n")
+                .Append("if (child is global::Brigade.Net.Expo.IExpoValidatable validatableChild && ")
+                .Append("!validatableChild.TryValidate(out var childErrors))\n{\n")
+                .Append("foreach (var childError in childErrors)\n{\n")
+                .Append("validationErrors.Add(new(childError.Detail, ").Append(pointer)
+                .Append(" + \"/\" + ").Append(indexName).Append(" + childError.Pointer));\n}\n}\n")
+                .Append(indexName).Append("++;\n}\n}\n");
         }
     }
 
@@ -275,7 +350,27 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
             + left + ", " + right + ") " + operation;
     }
 
-    private static IEnumerable<Rule> GetRules(IPropertySymbol property)
+    private static string LengthExpression(IPropertySymbol property, string propertyAccess)
+    {
+        if (property.Type.SpecialType == SpecialType.System_String || property.Type is IArrayTypeSymbol)
+        {
+            return propertyAccess + ".Length";
+        }
+
+        if (property.Type.AllInterfaces.Any(item =>
+            item.OriginalDefinition.SpecialType is SpecialType.System_Collections_Generic_ICollection_T
+                or SpecialType.System_Collections_Generic_IReadOnlyCollection_T))
+        {
+            return propertyAccess + ".Count";
+        }
+
+        return "global::System.Linq.Enumerable.Count(" + propertyAccess + ")";
+    }
+
+    private static IEnumerable<Rule> GetRules(
+        IPropertySymbol property,
+        IReadOnlyCollection<GeneratedRegex> regexes
+    )
     {
         foreach (var attribute in property.GetAttributes())
         {
@@ -292,6 +387,25 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
             if (name == CustomValidationAttributeName)
             {
                 yield return new Rule("CustomPartial", "null", null, null, "partial", null);
+                continue;
+            }
+            if (FindExpoBase(attribute.AttributeClass, LengthAttributeName))
+            {
+                var kind = attribute.AttributeClass?.Name switch
+                {
+                    "HasMinimumLengthAttribute" => "MinimumLength",
+                    "HasMaximumLengthAttribute" => "MaximumLength",
+                    _ => "ExactLength"
+                };
+                yield return new Rule(kind, Constant(attribute.ConstructorArguments[0], attribute.ConstructorArguments[0].Type!),
+                    null, Message(attribute), null, null);
+                continue;
+            }
+            if (name is NotEmptyAttributeName or NotWhiteSpaceAttributeName or DefinedEnumAttributeName)
+            {
+                var kind = name == NotEmptyAttributeName ? "NotEmpty"
+                    : name == NotWhiteSpaceAttributeName ? "NotWhiteSpace" : "DefinedEnum";
+                yield return new Rule(kind, "null", null, Message(attribute, 0), null, null);
                 continue;
             }
 
@@ -312,17 +426,118 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
             if (attribute.AttributeClass?.AllInterfaces.Any(item =>
                 item.ToDisplayString() == ValidationAttributeName) == true)
             {
+                var prefab = PrefabRule(attribute.AttributeClass.Name);
                 yield return new Rule(
-                    "Custom", "null", null, CustomMessage(attribute), attribute.AttributeClass.Name,
-                    attribute.AttributeClass.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+                    prefab.Kind, "null", null, CustomMessage(attribute), attribute.AttributeClass.Name,
+                    attribute.AttributeClass.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                    prefab.Pattern, prefab.Format
                 );
             }
+        }
+
+        foreach (var rule in GetGeneratedRegexRules(property, regexes))
+        {
+            yield return rule;
         }
 
         foreach (var rule in GetGeneratedPropertyComparisonRules(property))
         {
             yield return rule;
         }
+    }
+
+    private static bool FindExpoBase(INamedTypeSymbol? type, string metadataName)
+    {
+        for (var current = type; current is not null; current = current.BaseType)
+        {
+            if (current.ToDisplayString() == metadataName)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static IEnumerable<Rule> GetGeneratedRegexRules(
+        IPropertySymbol property,
+        IReadOnlyCollection<GeneratedRegex> regexes
+    )
+    {
+        foreach (var syntaxReference in property.DeclaringSyntaxReferences)
+        {
+            if (syntaxReference.GetSyntax() is not PropertyDeclarationSyntax declaration)
+            {
+                continue;
+            }
+
+            foreach (var syntax in declaration.AttributeLists.SelectMany(list => list.Attributes))
+            {
+                var name = syntax.Name.ToString().Split('.').Last();
+                if (name.EndsWith("Attribute", StringComparison.Ordinal))
+                {
+                    name = name.Substring(0, name.Length - "Attribute".Length);
+                }
+
+                var regex = regexes.FirstOrDefault(item => name == "Matches" + item.Name);
+                if (regex is null)
+                {
+                    continue;
+                }
+
+                var message = syntax.ArgumentList?.Arguments.FirstOrDefault()?.Expression
+                    is LiteralExpressionSyntax literal && literal.IsKind(SyntaxKind.StringLiteralExpression)
+                        ? literal.Token.ValueText
+                        : null;
+                yield return new Rule(
+                    "Pattern", "null", null, message, regex.Name, null,
+                    regex.Pattern, null, regex.Access
+                );
+            }
+        }
+    }
+
+    private static GeneratedRegex[] GetGeneratedRegexes(INamedTypeSymbol model)
+    {
+        return model.GetMembers().Select(member =>
+        {
+            var attribute = member.GetAttributes().FirstOrDefault(item =>
+                item.AttributeClass?.ToDisplayString() == GeneratedRegexAttributeName);
+            if (attribute is null || attribute.ConstructorArguments.Length == 0
+                || attribute.ConstructorArguments[0].Value is not string pattern)
+            {
+                return null;
+            }
+
+            return member switch
+            {
+                IMethodSymbol { IsStatic: true, Parameters.Length: 0 } method =>
+                    new GeneratedRegex(method.Name, pattern, Escape(method.Name) + "()"),
+                IPropertySymbol { IsStatic: true } regexProperty =>
+                    new GeneratedRegex(regexProperty.Name, pattern, Escape(regexProperty.Name)),
+                _ => null
+            };
+        }).Where(item => item is not null).Cast<GeneratedRegex>().ToArray();
+    }
+
+    private static (string Kind, string? Pattern, string? Format) PrefabRule(string attributeName)
+    {
+        return attributeName switch
+        {
+            "IsEmailAttribute" => ("Format", @"^[^@\s]+@[^@\s]+\.[^@\s]+$", "email"),
+            "IsPhoneNumberAttribute" => ("Pattern", @"^\+[1-9]\d{1,14}$", null),
+            "IsUuidAttribute" => ("Format", null, "uuid"),
+            "IsUrlAttribute" => ("Format", null, "uri"),
+            "IsIpAddressAttribute" => ("Format", null, "ip"),
+            "IsIpv4AddressAttribute" => ("Format", null, "ipv4"),
+            "IsIpv6AddressAttribute" => ("Format", null, "ipv6"),
+            "IsBase64Attribute" => ("Format", null, "byte"),
+            "IsHexColorAttribute" => ("Pattern", @"^#?(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$", null),
+            "IsSlugAttribute" => ("Pattern", @"^[a-z0-9]+(?:-[a-z0-9]+)*$", null),
+            "IsAlphaAttribute" => ("Pattern", @"^\p{L}+$", null),
+            "IsAlphaNumericAttribute" => ("Pattern", @"^[\p{L}\p{Nd}]+$", null),
+            "IsDigitsAttribute" => ("Pattern", @"^\d+$", null),
+            _ => ("Custom", null, null)
+        };
     }
 
     private static IEnumerable<Rule> GetGeneratedPropertyComparisonRules(IPropertySymbol property)
@@ -441,6 +656,14 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
             "ExclusiveMinimum" => propertyName + " must be greater than the configured value.",
             "Maximum" => propertyName + " must be less than or equal to the configured value.",
             "ExclusiveMaximum" => propertyName + " must be less than the configured value.",
+            "MinimumLength" => propertyName + " is shorter than the minimum length.",
+            "MaximumLength" => propertyName + " exceeds the maximum length.",
+            "ExactLength" => propertyName + " does not have the required length.",
+            "NotEmpty" => propertyName + " must not be empty.",
+            "NotWhiteSpace" => propertyName + " must not be empty or white space.",
+            "Pattern" => propertyName + " has an invalid format.",
+            "Format" => propertyName + " has an invalid format.",
+            "DefinedEnum" => propertyName + " is not a defined enum value.",
             "Custom" => propertyName + " is invalid.",
             _ => propertyName + " does not satisfy the comparison with " + rule.ComparedProperty + "."
         };
@@ -480,6 +703,42 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
                 reference.GetSyntax() is TypeDeclarationSyntax declaration
                 && declaration.AttributeLists.SelectMany(list => list.Attributes).Any(attribute =>
                     attribute.Name.ToString() is "Expo" or "ExpoAttribute")) == true;
+    }
+
+    private static bool IsNestedValidatable(ITypeSymbol type)
+    {
+        return IsValidatable(type)
+            || GetEnumerableElementType(type) is { } elementType && IsValidatable(elementType);
+    }
+
+    private static ITypeSymbol? GetEnumerableElementType(ITypeSymbol type)
+    {
+        if (type.SpecialType == SpecialType.System_String)
+        {
+            return null;
+        }
+        if (type is IArrayTypeSymbol array)
+        {
+            return array.ElementType;
+        }
+
+        return type.AllInterfaces.Concat([type]).OfType<INamedTypeSymbol>()
+            .FirstOrDefault(item => item.OriginalDefinition.SpecialType
+                == SpecialType.System_Collections_Generic_IEnumerable_T)?.TypeArguments[0];
+    }
+
+    private static ITypeSymbol UnwrapNullable(ITypeSymbol type)
+    {
+        return type is INamedTypeSymbol named
+            && named.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T
+                ? named.TypeArguments[0]
+                : type;
+    }
+
+    private static bool CanBeNull(ITypeSymbol type)
+    {
+        return type.IsReferenceType || type is INamedTypeSymbol named
+            && named.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T;
     }
 
     private static bool HasAttribute(IPropertySymbol property, string metadataName) =>
@@ -563,7 +822,10 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
         string? comparedProperty,
         string? message,
         string? customRule,
-        string? attributeType
+        string? attributeType,
+        string? pattern = null,
+        string? format = null,
+        string? regexMember = null
     )
     {
         public string Kind { get; } = kind;
@@ -577,5 +839,20 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
         public string? CustomRule { get; } = customRule;
 
         public string? AttributeType { get; } = attributeType;
+
+        public string? Pattern { get; } = pattern;
+
+        public string? Format { get; } = format;
+
+        public string? RegexMember { get; } = regexMember;
+    }
+
+    private sealed class GeneratedRegex(string name, string pattern, string access)
+    {
+        public string Name { get; } = name;
+
+        public string Pattern { get; } = pattern;
+
+        public string Access { get; } = access;
     }
 }

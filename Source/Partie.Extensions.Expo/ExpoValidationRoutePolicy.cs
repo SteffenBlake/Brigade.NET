@@ -123,6 +123,30 @@ public sealed class ExpoValidationRoutePolicy<TRequest>
             case ExpoRuleKind.NotEqual:
                 schema.Not = new OpenApiSchema { Const = Json(rule.ConstantValue) };
                 break;
+            case ExpoRuleKind.MinimumLength:
+                ApplyMinimumLength(schema, Convert.ToInt32(rule.ConstantValue));
+                break;
+            case ExpoRuleKind.MaximumLength:
+                ApplyMaximumLength(schema, Convert.ToInt32(rule.ConstantValue));
+                break;
+            case ExpoRuleKind.ExactLength:
+                var length = Convert.ToInt32(rule.ConstantValue);
+                ApplyMinimumLength(schema, length);
+                ApplyMaximumLength(schema, length);
+                break;
+            case ExpoRuleKind.NotEmpty:
+                ApplyMinimumLength(schema, 1);
+                break;
+            case ExpoRuleKind.Pattern:
+                schema.Pattern = rule.Pattern;
+                break;
+            case ExpoRuleKind.Format:
+                schema.Format = rule.Format;
+                if (rule.Pattern is not null)
+                {
+                    schema.Pattern = rule.Pattern;
+                }
+                break;
             default:
                 AddInexactRule(schema, rule);
                 break;
@@ -130,6 +154,28 @@ public sealed class ExpoValidationRoutePolicy<TRequest>
     }
 
     private static string? Json(object? value) => JsonSerializer.Serialize(value);
+
+    private static void ApplyMinimumLength(OpenApiSchema schema, int length)
+    {
+        if (schema.Type == JsonSchemaType.Array)
+        {
+            schema.MinItems = length;
+            return;
+        }
+
+        schema.MinLength = length;
+    }
+
+    private static void ApplyMaximumLength(OpenApiSchema schema, int length)
+    {
+        if (schema.Type == JsonSchemaType.Array)
+        {
+            schema.MaxItems = length;
+            return;
+        }
+
+        schema.MaxLength = length;
+    }
 
     private static void AddInexactRule(OpenApiSchema schema, ExpoRuleMetadata rule)
     {

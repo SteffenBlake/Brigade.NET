@@ -19,6 +19,9 @@ public sealed class ExpoValidationRoutePolicyTests
         var other = new OpenApiSchema();
         var compared = new OpenApiSchema();
         var custom = new OpenApiSchema();
+        var text = new OpenApiSchema { Type = JsonSchemaType.String };
+        var items = new OpenApiSchema { Type = JsonSchemaType.Array };
+        var email = new OpenApiSchema { Type = JsonSchemaType.String };
         var schema = new OpenApiSchema
         {
             Properties = new Dictionary<string, IOpenApiSchema>
@@ -27,7 +30,10 @@ public sealed class ExpoValidationRoutePolicyTests
                 ["Code"] = code,
                 ["Other"] = other,
                 ["Compared"] = compared,
-                ["Custom"] = custom
+                ["Custom"] = custom,
+                ["Text"] = text,
+                ["Items"] = items,
+                ["Email"] = email
             }
         };
 
@@ -41,6 +47,12 @@ public sealed class ExpoValidationRoutePolicyTests
         Assert.Contains("PropertyGreaterThan Count", compared.Description);
         Assert.Contains("Custom", custom.Description);
         Assert.Contains("x-expo-validation", custom.Extensions!);
+        Assert.Equal(2, text.MinLength);
+        Assert.Equal(8, text.MaxLength);
+        Assert.Equal("^[a-z]+$", text.Pattern);
+        Assert.Equal(3, items.MinItems);
+        Assert.Equal(3, items.MaxItems);
+        Assert.Equal("email", email.Format);
     }
 
     private static void AssertAssignable<TPolicy>()

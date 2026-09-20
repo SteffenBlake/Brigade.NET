@@ -139,6 +139,63 @@ public class ExpoDomainGeneratorTests
         Assert.Equal("EXPO001", Assert.Single(result.RunResult.Diagnostics).Id);
     }
 
+    [Fact]
+    public void GeneratesPrefabRegexLengthEnumAndNestedCollectionValidation()
+    {
+        var source = """
+            using System.Collections.Generic;
+            using System.Text.RegularExpressions;
+            using Brigade.Net.Expo;
+
+            [Expo]
+            public partial class Input
+            {
+                [HasMinimumLength(2)]
+                [HasMaximumLength(8)]
+                [HasExactLength(4)]
+                [IsNotEmpty]
+                [IsNotWhiteSpace]
+                [MatchesCodeRegex("bad code")]
+                public string? Code { get; init; }
+
+                [IsDefinedEnum]
+                public State State { get; init; }
+
+                [IsEmail]
+                public string? Email { get; init; }
+
+                public List<Child>? Children { get; init; }
+
+                [GeneratedRegex("^OK$")]
+                private static partial Regex CodeRegex();
+            }
+
+            public enum State { Unknown, Ready }
+
+            [Expo]
+            public partial class Child
+            {
+                [IsRequired]
+                public string? Name { get; init; }
+            }
+            """;
+
+        var result = Run((source, "Prefabs.cs"));
+        var generated = Assert.Single(result.RunResult.Results.Single().GeneratedSources).SourceText.ToString();
+
+        Assert.Contains("class MatchesCodeRegexAttribute", generated);
+        Assert.Contains("CodeRegex().IsMatch(this.Code)", generated);
+        Assert.Contains("ExpoRuleKind.MinimumLength", generated);
+        Assert.Contains("ExpoRuleKind.MaximumLength", generated);
+        Assert.Contains("ExpoRuleKind.ExactLength", generated);
+        Assert.Contains("ExpoRuleKind.NotEmpty", generated);
+        Assert.Contains("ExpoRuleKind.NotWhiteSpace", generated);
+        Assert.Contains("ExpoRuleKind.DefinedEnum", generated);
+        Assert.Contains("\"email\"", generated);
+        Assert.Contains("foreach (var child in this.Children)", generated);
+        Assert.Contains("+ \"/\" + childIndexChildren", generated);
+    }
+
     private static (GeneratorDriverRunResult RunResult, Compilation Compilation) Run(
         params (string Source, string Path)[] inputs
     )

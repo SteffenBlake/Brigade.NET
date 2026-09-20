@@ -15,6 +15,14 @@ public enum ExpoRuleKind
     PropertyGreaterThanOrEqual,
     PropertyLessThan,
     PropertyLessThanOrEqual,
+    MinimumLength,
+    MaximumLength,
+    ExactLength,
+    NotEmpty,
+    NotWhiteSpace,
+    Pattern,
+    Format,
+    DefinedEnum,
     Custom,
     CustomPartial
 }
