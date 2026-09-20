@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "deslop": {
+      "source": "stephenturner/skills",
+      "sourceType": "github",
+      "skillPath": "deslop/SKILL.md",
+      "computedHash": "0d2af30451d593d71e44d1fe8f66c4d4de038647dad5c3dc6648937bf1e94248"
+    }
+  }
+}

@@ -12,6 +12,23 @@
     <Project Path="Source/Partie.Engines.AspNetCore/Brigade.Net.Partie.Engines.AspNetCore.csproj" />
     <Project Path="Source/Partie.Generator/Brigade.Net.Partie.Generator.csproj" />
   </Folder>
+  <Folder Name="/Source/Core/" />
+  <Folder Name="/Source/Expo.Engines.AspNetCore/">
+    <Project Path="Source/Expo.Engines.AspNetCore/Brigade.Net.Expo.Engines.AspNetCore.csproj" />
+  </Folder>
+  <Folder Name="/Source/Expo.Engines.Domain/">
+    <Project Path="Source/Expo.Engines.Domain/Brigade.Net.Expo.Engines.Domain.csproj" />
+  </Folder>
+  <Folder Name="/Source/Expo.Generator/">
+    <Project Path="Source/Expo.Generator/Brigade.Net.Expo.Generator.csproj" />
+  </Folder>
+  <Folder Name="/Source/Expo/">
+    <Project Path="Source/Expo/Brigade.Net.Expo.csproj" />
+  </Folder>
+  <Folder Name="/Source/Partie.Extensions.Expo/">
+    <Project Path="Source/Partie.Extensions.Expo/Brigade.Net.Partie.Extensions.Expo.csproj" />
+  </Folder>
+  <Folder Name="/Source/Partie/" />
   <Folder Name="/Tests/">
     <Project Path="Tests/Core.Tests/Brigade.Net.Core.Tests.csproj" />
     <Project Path="Tests/Example.IntegrationTests/Brigade.Net.Example.IntegrationTests.csproj" />
@@ -19,5 +36,14 @@
     <Project Path="Tests/Partie.AspNetCore.Tests/Brigade.Net.Partie.AspNetCore.Tests.csproj" />
     <Project Path="Tests/Partie.Engines.AspNetCore.Tests/Brigade.Net.Partie.Engines.AspNetCore.Tests.csproj" />
     <Project Path="Tests/Partie.Generator.Tests/Brigade.Net.Partie.Generator.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Tests/Expo.Engines.AspNetCore.Tests/">
+    <Project Path="Tests/Expo.Engines.AspNetCore.Tests/Brigade.Net.Expo.Engines.AspNetCore.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Tests/Expo.Generator.Tests/">
+    <Project Path="Tests/Expo.Generator.Tests/Brigade.Net.Expo.Generator.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Tests/Expo.Tests/">
+    <Project Path="Tests/Expo.Tests/Brigade.Net.Expo.Tests.csproj" />
   </Folder>
 </Solution>
