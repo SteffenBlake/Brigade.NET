@@ -51,7 +51,7 @@ public sealed class OrderValidationTests(AppHostFixture host)
         };
 
         using var response = await host.WebClient.PostAsJsonAsync("/api/v1/orders/validate", payload);
-        var error = await Read(response);
+        var error = await Read(response, HttpStatusCode.BadRequest);
         var details = error.GetProperty("errorDetails").EnumerateArray().ToArray();
 
         Assert.Equal(17, details.Length);
@@ -92,7 +92,7 @@ public sealed class OrderValidationTests(AppHostFixture host)
         payload["address"] = null;
 
         using var response = await host.WebClient.PostAsJsonAsync("/api/v1/orders/validate", payload);
-        var error = await Read(response);
+        var error = await Read(response, HttpStatusCode.BadRequest);
         var detail = Assert.Single(error.GetProperty("errorDetails").EnumerateArray());
 
         Assert.Equal("/Body/Address", detail.GetProperty("pointer").GetString());
@@ -118,7 +118,7 @@ public sealed class OrderValidationTests(AppHostFixture host)
         };
 
         using var response = await host.WebClient.PostAsJsonAsync("/api/v1/orders/validate", payload);
-        var error = await Read(response);
+        var error = await Read(response, HttpStatusCode.BadRequest);
         var details = error.GetProperty("errorDetails").EnumerateArray().ToArray();
 
         AssertPointers(details, "/Body/Addresses/0/Street", "/Body/Locations/0/PostalCode");
@@ -142,7 +142,7 @@ public sealed class OrderValidationTests(AppHostFixture host)
     {
         using var body = new StringContent("null", Encoding.UTF8, "application/json");
         using var response = await host.WebClient.PostAsync("/api/v1/orders/validate", body);
-        var error = await Read(response);
+        var error = await Read(response, HttpStatusCode.BadRequest);
         var detail = Assert.Single(error.GetProperty("errorDetails").EnumerateArray());
 
         Assert.Equal("/Body", detail.GetProperty("pointer").GetString());
@@ -178,9 +178,12 @@ public sealed class OrderValidationTests(AppHostFixture host)
         };
     }
 
-    private static async Task<JsonElement> Read(HttpResponseMessage response)
+    private static async Task<JsonElement> Read(
+        HttpResponseMessage response,
+        HttpStatusCode expectedStatus = HttpStatusCode.OK
+    )
     {
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(expectedStatus, response.StatusCode);
         Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         return json.RootElement.Clone();

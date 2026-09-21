@@ -4,6 +4,8 @@ using Brigade.Net.Example.Domain.Orders.DeleteV1;
 using Brigade.Net.Example.Domain.Orders.SearchV1;
 using Brigade.Net.Example.Domain.Orders.ValidateV1;
 using Brigade.Net.Example.Domain.PolicyTesting;
+using Brigade.Net.Example.Domain.ResultCases.DeleteV1;
+using Brigade.Net.Example.Domain.ResultCases.SearchV1;
 using Brigade.Net.Example.Web.RoutePolicies;
 using Brigade.Net.Partie;
 using Brigade.Net.Partie.Engines.AspNetCore;
@@ -13,6 +15,7 @@ using Microsoft.AspNetCore.Builder;
 namespace Brigade.Net.Example.Web;
 
 [BrigadeGroup("/api/v1")]
+[Brigade.Net.Partie.AspNetCore.HttpResultPartie]
 [ExpoValidationPartie]
 public static partial class Routing
 {
@@ -60,5 +63,16 @@ public static partial class Routing
             [TestPolicyHandlerRoute.Get("d")]
             static void D(RouteHandlerBuilder route) => route.RequireAuthorization();
         }
+    }
+
+    [BrigadeGroup("/result-cases")]
+    private static partial class ResultCases
+    {
+        [ResultCaseSearchV1HandlerRoute.Get]
+        static void Search(RouteHandlerBuilder route) => route.AllowAnonymous();
+
+        [UnitOfWorkPartie]
+        [ResultCaseDeleteV1HandlerRoute.Delete]
+        static void Delete(RouteHandlerBuilder route) => route.AllowAnonymous();
     }
 }

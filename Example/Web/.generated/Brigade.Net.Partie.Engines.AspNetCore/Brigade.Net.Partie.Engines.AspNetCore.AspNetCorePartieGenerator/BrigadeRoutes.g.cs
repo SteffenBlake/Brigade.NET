@@ -9,6 +9,8 @@ internal static partial class BrigadeRoutes
         engine.Map(Route_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eOrders_1);
         engine.Map(Route_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eOrders_2);
         engine.Map(Route_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eOrders_3);
+        engine.Map(Route_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eResultCases_0);
+        engine.Map(Route_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eResultCases_1);
         engine.Map(Route_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eOrders_002ePolicyTests_0);
         engine.Map(Route_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eOrders_002ePolicyTests_1);
         engine.Map(Route_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eOrders_002ePolicyTests_2);

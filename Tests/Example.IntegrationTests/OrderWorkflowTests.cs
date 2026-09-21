@@ -43,13 +43,14 @@ public sealed class OrderWorkflowTests(AppHostFixture host)
         Assert.Equal(id, Assert.Single(orders.EnumerateArray()).GetProperty("id").GetGuid());
         AssertFlow(listed, "before;load;inspect:1;search;after", 1);
         using var cancelled = await host.WebClient.DeleteAsync("/api/v1/orders/" + id);
-        Assert.Empty((await Read(cancelled)).EnumerateObject());
+        Assert.Equal(HttpStatusCode.NoContent, cancelled.StatusCode);
+        Assert.Empty(await cancelled.Content.ReadAsByteArrayAsync());
         AssertFlow(cancelled, "before;delete;after", 0);
         using var persisted = await host.WebClient.GetAsync("/api/v1/orders?orderId=" + id);
         Assert.Empty((await Read(persisted)).EnumerateArray());
         AssertFlow(persisted, "before;load;inspect:0;search;after", 1);
         using var duplicate = await host.WebClient.DeleteAsync("/api/v1/orders/" + id);
-        var conflict = await Read(duplicate);
+        var conflict = await Read(duplicate, HttpStatusCode.NotFound);
         Assert.Equal("Order not found.", conflict.GetProperty("message").GetString());
         Assert.Single(conflict.EnumerateObject());
         AssertFlow(duplicate, "before;delete;after", 0);
@@ -60,7 +61,7 @@ public sealed class OrderWorkflowTests(AppHostFixture host)
     {
         using var request = new HttpRequestMessage(HttpMethod.Delete, "/api/v1/orders/" + Guid.NewGuid());
         using var response = await host.WebClient.SendAsync(request);
-        var failure = await Read(response);
+        var failure = await Read(response, HttpStatusCode.NotFound);
         Assert.Equal("Order not found.", failure.GetProperty("message").GetString());
         Assert.Single(failure.EnumerateObject());
         AssertFlow(response, "before;delete;after", 0);
@@ -163,15 +164,22 @@ public sealed class OrderWorkflowTests(AppHostFixture host)
         {
             using var response = await host.WebClient.DeleteAsync("/api/v1/orders/" + id);
             AssertFlow(response, "before;delete;after", 0);
-            return await Read(response);
+            if (response.StatusCode == HttpStatusCode.NoContent)
+            {
+                return (JsonElement?)null;
+            }
+
+            return await Read(response, HttpStatusCode.NotFound);
         }
             )
         );
-        Assert.Single(results, result => !result.EnumerateObject().Any());
+        Assert.Single(results, result => result is null);
         Assert.Equal(
             7,
             results.Count(
-                result => result.TryGetProperty("message", out var message) && message.GetString() == "Order not found."
+                result => result is not null
+                    && result.Value.TryGetProperty("message", out var message)
+                    && message.GetString() == "Order not found."
             )
         );
     }
@@ -207,9 +215,12 @@ public sealed class OrderWorkflowTests(AppHostFixture host)
         Assert.False(response.Headers.Contains("X-Order-Flow"));
     }
 
-    private static async Task<JsonElement> Read(HttpResponseMessage response)
+    private static async Task<JsonElement> Read(
+        HttpResponseMessage response,
+        HttpStatusCode expectedStatus = HttpStatusCode.OK
+    )
     {
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(expectedStatus, response.StatusCode);
         Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         return json.RootElement.Clone();

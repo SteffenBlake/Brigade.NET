@@ -20,6 +20,9 @@
 
     <ProjectReference Include="..\..\Source\Partie.AspNetCore\Brigade.Net.Partie.AspNetCore.csproj" />
     <ProjectReference Include="..\..\Source\Partie.Extensions.Expo\Brigade.Net.Partie.Extensions.Expo.csproj" />
+    <ProjectReference Include="..\..\Source\Partie.Extensions.Expo.Engines.AspNetCore\Brigade.Net.Partie.Extensions.Expo.Engines.AspNetCore.csproj"
+      OutputItemType="Analyzer"
+      ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\Source\Partie.Engines.AspNetCore\Brigade.Net.Partie.Engines.AspNetCore.csproj"
       OutputItemType="Analyzer"
       ReferenceOutputAssembly="false"/>
