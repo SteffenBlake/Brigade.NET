@@ -10,6 +10,10 @@ public partial class OrderValidateV1Cmd
     [FromPayload]
     [IsRequired("The validation payload is required.")]
     public OrderValidationPayload? Body { get; init; }
+
+    [FromMetadata(Name = "X-Validation-Code")]
+    [IsNotEmpty]
+    public string? ValidationCode { get; init; }
 }
 
 [Expo]
@@ -72,8 +76,64 @@ public partial class OrderValidationPayload
     [MatchesReferenceCodeRegex("ReferenceCode must look like REF-1234.")]
     public string? ReferenceCode { get; init; }
 
+    [HasMinimumLength(2)]
+    [HasMaximumLength(40)]
+    public string? DisplayName { get; init; }
+
+    [HasExactLength(3)]
+    public string[]? Tags { get; init; }
+
+    [IsNotEmpty]
+    public string? NonemptyText { get; init; }
+
+    [IsNotWhiteSpace]
+    public string? MeaningfulText { get; init; }
+
+    [IsDefinedEnum]
+    public OrderValidationState? State { get; init; }
+
+    [IsUrl]
+    public string? Website { get; init; }
+
+    [IsPhoneNumber]
+    public string? PhoneNumber { get; init; }
+
+    [IsUuid]
+    public string? Uuid { get; init; }
+
+    [IsIpAddress]
+    public string? IpAddress { get; init; }
+
+    [IsIpv4Address]
+    public string? Ipv4Address { get; init; }
+
+    [IsIpv6Address]
+    public string? Ipv6Address { get; init; }
+
+    [IsBase64]
+    public string? Base64 { get; init; }
+
+    [IsHexColor]
+    public string? HexColor { get; init; }
+
+    [IsSlug]
+    public string? Slug { get; init; }
+
+    [IsAlpha]
+    public string? Alpha { get; init; }
+
+    [IsAlphaNumeric]
+    public string? AlphaNumeric { get; init; }
+
+    [IsDigits]
+    public string? Digits { get; init; }
+
     [IsRequired]
     public OrderValidationAddress? Address { get; init; }
+
+    public List<OrderValidationAddress>? Addresses { get; init; }
+
+    public OrderValidationLocation[]? Locations { get; init; }
 
     private partial IEnumerable<string> ValidateCustomCode()
     {

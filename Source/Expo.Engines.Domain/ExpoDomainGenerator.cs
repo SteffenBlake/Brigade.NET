@@ -168,6 +168,7 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
             source.Append("[global::System.AttributeUsage(global::System.AttributeTargets.Property, Inherited = true)]\n")
                 .Append("private sealed class Matches").Append(regex.Name)
                 .Append("Attribute(string? message = null) : global::System.Attribute\n{")
+                .Append("public const string Pattern = ").Append(Literal(regex.Pattern)).Append(";\n")
                 .Append("public string? Message { get; } = message;\n}\n");
         }
     }
@@ -299,24 +300,35 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
 
         if (IsValidatable(property.Type))
         {
+            var childName = "child" + property.Name;
+            var errorsName = "childErrors" + property.Name;
+            var errorName = "childError" + property.Name;
             source.Append("if (").Append(propertyAccess)
-                .Append(" is global::Brigade.Net.Expo.IExpoValidatable child && !child.TryValidate(out var childErrors))\n")
-                .Append("{\nforeach (var childError in childErrors)\n{")
-                .Append("validationErrors.Add(new(childError.Detail, ").Append(pointer)
-                .Append(" + childError.Pointer));\n}\n}\n");
+                .Append(" is global::Brigade.Net.Expo.IExpoValidatable ").Append(childName)
+                .Append(" && !").Append(childName).Append(".TryValidate(out var ").Append(errorsName)
+                .Append("))\n{\nforeach (var ").Append(errorName).Append(" in ").Append(errorsName)
+                .Append(")\n{").Append("validationErrors.Add(new(").Append(errorName)
+                .Append(".Detail, ").Append(pointer).Append(" + ").Append(errorName)
+                .Append(".Pointer));\n}\n}\n");
         }
         else if (GetEnumerableElementType(property.Type) is { } elementType
             && IsValidatable(elementType))
         {
             var indexName = "childIndex" + property.Name;
+            var childName = "child" + property.Name;
+            var validatableName = "validatableChild" + property.Name;
+            var errorsName = "childErrors" + property.Name;
+            var errorName = "childError" + property.Name;
             source.Append("if (").Append(propertyAccess).Append(" is not null)\n{\n")
                 .Append("var ").Append(indexName).Append(" = 0;\n")
-                .Append("foreach (var child in ").Append(propertyAccess).Append(")\n{\n")
-                .Append("if (child is global::Brigade.Net.Expo.IExpoValidatable validatableChild && ")
-                .Append("!validatableChild.TryValidate(out var childErrors))\n{\n")
-                .Append("foreach (var childError in childErrors)\n{\n")
-                .Append("validationErrors.Add(new(childError.Detail, ").Append(pointer)
-                .Append(" + \"/\" + ").Append(indexName).Append(" + childError.Pointer));\n}\n}\n")
+                .Append("foreach (var ").Append(childName).Append(" in ").Append(propertyAccess).Append(")\n{\n")
+                .Append("if (").Append(childName).Append(" is global::Brigade.Net.Expo.IExpoValidatable ")
+                .Append(validatableName).Append(" && !").Append(validatableName)
+                .Append(".TryValidate(out var ").Append(errorsName).Append("))\n{\n")
+                .Append("foreach (var ").Append(errorName).Append(" in ").Append(errorsName).Append(")\n{\n")
+                .Append("validationErrors.Add(new(").Append(errorName).Append(".Detail, ").Append(pointer)
+                .Append(" + \"/\" + ").Append(indexName).Append(" + ").Append(errorName)
+                .Append(".Pointer));\n}\n}\n")
                 .Append(indexName).Append("++;\n}\n}\n");
         }
     }

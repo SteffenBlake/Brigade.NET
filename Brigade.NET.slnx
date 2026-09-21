@@ -16,6 +16,7 @@
   <Folder Name="/Source/Expo.Engines.Domain/">
     <Project Path="Source/Expo.Engines.Domain/Brigade.Net.Expo.Engines.Domain.csproj" />
   </Folder>
+  <Folder Name="/Source/Partie.Extensions.Expo.Engines.AspNetCore/" />
   <Folder Name="/Source/Expo/">
     <Project Path="Source/Expo/Brigade.Net.Expo.csproj" />
   </Folder>

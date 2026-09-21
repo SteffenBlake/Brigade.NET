@@ -100,6 +100,32 @@ public sealed class OrderValidationTests(AppHostFixture host)
         Assert.False(error.TryGetProperty("accepted", out _));
     }
 
+    [Fact]
+    public async Task NestedListAndArrayItemsCascadeValidationWithIndexes()
+    {
+        var payload = ValidPayload();
+        payload["addresses"] = new[]
+        {
+            new
+            {
+                street = (string?)null,
+                location = new { postalCode = "LIST-OK" }
+            }
+        };
+        payload["locations"] = new[]
+        {
+            new { postalCode = (string?)null }
+        };
+
+        using var response = await host.WebClient.PostAsJsonAsync("/api/v1/orders/validate", payload);
+        var error = await Read(response);
+        var details = error.GetProperty("errorDetails").EnumerateArray().ToArray();
+
+        AssertPointers(details, "/Body/Addresses/0/Street", "/Body/Locations/0/PostalCode");
+        AssertDetail(details, "/Body/Addresses/0/Street", "Street is required.");
+        AssertDetail(details, "/Body/Locations/0/PostalCode", "PostalCode is mandatory.");
+    }
+
     [Theory]
     [InlineData("{broken")]
     [InlineData("{\"evenNumber\":\"many\"}")]

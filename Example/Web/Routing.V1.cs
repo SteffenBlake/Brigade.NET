@@ -13,7 +13,6 @@ using Microsoft.AspNetCore.Builder;
 namespace Brigade.Net.Example.Web;
 
 [BrigadeGroup("/api/v1")]
-[ExpoValidationRoutePolicy]
 [ExpoValidationPartie]
 public static partial class Routing
 {

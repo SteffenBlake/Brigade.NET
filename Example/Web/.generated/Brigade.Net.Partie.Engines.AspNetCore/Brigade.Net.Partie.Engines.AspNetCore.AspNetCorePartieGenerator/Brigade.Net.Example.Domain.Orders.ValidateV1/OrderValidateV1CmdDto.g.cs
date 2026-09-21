@@ -7,4 +7,8 @@ public sealed class OrderValidateV1CmdDto
     [global::Brigade.Net.Expo.IsRequiredAttribute("The validation payload is required.")]
     [global::Microsoft.AspNetCore.Mvc.FromBody]
     public global::Brigade.Net.Example.Domain.Orders.ValidateV1.OrderValidationPayload? @Body { get; set; } = default!;
+
+    [global::Brigade.Net.Expo.IsNotEmptyAttribute(null)]
+    [global::Microsoft.AspNetCore.Mvc.FromHeader(Name = "X-Validation-Code")]
+    public string? @ValidationCode { get; set; } = default!;
 }

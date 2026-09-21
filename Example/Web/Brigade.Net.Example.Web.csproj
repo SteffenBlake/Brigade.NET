@@ -23,6 +23,6 @@
     <ProjectReference Include="..\..\Source\Partie.Engines.AspNetCore\Brigade.Net.Partie.Engines.AspNetCore.csproj"
       OutputItemType="Analyzer"
       ReferenceOutputAssembly="false"/>
-  </ItemGroup>
+    </ItemGroup>
 
 </Project>
