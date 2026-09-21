@@ -1,7 +1,7 @@
 namespace Brigade.Net.Expo;
 
 [AttributeUsage(AttributeTargets.Property, Inherited = true)]
-public sealed class IsPhoneNumberAttribute(string? message = null) : Attribute, IExpoValidationAttribute
+public sealed class StringMatchesPhoneNumberAttribute(string? message = null) : Attribute, IExpoValidationAttribute
 {
     public string? Message { get; } = message;
 

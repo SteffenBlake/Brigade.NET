@@ -3,7 +3,7 @@ using System.Net;
 namespace Brigade.Net.Expo;
 
 [AttributeUsage(AttributeTargets.Property, Inherited = true)]
-public sealed class IsIpAddressAttribute(string? message = null) : Attribute, IExpoValidationAttribute
+public sealed class StringMatchesIpAddressAttribute(string? message = null) : Attribute, IExpoValidationAttribute
 {
     public string? Message { get; } = message;
 

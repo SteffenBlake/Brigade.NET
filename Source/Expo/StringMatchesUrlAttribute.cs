@@ -1,7 +1,7 @@
 namespace Brigade.Net.Expo;
 
 [AttributeUsage(AttributeTargets.Property, Inherited = true)]
-public sealed class IsUrlAttribute(string? message = null) : Attribute, IExpoValidationAttribute
+public sealed class StringMatchesUrlAttribute(string? message = null) : Attribute, IExpoValidationAttribute
 {
     public string? Message { get; } = message;
 

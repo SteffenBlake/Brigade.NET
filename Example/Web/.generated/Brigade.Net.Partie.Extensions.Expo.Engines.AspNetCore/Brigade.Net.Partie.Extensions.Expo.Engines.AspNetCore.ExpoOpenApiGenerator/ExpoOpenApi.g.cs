@@ -46,7 +46,7 @@ continue;
 switch (propertyInfo.Name)
 {
 case "Customer":
-ApplyMinimum(propertySchema, 2);
+propertySchema.MinLength = 2;
 break;
 }
 }
@@ -66,7 +66,7 @@ case "Body":
 schema.Required ??= new global::System.Collections.Generic.HashSet<string>(); schema.Required.Add(jsonProperty.Name);
 break;
 case "ValidationCode":
-ApplyMinimum(propertySchema, 1);
+propertySchema.MinLength = 1;
 break;
 }
 }
@@ -115,6 +115,9 @@ break;
 case "LessOrEqualProperty":
 AddInexact(propertySchema, "Maximum");
 break;
+case "LessOrEqualEnumerable":
+AddInexact(((global::Microsoft.OpenApi.OpenApiSchema)propertySchema.Items!), "Maximum");
+break;
 case "EqualProperty":
 AddInexact(propertySchema, "Equal");
 break;
@@ -130,24 +133,27 @@ break;
 case "ContactEmail":
 propertySchema.Format = "email"; propertySchema.Pattern = "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$";
 break;
+case "ContactEmails":
+((global::Microsoft.OpenApi.OpenApiSchema)propertySchema.Items!).Format = "email"; ((global::Microsoft.OpenApi.OpenApiSchema)propertySchema.Items!).Pattern = "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$";
+break;
 case "ReferenceCode":
 propertySchema.Pattern = "^REF-\\d{4}$";
 break;
 case "DisplayName":
-ApplyMinimum(propertySchema, 2);
-ApplyMaximum(propertySchema, 40);
+propertySchema.MinLength = 2;
+propertySchema.MaxLength = 40;
 break;
 case "Tags":
-ApplyMinimum(propertySchema, 3); ApplyMaximum(propertySchema, 3);
+propertySchema.MinItems = 3; propertySchema.MaxItems = 3;
 break;
 case "NonemptyText":
-ApplyMinimum(propertySchema, 1);
+propertySchema.MinLength = 1;
 break;
 case "MeaningfulText":
-AddInexact(propertySchema, "IsNotWhiteSpaceAttribute");
+AddInexact(propertySchema, "StringIsNotWhiteSpaceAttribute");
 break;
 case "State":
-AddInexact(propertySchema, "IsDefinedEnumAttribute");
+AddInexact(propertySchema, "EnumIsDefinedAttribute");
 break;
 case "Website":
 propertySchema.Format = "uri";
@@ -258,7 +264,7 @@ if (parameter?.Schema is not global::Microsoft.OpenApi.OpenApiSchema propertySch
 {
 continue;
 }
-ApplyMinimum(propertySchema, 2);
+propertySchema.MinLength = 2;
 }
 foreach (var binding in context.Description.ParameterDescriptions)
 {
@@ -282,7 +288,7 @@ if (parameter?.Schema is not global::Microsoft.OpenApi.OpenApiSchema propertySch
 {
 continue;
 }
-ApplyMinimum(propertySchema, 1);
+propertySchema.MinLength = 1;
 }
 return global::System.Threading.Tasks.Task.CompletedTask;
 }
@@ -304,7 +310,7 @@ private static void ApplyMaximum(global::Microsoft.OpenApi.OpenApiSchema schema,
     }
     schema.MaxLength = length;
 }
-private static void AddInexact(global::Microsoft.OpenApi.OpenApiSchema schema, string rule)
+private static void AddInexact(global::Microsoft.OpenApi.IOpenApiSchema schema, string rule)
 {
     var text = "Expo validation rule: " + rule + ".";
     schema.Description = global::System.String.IsNullOrWhiteSpace(schema.Description)

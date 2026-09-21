@@ -21,10 +21,13 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
     private const string ExpoAttributeName = "Brigade.Net.Expo.ExpoAttribute";
     private const string GeneratedRegexAttributeName =
         "System.Text.RegularExpressions.GeneratedRegexAttribute";
-    private const string LengthAttributeName = "Brigade.Net.Expo.LengthValidationAttribute";
-    private const string NotEmptyAttributeName = "Brigade.Net.Expo.IsNotEmptyAttribute";
-    private const string NotWhiteSpaceAttributeName = "Brigade.Net.Expo.IsNotWhiteSpaceAttribute";
-    private const string DefinedEnumAttributeName = "Brigade.Net.Expo.IsDefinedEnumAttribute";
+    private const string StringLengthAttributeName = "Brigade.Net.Expo.StringLengthValidationAttribute";
+    private const string ItemsLengthAttributeName = "Brigade.Net.Expo.ItemsLengthValidationAttribute";
+    private const string StringNotEmptyAttributeName = "Brigade.Net.Expo.StringIsNotEmptyAttribute";
+    private const string ItemsNotEmptyAttributeName = "Brigade.Net.Expo.ItemsIsNotEmptyAttribute";
+    private const string NotWhiteSpaceAttributeName =
+        "Brigade.Net.Expo.StringIsNotWhiteSpaceAttribute";
+    private const string DefinedEnumAttributeName = "Brigade.Net.Expo.EnumIsDefinedAttribute";
 
     private static readonly DiagnosticDescriptor MustBePartial = new(
         "EXPO001", "Expo model must be partial",
@@ -166,7 +169,7 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
         foreach (var regex in regexes)
         {
             source.Append("[global::System.AttributeUsage(global::System.AttributeTargets.Property, Inherited = true)]\n")
-                .Append("private sealed class Matches").Append(regex.Name)
+                .Append("private sealed class StringMatches").Append(regex.Name)
                 .Append("Attribute(string? message = null) : global::System.Attribute\n{")
                 .Append("public const string Pattern = ").Append(Literal(regex.Pattern)).Append(";\n")
                 .Append("public string? Message { get; } = message;\n}\n");
@@ -224,6 +227,7 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
     {
         var propertyAccess = "this." + Escape(property.Name);
         var pointer = Literal(Pointer(property.Name));
+        var elementType = GetEnumerableElementType(property.Type);
         foreach (var rule in GetRules(property, regexes))
         {
             var message = Literal(rule.Message ?? DefaultMessage(property.Name, rule));
@@ -234,68 +238,27 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
                 continue;
             }
 
-            string invalidExpression;
-            if (rule.Kind == "Required")
+            if (elementType is not null && !IsOuterRule(rule))
             {
-                invalidExpression = propertyAccess + " is null";
-            }
-            else if (rule.RegexMember is not null)
-            {
-                invalidExpression = propertyAccess + " is not null && !" + rule.RegexMember
-                    + ".IsMatch(" + propertyAccess + ")";
-            }
-            else if (rule.AttributeType is not null)
-            {
-                invalidExpression = "!" + rule.AttributeType + ".IsValid(" + propertyAccess + ")";
-            }
-            else if (rule.Kind == "MinimumLength")
-            {
-                invalidExpression = propertyAccess + " is not null && " + LengthExpression(property, propertyAccess)
-                    + " < " + rule.Constant;
-            }
-            else if (rule.Kind == "MaximumLength")
-            {
-                invalidExpression = propertyAccess + " is not null && " + LengthExpression(property, propertyAccess)
-                    + " > " + rule.Constant;
-            }
-            else if (rule.Kind == "ExactLength")
-            {
-                invalidExpression = propertyAccess + " is not null && " + LengthExpression(property, propertyAccess)
-                    + " != " + rule.Constant;
-            }
-            else if (rule.Kind == "NotEmpty")
-            {
-                invalidExpression = propertyAccess + " is not null && " + LengthExpression(property, propertyAccess)
-                    + " == 0";
-            }
-            else if (rule.Kind == "NotWhiteSpace")
-            {
-                invalidExpression = propertyAccess
-                    + " is not null && global::System.String.IsNullOrWhiteSpace(" + propertyAccess + ")";
-            }
-            else if (rule.Kind == "DefinedEnum")
-            {
-                var enumType = UnwrapNullable(property.Type);
-                var nullGuard = CanBeNull(property.Type) ? propertyAccess + " is not null && " : string.Empty;
-                invalidExpression = nullGuard + "!global::System.Enum.IsDefined(typeof("
-                    + enumType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) + "), "
-                    + propertyAccess + ")";
-            }
-            else if (rule.ComparedProperty is not null)
-            {
-                invalidExpression = ComparisonExpression(
-                    property.Type,
-                    propertyAccess,
-                    "this." + Escape(rule.ComparedProperty),
-                    rule.Kind
+                var itemName = "item" + property.Name;
+                var indexName = "itemIndex" + property.Name;
+                source.Append("if (").Append(propertyAccess).Append(" is not null)\n{\n")
+                    .Append("var ").Append(indexName).Append(" = 0;\n")
+                    .Append("foreach (var ").Append(itemName).Append(" in ")
+                    .Append(propertyAccess).Append(")\n{\n");
+                AppendRuleValidation(
+                    source,
+                    rule,
+                    elementType,
+                    itemName,
+                    pointer + " + \"/\" + " + indexName,
+                    message
                 );
+                source.Append(indexName).Append("++;\n}\n}\n");
+                continue;
             }
-            else
-            {
-                invalidExpression = ComparisonExpression(property.Type, propertyAccess, rule.Constant, rule.Kind);
-            }
-            source.Append("if (").Append(invalidExpression).Append(")\n{")
-                .Append("validationErrors.Add(new(").Append(message).Append(", ").Append(pointer).Append("));\n}\n");
+
+            AppendRuleValidation(source, rule, property.Type, propertyAccess, pointer, message);
         }
 
         if (IsValidatable(property.Type))
@@ -311,8 +274,8 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
                 .Append(".Detail, ").Append(pointer).Append(" + ").Append(errorName)
                 .Append(".Pointer));\n}\n}\n");
         }
-        else if (GetEnumerableElementType(property.Type) is { } elementType
-            && IsValidatable(elementType))
+        else if (GetEnumerableElementType(property.Type) is { } nestedElementType
+            && IsValidatable(nestedElementType))
         {
             var indexName = "childIndex" + property.Name;
             var childName = "child" + property.Name;
@@ -331,6 +294,86 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
                 .Append(".Pointer));\n}\n}\n")
                 .Append(indexName).Append("++;\n}\n}\n");
         }
+    }
+
+    private static void AppendRuleValidation(
+        StringBuilder source,
+        Rule rule,
+        ITypeSymbol valueType,
+        string valueAccess,
+        string pointer,
+        string message
+    )
+    {
+        string invalidExpression;
+        if (rule.Kind == "Required")
+        {
+            invalidExpression = valueAccess + " is null";
+        }
+        else if (rule.RegexMember is not null)
+        {
+            invalidExpression = valueAccess + " is not null && !" + rule.RegexMember
+                + ".IsMatch(" + valueAccess + ")";
+        }
+        else if (rule.AttributeType is not null)
+        {
+            invalidExpression = "!" + rule.AttributeType + ".IsValid(" + valueAccess + ")";
+        }
+        else if (rule.Kind is "StringMinimumLength" or "ItemsMinimumLength")
+        {
+            invalidExpression = valueAccess + " is not null && " + LengthExpression(valueType, valueAccess)
+                + " < " + rule.Constant;
+        }
+        else if (rule.Kind is "StringMaximumLength" or "ItemsMaximumLength")
+        {
+            invalidExpression = valueAccess + " is not null && " + LengthExpression(valueType, valueAccess)
+                + " > " + rule.Constant;
+        }
+        else if (rule.Kind is "StringExactLength" or "ItemsExactLength")
+        {
+            invalidExpression = valueAccess + " is not null && " + LengthExpression(valueType, valueAccess)
+                + " != " + rule.Constant;
+        }
+        else if (rule.Kind is "StringNotEmpty" or "ItemsNotEmpty")
+        {
+            invalidExpression = valueAccess + " is not null && " + LengthExpression(valueType, valueAccess)
+                + " == 0";
+        }
+        else if (rule.Kind == "NotWhiteSpace")
+        {
+            invalidExpression = valueAccess
+                + " is not null && global::System.String.IsNullOrWhiteSpace(" + valueAccess + ")";
+        }
+        else if (rule.Kind == "DefinedEnum")
+        {
+            var enumType = UnwrapNullable(valueType);
+            var nullGuard = CanBeNull(valueType) ? valueAccess + " is not null && " : string.Empty;
+            invalidExpression = nullGuard + "!global::System.Enum.IsDefined(typeof("
+                + enumType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) + "), "
+                + valueAccess + ")";
+        }
+        else if (rule.ComparedProperty is not null)
+        {
+            invalidExpression = ComparisonExpression(
+                valueType,
+                valueAccess,
+                "this." + Escape(rule.ComparedProperty),
+                rule.Kind
+            );
+        }
+        else
+        {
+            invalidExpression = ComparisonExpression(valueType, valueAccess, rule.Constant, rule.Kind);
+        }
+        source.Append("if (").Append(invalidExpression).Append(")\n{")
+            .Append("validationErrors.Add(new(").Append(message).Append(", ").Append(pointer)
+            .Append("));\n}\n");
+    }
+
+    private static bool IsOuterRule(Rule rule)
+    {
+        return rule.Kind is "Required" or "ItemsMinimumLength" or "ItemsMaximumLength"
+            or "ItemsExactLength" or "ItemsNotEmpty";
     }
 
     private static string ComparisonExpression(
@@ -362,21 +405,21 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
             + left + ", " + right + ") " + operation;
     }
 
-    private static string LengthExpression(IPropertySymbol property, string propertyAccess)
+    private static string LengthExpression(ITypeSymbol type, string valueAccess)
     {
-        if (property.Type.SpecialType == SpecialType.System_String || property.Type is IArrayTypeSymbol)
+        if (type.SpecialType == SpecialType.System_String || type is IArrayTypeSymbol)
         {
-            return propertyAccess + ".Length";
+            return valueAccess + ".Length";
         }
 
-        if (property.Type.AllInterfaces.Any(item =>
+        if (type.AllInterfaces.Any(item =>
             item.OriginalDefinition.SpecialType is SpecialType.System_Collections_Generic_ICollection_T
                 or SpecialType.System_Collections_Generic_IReadOnlyCollection_T))
         {
-            return propertyAccess + ".Count";
+            return valueAccess + ".Count";
         }
 
-        return "global::System.Linq.Enumerable.Count(" + propertyAccess + ")";
+        return "global::System.Linq.Enumerable.Count(" + valueAccess + ")";
     }
 
     private static IEnumerable<Rule> GetRules(
@@ -401,21 +444,28 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
                 yield return new Rule("CustomPartial", "null", null, null, "partial", null);
                 continue;
             }
-            if (FindExpoBase(attribute.AttributeClass, LengthAttributeName))
+            if (FindExpoBase(attribute.AttributeClass, StringLengthAttributeName)
+                || FindExpoBase(attribute.AttributeClass, ItemsLengthAttributeName))
             {
+                var prefix = FindExpoBase(attribute.AttributeClass, ItemsLengthAttributeName)
+                    ? "Items" : "String";
                 var kind = attribute.AttributeClass?.Name switch
                 {
-                    "HasMinimumLengthAttribute" => "MinimumLength",
-                    "HasMaximumLengthAttribute" => "MaximumLength",
-                    _ => "ExactLength"
+                    "StringHasMinimumLengthAttribute" or "ItemsHasMinimumLengthAttribute" =>
+                        prefix + "MinimumLength",
+                    "StringHasMaximumLengthAttribute" or "ItemsHasMaximumLengthAttribute" =>
+                        prefix + "MaximumLength",
+                    _ => prefix + "ExactLength"
                 };
                 yield return new Rule(kind, Constant(attribute.ConstructorArguments[0], attribute.ConstructorArguments[0].Type!),
                     null, Message(attribute), null, null);
                 continue;
             }
-            if (name is NotEmptyAttributeName or NotWhiteSpaceAttributeName or DefinedEnumAttributeName)
+            if (name is StringNotEmptyAttributeName or ItemsNotEmptyAttributeName
+                or NotWhiteSpaceAttributeName or DefinedEnumAttributeName)
             {
-                var kind = name == NotEmptyAttributeName ? "NotEmpty"
+                var kind = name == StringNotEmptyAttributeName ? "StringNotEmpty"
+                    : name == ItemsNotEmptyAttributeName ? "ItemsNotEmpty"
                     : name == NotWhiteSpaceAttributeName ? "NotWhiteSpace" : "DefinedEnum";
                 yield return new Rule(kind, "null", null, Message(attribute, 0), null, null);
                 continue;
@@ -428,7 +478,10 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
                 var argument = attribute.ConstructorArguments.FirstOrDefault();
                 yield return new Rule(
                     RuleKind(baseName, isProperty),
-                    isProperty ? "null" : Constant(argument, property.Type),
+                    isProperty ? "null" : Constant(
+                        argument,
+                        GetEnumerableElementType(property.Type) ?? property.Type
+                    ),
                     isProperty ? argument.Value as string : null,
                     Message(attribute), null, null
                 );
@@ -490,7 +543,7 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
                     name = name.Substring(0, name.Length - "Attribute".Length);
                 }
 
-                var regex = regexes.FirstOrDefault(item => name == "Matches" + item.Name);
+                var regex = regexes.FirstOrDefault(item => name == "StringMatches" + item.Name);
                 if (regex is null)
                 {
                     continue;
@@ -535,19 +588,19 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
     {
         return attributeName switch
         {
-            "IsEmailAttribute" => ("Format", @"^[^@\s]+@[^@\s]+\.[^@\s]+$", "email"),
-            "IsPhoneNumberAttribute" => ("Pattern", @"^\+[1-9]\d{1,14}$", null),
-            "IsUuidAttribute" => ("Format", null, "uuid"),
-            "IsUrlAttribute" => ("Format", null, "uri"),
-            "IsIpAddressAttribute" => ("Format", null, "ip"),
-            "IsIpv4AddressAttribute" => ("Format", null, "ipv4"),
-            "IsIpv6AddressAttribute" => ("Format", null, "ipv6"),
-            "IsBase64Attribute" => ("Format", null, "byte"),
-            "IsHexColorAttribute" => ("Pattern", @"^#?(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$", null),
-            "IsSlugAttribute" => ("Pattern", @"^[a-z0-9]+(?:-[a-z0-9]+)*$", null),
-            "IsAlphaAttribute" => ("Pattern", @"^\p{L}+$", null),
-            "IsAlphaNumericAttribute" => ("Pattern", @"^[\p{L}\p{Nd}]+$", null),
-            "IsDigitsAttribute" => ("Pattern", @"^\d+$", null),
+            "StringMatchesEmailAttribute" => ("Format", @"^[^@\s]+@[^@\s]+\.[^@\s]+$", "email"),
+            "StringMatchesPhoneNumberAttribute" => ("Pattern", @"^\+[1-9]\d{1,14}$", null),
+            "StringMatchesUuidAttribute" => ("Format", null, "uuid"),
+            "StringMatchesUrlAttribute" => ("Format", null, "uri"),
+            "StringMatchesIpAddressAttribute" => ("Format", null, "ip"),
+            "StringMatchesIpv4AddressAttribute" => ("Format", null, "ipv4"),
+            "StringMatchesIpv6AddressAttribute" => ("Format", null, "ipv6"),
+            "StringMatchesBase64Attribute" => ("Format", null, "byte"),
+            "StringMatchesHexColorAttribute" => ("Pattern", @"^#?(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$", null),
+            "StringMatchesSlugAttribute" => ("Pattern", @"^[a-z0-9]+(?:-[a-z0-9]+)*$", null),
+            "StringMatchesAlphaAttribute" => ("Pattern", @"^\p{L}+$", null),
+            "StringMatchesAlphaNumericAttribute" => ("Pattern", @"^[\p{L}\p{Nd}]+$", null),
+            "StringMatchesDigitsAttribute" => ("Pattern", @"^\d+$", null),
             _ => ("Custom", null, null)
         };
     }
@@ -668,10 +721,14 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
             "ExclusiveMinimum" => propertyName + " must be greater than the configured value.",
             "Maximum" => propertyName + " must be less than or equal to the configured value.",
             "ExclusiveMaximum" => propertyName + " must be less than the configured value.",
-            "MinimumLength" => propertyName + " is shorter than the minimum length.",
-            "MaximumLength" => propertyName + " exceeds the maximum length.",
-            "ExactLength" => propertyName + " does not have the required length.",
-            "NotEmpty" => propertyName + " must not be empty.",
+            "StringMinimumLength" => propertyName + " is shorter than the minimum length.",
+            "StringMaximumLength" => propertyName + " exceeds the maximum length.",
+            "StringExactLength" => propertyName + " does not have the required length.",
+            "StringNotEmpty" => propertyName + " must not be empty.",
+            "ItemsMinimumLength" => propertyName + " has fewer than the minimum number of items.",
+            "ItemsMaximumLength" => propertyName + " exceeds the maximum number of items.",
+            "ItemsExactLength" => propertyName + " does not have the required number of items.",
+            "ItemsNotEmpty" => propertyName + " must not be empty.",
             "NotWhiteSpace" => propertyName + " must not be empty or white space.",
             "Pattern" => propertyName + " has an invalid format.",
             "Format" => propertyName + " has an invalid format.",

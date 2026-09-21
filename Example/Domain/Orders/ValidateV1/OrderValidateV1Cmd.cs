@@ -12,16 +12,18 @@ public partial class OrderValidateV1Cmd
     public OrderValidationPayload? Body { get; init; }
 
     [FromMetadata(Name = "X-Validation-Code")]
-    [IsNotEmpty]
+    [StringIsNotEmpty]
     public string? ValidationCode { get; init; }
 }
 
 [Expo]
 public partial class OrderValidationPayload
 {
+    // Null passes optional rules. Add IsRequired when null must fail.
     [IsRequired("RequiredText has a custom required message.")]
     public string? RequiredText { get; init; }
 
+    // Constant comparisons work with numbers and other comparable values.
     [IsGreaterThan(10, "GreaterConstant must be above 10.")]
     public int GreaterConstant { get; init; }
 
@@ -40,6 +42,7 @@ public partial class OrderValidationPayload
     [IsNotEqualTo(10)]
     public int NotEqualConstant { get; init; }
 
+    // IsComparable generates property-to-property comparison attributes.
     [IsComparable]
     public int Baseline { get; init; }
 
@@ -55,86 +58,101 @@ public partial class OrderValidationPayload
     [IsLessThanOrEqualToBaseline]
     public int LessOrEqualProperty { get; init; }
 
+    // String and number rules validate each item in an enumerable.
+    [IsLessThanOrEqualToBaseline]
+    public List<int>? LessOrEqualEnumerable { get; init; }
+
     [IsEqualToBaseline]
     public int EqualProperty { get; init; }
 
     [IsNotEqualToBaseline]
     public int NotEqualProperty { get; init; }
 
+    // Custom attributes support reusable rules; CustomValidation uses a model method.
     [IsEven]
     public int EvenNumber { get; init; }
 
     [CustomValidation]
     public string CustomCode { get; init; } = string.Empty;
 
-    [IsEmail]
+    [StringMatchesEmail]
     public string? ContactEmail { get; init; }
 
+    [StringMatchesEmail]
+    public List<string?>? ContactEmails { get; init; }
+
+    // GeneratedRegex creates a StringMatches<MemberName> attribute for this model.
     [GeneratedRegex(@"^REF-\d{4}$", RegexOptions.CultureInvariant)]
     private static partial Regex ReferenceCodeRegex();
 
-    [MatchesReferenceCodeRegex("ReferenceCode must look like REF-1234.")]
+    [StringMatchesReferenceCodeRegex("ReferenceCode must look like REF-1234.")]
     public string? ReferenceCode { get; init; }
 
-    [HasMinimumLength(2)]
-    [HasMaximumLength(40)]
+    // String rules check text; Items rules check the outer collection.
+    [StringHasMinimumLength(2)]
+    [StringHasMaximumLength(40)]
     public string? DisplayName { get; init; }
 
-    [HasExactLength(3)]
+    [ItemsHasExactLength(3)]
     public string[]? Tags { get; init; }
 
-    [IsNotEmpty]
+    [StringIsNotEmpty]
     public string? NonemptyText { get; init; }
 
-    [IsNotWhiteSpace]
+    [StringIsNotWhiteSpace]
     public string? MeaningfulText { get; init; }
 
-    [IsDefinedEnum]
+    [EnumIsDefined]
     public OrderValidationState? State { get; init; }
 
-    [IsUrl]
+    // StringMatches attributes cover common text formats.
+    [StringMatchesUrl]
     public string? Website { get; init; }
 
-    [IsPhoneNumber]
+    [StringMatchesPhoneNumber]
     public string? PhoneNumber { get; init; }
 
-    [IsUuid]
+    [StringMatchesUuid]
     public string? Uuid { get; init; }
 
-    [IsIpAddress]
+    [StringMatchesIpAddress]
     public string? IpAddress { get; init; }
 
-    [IsIpv4Address]
+    [StringMatchesIpv4Address]
     public string? Ipv4Address { get; init; }
 
-    [IsIpv6Address]
+    [StringMatchesIpv6Address]
     public string? Ipv6Address { get; init; }
 
-    [IsBase64]
+    [StringMatchesBase64]
     public string? Base64 { get; init; }
 
-    [IsHexColor]
+    [StringMatchesHexColor]
     public string? HexColor { get; init; }
 
-    [IsSlug]
+    [StringMatchesSlug]
     public string? Slug { get; init; }
 
-    [IsAlpha]
+    [StringMatchesAlpha]
     public string? Alpha { get; init; }
 
-    [IsAlphaNumeric]
+    [StringMatchesAlphaNumeric]
     public string? AlphaNumeric { get; init; }
 
-    [IsDigits]
+    [StringMatchesDigits]
     public string? Digits { get; init; }
 
+    // Expo models cascade through nested objects and collections.
     [IsRequired]
     public OrderValidationAddress? Address { get; init; }
 
+    // Encluding if the nested objects are in a Collection
     public List<OrderValidationAddress>? Addresses { get; init; }
 
     public OrderValidationLocation[]? Locations { get; init; }
 
+    // Custom validation is generated per property with
+    // the [CustomValidation] attribute
     private partial IEnumerable<string> ValidateCustomCode()
     {
         if (!CustomCode.StartsWith("CHAD-", StringComparison.Ordinal))

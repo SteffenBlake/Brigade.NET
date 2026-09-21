@@ -5,64 +5,64 @@ namespace Brigade.Net.Expo.Tests;
 [Expo]
 public partial class PrefabValidationModel
 {
-    [HasMinimumLength(3)]
+    [StringHasMinimumLength(3)]
     public string? Minimum { get; init; }
 
-    [HasMaximumLength(3)]
+    [ItemsHasMaximumLength(3)]
     public int[]? Maximum { get; init; }
 
-    [HasExactLength(3)]
+    [ItemsHasExactLength(3)]
     public List<int>? Exact { get; init; }
 
-    [IsNotEmpty]
+    [StringIsNotEmpty]
     public string? Nonempty { get; init; }
 
-    [IsNotWhiteSpace]
+    [StringIsNotWhiteSpace]
     public string? Text { get; init; }
 
-    [IsDefinedEnum]
+    [EnumIsDefined]
     public PrefabState State { get; init; }
 
-    [IsEmail]
+    [StringMatchesEmail]
     public string? Email { get; init; }
 
-    [IsUrl]
+    [StringMatchesUrl]
     public string? Url { get; init; }
 
-    [IsPhoneNumber]
+    [StringMatchesPhoneNumber]
     public string? Phone { get; init; }
 
-    [IsUuid]
+    [StringMatchesUuid]
     public string? Uuid { get; init; }
 
-    [IsIpAddress]
+    [StringMatchesIpAddress]
     public string? Ip { get; init; }
 
-    [IsIpv4Address]
+    [StringMatchesIpv4Address]
     public string? Ipv4 { get; init; }
 
-    [IsIpv6Address]
+    [StringMatchesIpv6Address]
     public string? Ipv6 { get; init; }
 
-    [IsBase64]
+    [StringMatchesBase64]
     public string? Base64 { get; init; }
 
-    [IsHexColor]
+    [StringMatchesHexColor]
     public string? Color { get; init; }
 
-    [IsSlug]
+    [StringMatchesSlug]
     public string? Slug { get; init; }
 
-    [IsAlpha]
+    [StringMatchesAlpha]
     public string? Alpha { get; init; }
 
-    [IsAlphaNumeric]
+    [StringMatchesAlphaNumeric]
     public string? AlphaNumeric { get; init; }
 
-    [IsDigits]
+    [StringMatchesDigits]
     public string? Digits { get; init; }
 
-    [MatchesCodeRegex]
+    [StringMatchesCodeRegex]
     public string? Code { get; init; }
 
     public List<GeneratedChildModel>? Children { get; init; }

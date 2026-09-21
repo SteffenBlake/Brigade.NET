@@ -1,7 +1,7 @@
 namespace Brigade.Net.Expo;
 
 [AttributeUsage(AttributeTargets.Property, Inherited = true)]
-public sealed class IsUuidAttribute(string? message = null) : Attribute, IExpoValidationAttribute
+public sealed class StringMatchesUuidAttribute(string? message = null) : Attribute, IExpoValidationAttribute
 {
     public string? Message { get; } = message;
 

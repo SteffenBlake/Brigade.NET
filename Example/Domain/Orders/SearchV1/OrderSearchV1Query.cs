@@ -12,6 +12,6 @@ public partial class OrderSearchV1Query
 
     /// <summary>The customer name.</summary>
     [FromParams(Name = "customer")]
-    [HasMinimumLength(2)]
+    [StringHasMinimumLength(2)]
     public string? Customer { get; init; }
 }

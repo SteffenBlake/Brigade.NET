@@ -4,7 +4,7 @@ using System.Net.Sockets;
 namespace Brigade.Net.Expo;
 
 [AttributeUsage(AttributeTargets.Property, Inherited = true)]
-public sealed class IsIpv4AddressAttribute(string? message = null) : Attribute, IExpoValidationAttribute
+public sealed class StringMatchesIpv4AddressAttribute(string? message = null) : Attribute, IExpoValidationAttribute
 {
     public string? Message { get; } = message;
 

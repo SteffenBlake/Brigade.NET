@@ -51,7 +51,7 @@ public sealed class PrefabValidationTests
     {
         var metadata = PrefabValidationModel.Metadata;
 
-        Assert.Equal(ExpoRuleKind.MinimumLength,
+        Assert.Equal(ExpoRuleKind.StringMinimumLength,
             metadata.Properties.Single(item => item.Name == "Minimum").Rules.Single().Kind);
         Assert.Equal("email",
             metadata.Properties.Single(item => item.Name == "Email").Rules.Single().Format);

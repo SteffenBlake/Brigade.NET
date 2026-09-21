@@ -150,18 +150,18 @@ public class ExpoDomainGeneratorTests
             [Expo]
             public partial class Input
             {
-                [HasMinimumLength(2)]
-                [HasMaximumLength(8)]
-                [HasExactLength(4)]
-                [IsNotEmpty]
-                [IsNotWhiteSpace]
-                [MatchesCodeRegex("bad code")]
+                [StringHasMinimumLength(2)]
+                [StringHasMaximumLength(8)]
+                [StringHasExactLength(4)]
+                [StringIsNotEmpty]
+                [StringIsNotWhiteSpace]
+                [StringMatchesCodeRegex("bad code")]
                 public string? Code { get; init; }
 
-                [IsDefinedEnum]
+                [EnumIsDefined]
                 public State State { get; init; }
 
-                [IsEmail]
+                [StringMatchesEmail]
                 public string? Email { get; init; }
 
                 public List<Child>? Children { get; init; }
@@ -183,16 +183,16 @@ public class ExpoDomainGeneratorTests
         var result = Run((source, "Prefabs.cs"));
         var generated = Assert.Single(result.RunResult.Results.Single().GeneratedSources).SourceText.ToString();
 
-        Assert.Contains("class MatchesCodeRegexAttribute", generated);
+        Assert.Contains("class StringMatchesCodeRegexAttribute", generated);
         Assert.Contains("CodeRegex().IsMatch(this.Code)", generated);
-        Assert.Contains("ExpoRuleKind.MinimumLength", generated);
-        Assert.Contains("ExpoRuleKind.MaximumLength", generated);
-        Assert.Contains("ExpoRuleKind.ExactLength", generated);
-        Assert.Contains("ExpoRuleKind.NotEmpty", generated);
+        Assert.Contains("ExpoRuleKind.StringMinimumLength", generated);
+        Assert.Contains("ExpoRuleKind.StringMaximumLength", generated);
+        Assert.Contains("ExpoRuleKind.StringExactLength", generated);
+        Assert.Contains("ExpoRuleKind.StringNotEmpty", generated);
         Assert.Contains("ExpoRuleKind.NotWhiteSpace", generated);
         Assert.Contains("ExpoRuleKind.DefinedEnum", generated);
         Assert.Contains("\"email\"", generated);
-        Assert.Contains("foreach (var child in this.Children)", generated);
+        Assert.Contains("foreach (var childChildren in this.Children)", generated);
         Assert.Contains("+ \"/\" + childIndexChildren", generated);
     }
 

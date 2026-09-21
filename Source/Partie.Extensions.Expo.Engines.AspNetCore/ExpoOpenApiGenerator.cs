@@ -231,7 +231,7 @@ public sealed class ExpoOpenApiGenerator : IIncrementalGenerator
             source.Append("case ").Append(Literal(property.Name)).Append(":\n");
             foreach (var rule in rules)
             {
-                AppendRule(source, rule);
+                AppendRule(source, rule, AppliesToItems(property, rule));
             }
             source.Append("break;\n");
         }
@@ -289,7 +289,7 @@ public sealed class ExpoOpenApiGenerator : IIncrementalGenerator
                     .Append("{\ncontinue;\n}\n");
                 foreach (var rule in rules)
                 {
-                    AppendOperationRule(source, rule);
+                    AppendOperationRule(source, rule, AppliesToItems(item.Property, rule));
                 }
                 source.Append("}\n");
                 continue;
@@ -299,7 +299,7 @@ public sealed class ExpoOpenApiGenerator : IIncrementalGenerator
                 .Append("{\ncontinue;\n}\n");
             foreach (var rule in rules)
             {
-                AppendOperationRule(source, rule);
+                AppendOperationRule(source, rule, AppliesToItems(item.Property, rule));
             }
             source.Append("}\n");
         }
@@ -316,7 +316,10 @@ public sealed class ExpoOpenApiGenerator : IIncrementalGenerator
             {
                 yield return new("Required", null, null, message);
             }
-            else if (name is not null && name.StartsWith("Matches", StringComparison.Ordinal))
+            else if (name is not null
+                && name.StartsWith("StringMatches", StringComparison.Ordinal)
+                && attribute.AttributeClass?.GetMembers("Pattern").OfType<IFieldSymbol>()
+                    .Any(field => field.HasConstantValue) == true)
             {
                 var patternField = attribute.AttributeClass?.GetMembers("Pattern")
                     .OfType<IFieldSymbol>().FirstOrDefault();
@@ -325,15 +328,27 @@ public sealed class ExpoOpenApiGenerator : IIncrementalGenerator
                     yield return new("Pattern", pattern, null, message);
                 }
             }
-            else if (name is "HasMinimumLengthAttribute" or "HasMaximumLengthAttribute" or "HasExactLengthAttribute")
+            else if (name is "StringHasMinimumLengthAttribute" or "ItemsHasMinimumLengthAttribute")
             {
-                yield return new(name.Substring(3, name.Length - 12), Value(attribute), null, message);
+                yield return new(name.StartsWith("String", StringComparison.Ordinal)
+                    ? "StringMinimumLength" : "ItemsMinimumLength", Value(attribute), null, message);
             }
-            else if (name == "IsNotEmptyAttribute")
+            else if (name is "StringHasMaximumLengthAttribute" or "ItemsHasMaximumLengthAttribute")
             {
-                yield return new("NotEmpty", null, null, message);
+                yield return new(name.StartsWith("String", StringComparison.Ordinal)
+                    ? "StringMaximumLength" : "ItemsMaximumLength", Value(attribute), null, message);
             }
-            else if (name is "IsNotWhiteSpaceAttribute" or "IsDefinedEnumAttribute")
+            else if (name is "StringHasExactLengthAttribute" or "ItemsHasExactLengthAttribute")
+            {
+                yield return new(name.StartsWith("String", StringComparison.Ordinal)
+                    ? "StringExactLength" : "ItemsExactLength", Value(attribute), null, message);
+            }
+            else if (name is "StringIsNotEmptyAttribute" or "ItemsIsNotEmptyAttribute")
+            {
+                yield return new(name.StartsWith("String", StringComparison.Ordinal)
+                    ? "StringNotEmpty" : "ItemsNotEmpty", null, null, message);
+            }
+            else if (name is "StringIsNotWhiteSpaceAttribute" or "EnumIsDefinedAttribute")
             {
                 yield return new("Inexact", null, name, message);
             }
@@ -362,9 +377,10 @@ public sealed class ExpoOpenApiGenerator : IIncrementalGenerator
             foreach (var attribute in declaration.AttributeLists.SelectMany(list => list.Attributes))
             {
                 var name = attribute.Name.ToString().Split('.').Last();
-                if (name.StartsWith("Matches", StringComparison.Ordinal))
+                if (name.StartsWith("StringMatches", StringComparison.Ordinal))
                 {
-                    name = name.Substring("Matches".Length).Replace("Attribute", string.Empty);
+                    name = name.Substring("StringMatches".Length)
+                        .Replace("Attribute", string.Empty);
                     var member = model.GetMembers(name).FirstOrDefault();
                     var generated = member?.GetAttributes().FirstOrDefault(item =>
                         item.AttributeClass?.ToDisplayString() == GeneratedRegexAttributeName);
@@ -408,46 +424,75 @@ public sealed class ExpoOpenApiGenerator : IIncrementalGenerator
     {
         return name switch
         {
-            "IsEmailAttribute" => new("FormatPattern", "email", @"^[^@\s]+@[^@\s]+\.[^@\s]+$", null),
-            "IsUrlAttribute" => new("Format", "uri", null, null),
-            "IsUuidAttribute" => new("Format", "uuid", null, null),
-            "IsIpAddressAttribute" => new("Format", "ip", null, null),
-            "IsIpv4AddressAttribute" => new("Format", "ipv4", null, null),
-            "IsIpv6AddressAttribute" => new("Format", "ipv6", null, null),
-            "IsBase64Attribute" => new("Format", "byte", null, null),
-            "IsPhoneNumberAttribute" => new("Pattern", @"^\+[1-9]\d{1,14}$", null, null),
-            "IsHexColorAttribute" => new("Pattern", @"^#?(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$", null, null),
-            "IsSlugAttribute" => new("Pattern", @"^[a-z0-9]+(?:-[a-z0-9]+)*$", null, null),
-            "IsAlphaAttribute" => new("Pattern", @"^\p{L}+$", null, null),
-            "IsAlphaNumericAttribute" => new("Pattern", @"^[\p{L}\p{Nd}]+$", null, null),
-            "IsDigitsAttribute" => new("Pattern", @"^\d+$", null, null),
+            "StringMatchesEmailAttribute" => new("FormatPattern", "email", @"^[^@\s]+@[^@\s]+\.[^@\s]+$", null),
+            "StringMatchesUrlAttribute" => new("Format", "uri", null, null),
+            "StringMatchesUuidAttribute" => new("Format", "uuid", null, null),
+            "StringMatchesIpAddressAttribute" => new("Format", "ip", null, null),
+            "StringMatchesIpv4AddressAttribute" => new("Format", "ipv4", null, null),
+            "StringMatchesIpv6AddressAttribute" => new("Format", "ipv6", null, null),
+            "StringMatchesBase64Attribute" => new("Format", "byte", null, null),
+            "StringMatchesPhoneNumberAttribute" => new("Pattern", @"^\+[1-9]\d{1,14}$", null, null),
+            "StringMatchesHexColorAttribute" => new("Pattern", @"^#?(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$", null, null),
+            "StringMatchesSlugAttribute" => new("Pattern", @"^[a-z0-9]+(?:-[a-z0-9]+)*$", null, null),
+            "StringMatchesAlphaAttribute" => new("Pattern", @"^\p{L}+$", null, null),
+            "StringMatchesAlphaNumericAttribute" => new("Pattern", @"^[\p{L}\p{Nd}]+$", null, null),
+            "StringMatchesDigitsAttribute" => new("Pattern", @"^\d+$", null, null),
             _ => null
         };
     }
 
-    private static void AppendRule(StringBuilder source, Rule rule)
+    private static bool AppliesToItems(IPropertySymbol property, Rule rule)
     {
+        return GetEnumerableElementType(property.Type) is not null
+            && rule.Kind is not "Required" and not "ItemsMinimumLength"
+                and not "ItemsMaximumLength" and not "ItemsExactLength" and not "ItemsNotEmpty";
+    }
+
+    private static ITypeSymbol? GetEnumerableElementType(ITypeSymbol type)
+    {
+        if (type.SpecialType == SpecialType.System_String)
+        {
+            return null;
+        }
+        if (type is IArrayTypeSymbol array)
+        {
+            return array.ElementType;
+        }
+        return type.AllInterfaces.Concat([type]).OfType<INamedTypeSymbol>()
+            .FirstOrDefault(item => item.OriginalDefinition.SpecialType
+                == SpecialType.System_Collections_Generic_IEnumerable_T)?.TypeArguments[0];
+    }
+
+    private static void AppendRule(StringBuilder source, Rule rule, bool appliesToItems)
+    {
+        var schema = appliesToItems
+            ? "((global::Microsoft.OpenApi.OpenApiSchema)propertySchema.Items!)"
+            : "propertySchema";
         switch (rule.Kind)
         {
             case "Required": source.Append("schema.Required ??= new global::System.Collections.Generic.HashSet<string>(); schema.Required.Add(jsonProperty.Name);\n"); break;
-            case "Minimum": source.Append("propertySchema.Minimum = ").Append(Literal(rule.Value!)).Append(";\n"); break;
-            case "ExclusiveMinimum": source.Append("propertySchema.ExclusiveMinimum = ").Append(Literal(rule.Value!)).Append(";\n"); break;
-            case "Maximum": source.Append("propertySchema.Maximum = ").Append(Literal(rule.Value!)).Append(";\n"); break;
-            case "ExclusiveMaximum": source.Append("propertySchema.ExclusiveMaximum = ").Append(Literal(rule.Value!)).Append(";\n"); break;
-            case "Equal": source.Append("propertySchema.Const = ").Append(Literal(rule.Value!)).Append(";\n"); break;
-            case "NotEqual": source.Append("propertySchema.Not = new global::Microsoft.OpenApi.OpenApiSchema { Const = ").Append(Literal(rule.Value!)).Append(" };\n"); break;
-            case "MinimumLength": source.Append("ApplyMinimum(propertySchema, ").Append(rule.Value).Append(");\n"); break;
-            case "MaximumLength": source.Append("ApplyMaximum(propertySchema, ").Append(rule.Value).Append(");\n"); break;
-            case "ExactLength": source.Append("ApplyMinimum(propertySchema, ").Append(rule.Value).Append("); ApplyMaximum(propertySchema, ").Append(rule.Value).Append(");\n"); break;
-            case "NotEmpty": source.Append("ApplyMinimum(propertySchema, 1);\n"); break;
-            case "Pattern": source.Append("propertySchema.Pattern = ").Append(Literal(rule.Value!)).Append(";\n"); break;
-            case "Format": source.Append("propertySchema.Format = ").Append(Literal(rule.Value!)).Append(";\n"); break;
-            case "FormatPattern": source.Append("propertySchema.Format = ").Append(Literal(rule.Value!)).Append("; propertySchema.Pattern = ").Append(Literal(rule.Extra!)).Append(";\n"); break;
-            default: source.Append("AddInexact(propertySchema, ").Append(Literal(rule.Extra ?? "Custom")).Append(");\n"); break;
+            case "Minimum": source.Append(schema).Append(".Minimum = ").Append(Literal(rule.Value!)).Append(";\n"); break;
+            case "ExclusiveMinimum": source.Append(schema).Append(".ExclusiveMinimum = ").Append(Literal(rule.Value!)).Append(";\n"); break;
+            case "Maximum": source.Append(schema).Append(".Maximum = ").Append(Literal(rule.Value!)).Append(";\n"); break;
+            case "ExclusiveMaximum": source.Append(schema).Append(".ExclusiveMaximum = ").Append(Literal(rule.Value!)).Append(";\n"); break;
+            case "Equal": source.Append(schema).Append(".Const = ").Append(Literal(rule.Value!)).Append(";\n"); break;
+            case "NotEqual": source.Append(schema).Append(".Not = new global::Microsoft.OpenApi.OpenApiSchema { Const = ").Append(Literal(rule.Value!)).Append(" };\n"); break;
+            case "StringMinimumLength": source.Append(schema).Append(".MinLength = ").Append(rule.Value).Append(";\n"); break;
+            case "StringMaximumLength": source.Append(schema).Append(".MaxLength = ").Append(rule.Value).Append(";\n"); break;
+            case "StringExactLength": source.Append(schema).Append(".MinLength = ").Append(rule.Value).Append("; ").Append(schema).Append(".MaxLength = ").Append(rule.Value).Append(";\n"); break;
+            case "ItemsMinimumLength": source.Append(schema).Append(".MinItems = ").Append(rule.Value).Append(";\n"); break;
+            case "ItemsMaximumLength": source.Append(schema).Append(".MaxItems = ").Append(rule.Value).Append(";\n"); break;
+            case "ItemsExactLength": source.Append(schema).Append(".MinItems = ").Append(rule.Value).Append("; ").Append(schema).Append(".MaxItems = ").Append(rule.Value).Append(";\n"); break;
+            case "StringNotEmpty": source.Append(schema).Append(".MinLength = 1;\n"); break;
+            case "ItemsNotEmpty": source.Append(schema).Append(".MinItems = 1;\n"); break;
+            case "Pattern": source.Append(schema).Append(".Pattern = ").Append(Literal(rule.Value!)).Append(";\n"); break;
+            case "Format": source.Append(schema).Append(".Format = ").Append(Literal(rule.Value!)).Append(";\n"); break;
+            case "FormatPattern": source.Append(schema).Append(".Format = ").Append(Literal(rule.Value!)).Append("; ").Append(schema).Append(".Pattern = ").Append(Literal(rule.Extra!)).Append(";\n"); break;
+            default: source.Append("AddInexact(").Append(schema).Append(", ").Append(Literal(rule.Extra ?? "Custom")).Append(");\n"); break;
         }
     }
 
-    private static void AppendOperationRule(StringBuilder source, Rule rule)
+    private static void AppendOperationRule(StringBuilder source, Rule rule, bool appliesToItems)
     {
         if (rule.Kind == "Required")
         {
@@ -456,7 +501,7 @@ public sealed class ExpoOpenApiGenerator : IIncrementalGenerator
         }
 
         var temporary = new StringBuilder();
-        AppendRule(temporary, rule);
+        AppendRule(temporary, rule, appliesToItems);
         source.Append(temporary.ToString().Replace("schema.Required", "propertySchema.Required")
             .Replace("jsonProperty.Name", "binding.Name"));
     }
@@ -491,7 +536,7 @@ public sealed class ExpoOpenApiGenerator : IIncrementalGenerator
                 }
                 schema.MaxLength = length;
             }
-            private static void AddInexact(global::Microsoft.OpenApi.OpenApiSchema schema, string rule)
+            private static void AddInexact(global::Microsoft.OpenApi.IOpenApiSchema schema, string rule)
             {
                 var text = "Expo validation rule: " + rule + ".";
                 schema.Description = global::System.String.IsNullOrWhiteSpace(schema.Description)

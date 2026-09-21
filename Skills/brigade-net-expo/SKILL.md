@@ -14,7 +14,7 @@ public partial class CreateOrder
 
 Generator handles declared instance properties except indexers. Static properties and indexers ignored. validates every rule aggregates all failures rather than stopping at the first one. Each `ErrorDetail.Pointer` is an RFC 6901  path like `/Customer` or `/Lines/0/Sku`.
 
-Null is valid for every built-in format, length, empty, whitespace, and nullable-enum rule. Add `[IsRequired]` when null must fail. `[IsNotEmpty]` rejects non-null zero-length value; `[IsNotWhiteSpace]` rejects non-null null/empty/whitespace string.
+Null is valid for every built-in format, length, empty, whitespace, and nullable-enum rule. Add `[IsRequired]` when null must fail. `[StringIsNotEmpty]` rejects a non-null empty string; `[ItemsIsNotEmpty]` rejects a non-null empty collection. `[StringIsNotWhiteSpace]` rejects non-null empty or whitespace text.
 
 ## Static attributes
 
@@ -22,12 +22,13 @@ Rules take optional last `message`.
 
 - null: `[IsRequired]`
 - constants: `[IsGreaterThan(value)]`, `[IsGreaterThanOrEqualTo(value)]`, `[IsLessThan(value)]`, `[IsLessThanOrEqualTo(value)]`, `[IsEqualTo(value)]`, `[IsNotEqualTo(value)]`
-- size: `[HasMinimumLength(n)]`, `[HasMaximumLength(n)]`, `[HasExactLength(n)]`, `[IsNotEmpty]`
-- string: `[IsNotWhiteSpace]`, `[IsEmail]`, `[IsPhoneNumber]`, `[IsUuid]`, `[IsUrl]`, `[IsIpAddress]`, `[IsIpv4Address]`, `[IsIpv6Address]`, `[IsBase64]`, `[IsHexColor]`, `[IsSlug]`, `[IsAlpha]`, `[IsAlphaNumeric]`, `[IsDigits]`
-- enum: `[IsDefinedEnum]`
+- string size: `[StringHasMinimumLength(n)]`, `[StringHasMaximumLength(n)]`, `[StringHasExactLength(n)]`, `[StringIsNotEmpty]`
+- collection size: `[ItemsHasMinimumLength(n)]`, `[ItemsHasMaximumLength(n)]`, `[ItemsHasExactLength(n)]`, `[ItemsIsNotEmpty]`
+- string: `[StringIsNotWhiteSpace]`, `[StringMatchesEmail]`, `[StringMatchesPhoneNumber]`, `[StringMatchesUuid]`, `[StringMatchesUrl]`, `[StringMatchesIpAddress]`, `[StringMatchesIpv4Address]`, `[StringMatchesIpv6Address]`, `[StringMatchesBase64]`, `[StringMatchesHexColor]`, `[StringMatchesSlug]`, `[StringMatchesAlpha]`, `[StringMatchesAlphaNumeric]`, `[StringMatchesDigits]`
+- enum: `[EnumIsDefined]`
 - gen markers: `[IsComparable]`, `[CustomValidation]`
 
-Compare uses `Comparer<T>.Default`; equal uses `EqualityComparer<T>.Default`. Constant must convert to prop type. Size uses `Length`, `Count`, else enumerates `IEnumerable<T>`. `[IsNotWhiteSpace]` string only.
+Compare uses `Comparer<T>.Default`; equal uses `EqualityComparer<T>.Default`. Constant must convert to the property or item type. `String*`, comparison, enum, and reusable custom rules validate each item when placed on an enumerable. Null and empty outer enumerables pass item rules; add `[IsRequired]` or `[ItemsIsNotEmpty]` for outer constraints. Item errors use indexed pointers such as `/Values/2`.
 
 Do not use abstract `ValueComparisonAttribute`, `PropertyComparisonAttribute`, `LengthValidationAttribute`, or `Is*XAttribute` direct.
 
@@ -44,12 +45,12 @@ public int Start { get; init; }
 public int End { get; init; }
 ```
 
-`[GeneratedRegex]` static no-arg member gens `[Matches<MemberName>]`. Null passes.
+`[GeneratedRegex]` static no-arg member gens `[StringMatches<MemberName>]`. Null passes.
 
 ```csharp
 [GeneratedRegex(@"^REF-\d{4}$")]
 private static partial Regex RefRegex();
-[MatchesRefRegex]
+[StringMatchesRefRegex]
 public string? Ref { get; init; }
 ```
 

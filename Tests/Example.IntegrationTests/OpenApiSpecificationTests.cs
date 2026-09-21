@@ -39,6 +39,18 @@ public sealed class OpenApiSpecificationTests(AppHostFixture host)
             Assert.Equal("email", property.GetProperty("format").GetString());
             Assert.Equal(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", property.GetProperty("pattern").GetString());
         });
+        AssertProperty(payload, "contactEmails", property =>
+        {
+            var items = property.GetProperty("items");
+            Assert.Equal("email", items.GetProperty("format").GetString());
+            Assert.Equal(
+                @"^[^@\s]+@[^@\s]+\.[^@\s]+$",
+                items.GetProperty("pattern").GetString()
+            );
+        });
+        AssertProperty(payload, "lessOrEqualEnumerable", property =>
+            Assert.Contains("Maximum", property.GetProperty("items")
+                .GetProperty("description").GetString()));
         AssertProperty(payload, "referenceCode", property =>
             Assert.Equal(@"^REF-\d{4}$", property.GetProperty("pattern").GetString()));
         AssertProperty(payload, "displayName", property =>

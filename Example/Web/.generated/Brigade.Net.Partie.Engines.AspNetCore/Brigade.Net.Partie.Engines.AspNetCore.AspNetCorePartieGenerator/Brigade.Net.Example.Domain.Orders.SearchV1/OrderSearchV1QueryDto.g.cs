@@ -7,7 +7,7 @@ public sealed class OrderSearchV1QueryDto
     [global::Microsoft.AspNetCore.Mvc.FromQuery(Name = "orderId")]
     public global::System.Guid? @Id { get; set; } = default!;
 
-    [global::Brigade.Net.Expo.HasMinimumLengthAttribute((int)(2), null)]
+    [global::Brigade.Net.Expo.StringHasMinimumLengthAttribute((int)(2), null)]
     [global::Microsoft.AspNetCore.Mvc.FromQuery(Name = "customer")]
     public string? @Customer { get; set; } = default!;
 }
