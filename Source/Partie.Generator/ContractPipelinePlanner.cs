@@ -21,6 +21,7 @@ internal sealed class ContractPipelinePlanner(
     private readonly Dictionary<ITypeSymbol, List<OrderedValue>> values = new(SymbolEqualityComparer.Default);
     private readonly Dictionary<ITypeSymbol, string> services = new(SymbolEqualityComparer.Default);
     private readonly Dictionary<int, HashSet<INamedTypeSymbol>> resolvedProviders = new();
+    private readonly List<(INamedTypeSymbol Type, int Position)> resolvingProviders = new();
     private int resolutionDepth;
     private RegistrationModel[] registrations = Array.Empty<RegistrationModel>();
     private int currentPosition;
@@ -286,13 +287,13 @@ internal sealed class ContractPipelinePlanner(
         foreach (var parameter in constructors[0].Parameters)
         {
             var attrs = parameter.GetAttributes().Where(
-                attr => attr.AttributeClass?.ToDisplayString() is "Brigade.Net.Partie.ProvideAttribute" or "Brigade.Net.Partie.InjectAttribute" or "Brigade.Net.Partie.ParameterAttribute"
+                attr => attr.AttributeClass?.ToDisplayString() is "Brigade.Net.Partie.ProvideAttribute" or "Brigade.Net.Partie.DecorateAttribute" or "Brigade.Net.Partie.InjectAttribute" or "Brigade.Net.Partie.ParameterAttribute"
             ).ToArray();
             if (attrs.Length != 1 || parameter.RefKind != RefKind.None)
             {
                 Error(
                     parameter,
-                    "Context arguments need exactly one Provide, Inject or Parameter attribute and must be passed by value."
+                    "Context arguments need exactly one Provide, Decorate, Inject or Parameter attribute and must be passed by value."
                 );
                 arguments.Add("default!");
                 continue;
@@ -317,7 +318,11 @@ internal sealed class ContractPipelinePlanner(
             else
             {
                 arguments.Add(attrs[0].AttributeClass!.Name == "InjectAttribute"
-                    ? Inject(parameter.Type) : Resolve(parameter.Type, parameter));
+                    ? Inject(parameter.Type) : Resolve(
+                        parameter.Type,
+                        parameter,
+                        attrs[0].AttributeClass!.Name == "ProvideAttribute"
+                    ));
             }
         }
 
@@ -345,7 +350,11 @@ internal sealed class ContractPipelinePlanner(
         return value;
     }
 
-    private string Resolve(ITypeSymbol requested, ISymbol owner)
+    private string Resolve(
+        ITypeSymbol requested,
+        ISymbol owner,
+        bool includeDownstream = true
+    )
     {
         ct.ThrowIfCancellationRequested();
         if (resolutionDepth >= 256)
@@ -362,7 +371,7 @@ internal sealed class ContractPipelinePlanner(
                 compilation.GetTypeByMetadataName("System.Collections.Generic.IEnumerable`1")
             );
             var element = isList ? ((INamedTypeSymbol)requested).TypeArguments[0] : requested;
-            var matches = Matches(element).ToArray();
+            var matches = Matches(element, includeDownstream).ToArray();
             var existing = EarlierValues(element);
             if (!isList)
             {
@@ -382,13 +391,16 @@ internal sealed class ContractPipelinePlanner(
 
             foreach (var provider in matches)
             {
-                if (!AddProvider(provider.Type, provider.Position))
+                var executionPosition = includeDownstream
+                    ? Math.Min(provider.Position, currentPosition)
+                    : provider.Position;
+                if (!AddProvider(provider.Type, provider.Position, executionPosition))
                 {
                     return "default!";
                 }
             }
 
-            existing = EarlierValues(element);
+            existing = includeDownstream ? VisibleValues(element) : EarlierValues(element);
             if (isList)
             {
                 return "new " + TypeName(element) + "[] { " + string.Join(", ", existing.Select(value => value.Name)) + " }";
@@ -425,6 +437,13 @@ internal sealed class ContractPipelinePlanner(
             : Array.Empty<OrderedValue>();
     }
 
+    private OrderedValue[] VisibleValues(ITypeSymbol type)
+    {
+        return values.TryGetValue(type, out var existing)
+            ? existing.Where(value => value.Position <= currentPosition).OrderBy(value => value.Position).ToArray()
+            : Array.Empty<OrderedValue>();
+    }
+
     private IEnumerable<IPropertySymbol> RequestProperties()
     {
         var names = new HashSet<string>();
@@ -440,8 +459,19 @@ internal sealed class ContractPipelinePlanner(
         }
     }
 
-    private bool AddProvider(INamedTypeSymbol type, int position)
+    private bool AddProvider(
+        INamedTypeSymbol type,
+        int position,
+        int consumerPosition
+    )
     {
+        if (resolvingProviders.Any(candidate => candidate.Position == position
+            && SymbolEqualityComparer.Default.Equals(candidate.Type, type)))
+        {
+            Error(type, "Provider dependency cycle involving '" + TypeName(type) + "'.", "BRG002");
+            return false;
+        }
+
         if (!resolvedProviders.TryGetValue(position, out var resolved))
         {
             resolved = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
@@ -453,7 +483,15 @@ internal sealed class ContractPipelinePlanner(
             return true;
         }
 
-        AddStep(type, StepContract(type)!, position);
+        resolvingProviders.Add((type, position));
+        try
+        {
+            AddStep(type, StepContract(type)!, position, consumerPosition);
+        }
+        finally
+        {
+            resolvingProviders.RemoveAt(resolvingProviders.Count - 1);
+        }
         if (failed)
         {
             return false;
@@ -466,7 +504,8 @@ internal sealed class ContractPipelinePlanner(
     private void AddStep(
         INamedTypeSymbol type,
         INamedTypeSymbol contract,
-        int position
+        int position,
+        int? executionPosition = null
     )
     {
         var consumerPosition = currentPosition;
@@ -491,12 +530,12 @@ internal sealed class ContractPipelinePlanner(
                 context,
                 name,
                 StepContracts.IsProvider(contract, compilation),
-                position
+                executionPosition ?? position
             )
         );
         if (!IsUnit(output))
         {
-            AddValue(output, name, position);
+            AddValue(output, name, executionPosition ?? position);
         }
     }
 
@@ -552,9 +591,13 @@ internal sealed class ContractPipelinePlanner(
         return selected;
     }
 
-    private IEnumerable<(INamedTypeSymbol Type, int Position)> Matches(ITypeSymbol requested)
+    private IEnumerable<(INamedTypeSymbol Type, int Position)> Matches(
+        ITypeSymbol requested,
+        bool includeDownstream
+    )
     {
-        for (var position = 0; position < currentPosition; position++)
+        var end = includeDownstream ? registrations.Length : currentPosition;
+        for (var position = 0; position < end; position++)
         {
             var registration = registrations[position];
             if (!registration.IsProvider)

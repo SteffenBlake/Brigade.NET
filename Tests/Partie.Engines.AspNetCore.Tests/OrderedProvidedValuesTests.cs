@@ -108,7 +108,7 @@ public sealed class OrderedProvidedValuesTests
     public async Task RepeatedProviderUsesEachRegistrationsValueAndParameters(bool command)
     {
         var source = Source(15, command)
-            .Replace("BContext([Provide] Foo Previous)", "BContext([Provide] Foo Previous, [Parameter] string Label)")
+            .Replace("BContext([Decorate] Foo Previous)", "BContext([Decorate] Foo Previous, [Parameter] string Label)")
             .Replace("Harness.Calls.Add(\"B\")", "Harness.Calls.Add(ctx.Label)")
             .Replace("ctx.Previous with { Value = \"Second\" }", "ctx.Previous with { Value = ctx.Label }")
             .Replace("[global::Brigade.Net.Partie.Provider(typeof(B))]", "[B(\"Second\")]")
@@ -157,7 +157,7 @@ public sealed class OrderedProvidedValuesTests
             }
         }
 
-        public sealed record BContext([Provide] Foo Previous);
+        public sealed record BContext([Decorate] Foo Previous);
         public sealed class B : I{{operation}}{{Role(roles, 1)}}<Foo, BContext, Unit, string[]>
         {
             public static ValueTask<Result<string[]>> On{{operation}}Async(
@@ -173,7 +173,7 @@ public sealed class OrderedProvidedValuesTests
             }
         }
 
-        public sealed record CContext([Provide] IEnumerable<Foo> Earlier);
+        public sealed record CContext([Decorate] IEnumerable<Foo> Earlier);
         public sealed class C : I{{operation}}{{Role(roles, 2)}}<FooAggregate, CContext, Unit, string[]>
         {
             public static ValueTask<Result<string[]>> On{{operation}}Async(
@@ -188,7 +188,7 @@ public sealed class OrderedProvidedValuesTests
             }
         }
 
-        public sealed record DContext([Provide] Foo Previous);
+        public sealed record DContext([Decorate] Foo Previous);
         public sealed class D : I{{operation}}{{Role(roles, 3)}}<Foo, DContext, Unit, string[]>
         {
             public static ValueTask<Result<string[]>> On{{operation}}Async(

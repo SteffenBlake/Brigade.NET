@@ -101,14 +101,18 @@ Hook name is `RunAsync`. It is static, non-generic, and returns exact `Task<Resu
 
 Use `Unit`, or a concrete ref type with exactly one ctor accessible from route app assembly. Each ctor parameter is by value and has exactly one attr:
 
+Source = Provider or Partie output value.
+
 - `[Inject] T`: required `IServiceCollection` service.
-- `[Provide] T`: latest eligible exactly matching value before consumer.
-- `[Provide] IEnumerable<T>`: all exactly matching earlier values in route order; empty works.
+- `[Provide] T`: latest exact Source. Source may sit before or after consumer.
+- `[Provide] IEnumerable<T>`: all exact Sources from both sides; empty works.
+- `[Decorate] T`: latest exact earlier Source.
+- `[Decorate] IEnumerable<T>`: all exact earlier Sources in route order; empty works.
 - `[Parameter] T`: value on registration attr; default makes it optional.
 
 With no earlier exact `T`, `[Provide] T` may use the sole request prop of type `T`. Two such props fail.
 
-Order is law. Consumer sees previously matched registrations only. Each Provider context resolves at its provider spot. Same provider registration can repeat independently with new `[Parameter]` args.
+Partie order is law. Decorate sees back only. Provide can pull Source from ahead. Each Source context resolves at its own spot. Same Source may repeat with new `[Parameter]` args.
 
 Provider/Partie resolution is compile-time; failures are compiler errors.
 

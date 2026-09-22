@@ -91,7 +91,7 @@ public class EngineProviderTests
     public void Engine_RejectsProviderDependenciesWithoutAnEarlierSource(string dependency) => EngineCompilation.Invalid(
         Source(
             "Foo<int>",
-            $"public sealed record ProviderContext<T>([Provide] {dependency} Input); public sealed class Provider<T> : IQueryProvider<Foo<T>, ProviderContext<T>, Unit, int> {{ public static ValueTask<Result<int>> OnQueryAsync(ProviderContext<T> ctx, Unit query, Next<Foo<T>, int> next, CancellationToken ct) => default; }}"
+            $"public sealed record ProviderContext<T>([Decorate] {dependency} Input); public sealed class Provider<T> : IQueryProvider<Foo<T>, ProviderContext<T>, Unit, int> {{ public static ValueTask<Result<int>> OnQueryAsync(ProviderContext<T> ctx, Unit query, Next<Foo<T>, int> next, CancellationToken ct) => default; }}"
         ),
         "BRG001"
     );
@@ -147,7 +147,7 @@ public class EngineProviderTests
         Source(
             "Foo<int>",
             """
-        public sealed record ProviderContext<T>([Provide] Foo<Foo<T>> Input);
+        public sealed record ProviderContext<T>([Decorate] Foo<Foo<T>> Input);
         public sealed class Provider<T> : IQueryProvider<Foo<T>, ProviderContext<T>, Unit, int>
         {
             public static ValueTask<Result<int>> OnQueryAsync(ProviderContext<T> ctx, Unit query, Next<Foo<T>, int> next, CancellationToken ct) => default;

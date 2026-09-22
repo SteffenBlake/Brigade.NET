@@ -78,6 +78,48 @@ public class BrigadeRoutingGeneratorTests
         Assert.Equal("one,two,fixed:True|first;second;fixed;handler;after;", await Run(output));
     }
 
+    [Fact]
+    public async Task ProvideIncludesProvidersOnBothSidesWhileDecorateUsesEarlierValues()
+    {
+        var source = """
+            public sealed class Request { }
+            public sealed record StepContext([Provide] IEnumerable<string> Values);
+            public sealed record HandlerContext([Decorate] string Value);
+            public sealed class Upstream : IQueryProvider<string, Unit, Request, string>
+            {
+                public static ValueTask<Result<string>> OnQueryAsync(Unit ctx, Request query, Next<string, string> next, CancellationToken ct)
+                    => next("upstream");
+            }
+            public sealed class Consumer : IQueryPartie<string, StepContext, Request, string>
+            {
+                public static ValueTask<Result<string>> OnQueryAsync(StepContext ctx, Request query, Next<string, string> next, CancellationToken ct)
+                    => next(string.Join(",", ctx.Values));
+            }
+            public sealed class Downstream : IQueryProvider<string, Unit, Request, string>
+            {
+                public static ValueTask<Result<string>> OnQueryAsync(Unit ctx, Request query, Next<string, string> next, CancellationToken ct)
+                    => next("downstream");
+            }
+            public sealed class Handler : IQueryHandler<Request, string, HandlerContext>
+            {
+                public static Task<Result<string>> RunAsync(HandlerContext ctx, Request query, CancellationToken ct)
+                    => Task.FromResult<Result<string>>(ctx.Value);
+            }
+            [BrigadeGroup("")]
+            public static partial class Routes
+            {
+                [Route<Handler>("", "run"), Provider(typeof(Upstream)), Partie(typeof(Consumer)), Provider(typeof(Downstream))]
+                static partial void Go();
+            }
+            """;
+
+        var (_, output, result) = Generate(source + Harness);
+
+        Assert.Empty(result.Diagnostics);
+        AssertNoErrors(output);
+        Assert.Equal("upstream,downstream|", await Run(output));
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

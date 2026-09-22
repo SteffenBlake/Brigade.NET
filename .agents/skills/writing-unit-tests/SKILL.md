@@ -19,7 +19,7 @@ metadata:
 Run script, give it test csproj path:
 
 ```
-python3 .codex/skills/writing-unit-tests/scripts/find_uncovered.py path/to/Foo.Tests.csproj
+python3 .agents/skills/writing-unit-tests/scripts/find_uncovered.py path/to/Foo.Tests.csproj
 ```
 
 Script do:
@@ -31,7 +31,7 @@ Script do:
 Use output ➡️ go straight to missed line# ➡️ write test hit it.
 
 For layer totals across unit suites, merge their fresh JSON reports from the same code build:
-`python3 .codex/skills/writing-unit-tests/scripts/find_uncovered.py --merge path/to/coverage.json ...`
+`python3 .agents/skills/writing-unit-tests/scripts/find_uncovered.py --merge path/to/coverage.json ...`
 Never mix stale reports or include AppHost integration coverage.
 
 ## Rule

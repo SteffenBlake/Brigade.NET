@@ -81,7 +81,7 @@ public sealed class ContractValidationTests
     public void SelectsLatestSingleValue(string registrations)
     {
         var generated = Valid(
-            Source(registrations).Replace("public class Context { }", "public record Context([Provide] string Value);") + Step("class First", "string", "Unit") + Step("class Second", "string", "Unit")
+            Source(registrations).Replace("public class Context { }", "public record Context([Decorate] string Value);") + Step("class First", "string", "Unit") + Step("class Second", "string", "Unit")
         );
         Assert.Contains("QueryProvider<global::Second,", generated);
     }
@@ -90,8 +90,20 @@ public sealed class ContractValidationTests
     public void RejectsSelfDependencyWithoutAnEarlierSource()
     {
         Invalid(
-            Source("[Provider(typeof(Step))]").Replace("public class Context { }", "public record Context([Provide] string Value);") + "public record StepContext([Provide] string Value);" + Step("class Step", "string", "StepContext"),
+            Source("[Provider(typeof(Step))]").Replace("public class Context { }", "public record Context([Provide] string Value);") + "public record StepContext([Decorate] string Value);" + Step("class Step", "string", "StepContext"),
             "No earlier Provider or Partie"
+        );
+    }
+
+    [Fact]
+    public void RejectsProvideProviderCycle()
+    {
+        Invalid(
+            Source("[Provider(typeof(Step))]")
+                .Replace("public class Context { }", "public record Context([Provide] string Value);")
+                + "public record StepContext([Provide] string Value);"
+                + Step("class Step", "string", "StepContext"),
+            "Provider dependency cycle"
         );
     }
 
@@ -99,7 +111,7 @@ public sealed class ContractValidationTests
     public void CollectionDependencyDoesNotIncludeTheProviderItself()
     {
         var generated = Valid(
-            Source("[Provider(typeof(Step))]").Replace("public class Context { }", "public record Context([Provide] string Value);") + "public record StepContext([Provide] IEnumerable<string> Values);" + Step("class Step", "string", "StepContext")
+            Source("[Provider(typeof(Step))]").Replace("public class Context { }", "public record Context([Provide] string Value);") + "public record StepContext([Decorate] IEnumerable<string> Values);" + Step("class Step", "string", "StepContext")
         );
         Assert.Contains("new global::StepContext(new string[] { })", generated);
     }
