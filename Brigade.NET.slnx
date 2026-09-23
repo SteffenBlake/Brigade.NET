@@ -11,6 +11,19 @@
     <Project Path="Source/Partie.AspNetCore/Brigade.Net.Partie.AspNetCore.csproj" />
     <Project Path="Source/Partie.Engines.AspNetCore/Brigade.Net.Partie.Engines.AspNetCore.csproj" />
     <Project Path="Source/Partie.Generator/Brigade.Net.Partie.Generator.csproj" />
+    <Project Path="Source/Mise/Brigade.Net.Mise.csproj" />
+    <Project Path="Source/Mise.Generator/Brigade.Net.Mise.Generator.csproj" />
+    <Project Path="Source/Mise.SqlServer/Brigade.Net.Mise.SqlServer.csproj" />
+    <Project Path="Source/Mise.PostgreSQL/Brigade.Net.Mise.PostgreSQL.csproj" />
+    <Project Path="Source/Mise.SQLite/Brigade.Net.Mise.SQLite.csproj" />
+    <Project Path="Source/Mise.MySQL/Brigade.Net.Mise.MySQL.csproj" />
+    <Project Path="Source/Mise.MariaDb/Brigade.Net.Mise.MariaDb.csproj" />
+    <Project Path="Source/Mise.Engines.SqlServer/Brigade.Net.Mise.Engines.SqlServer.csproj" />
+    <Project Path="Source/Mise.Engines.PostgreSQL/Brigade.Net.Mise.Engines.PostgreSQL.csproj" />
+    <Project Path="Source/Mise.Engines.SQLite/Brigade.Net.Mise.Engines.SQLite.csproj" />
+    <Project Path="Source/Mise.Engines.MySQL/Brigade.Net.Mise.Engines.MySQL.csproj" />
+    <Project Path="Source/Mise.Engines.MariaDb/Brigade.Net.Mise.Engines.MariaDb.csproj" />
+    <Project Path="Source/Partie.Extensions.Mise/Brigade.Net.Partie.Extensions.Mise.csproj" />
   </Folder>
   <Folder Name="/Source/Core/" />
   <Folder Name="/Source/Expo.Engines.Domain/">
@@ -31,6 +44,15 @@
     <Project Path="Tests/Partie.AspNetCore.Tests/Brigade.Net.Partie.AspNetCore.Tests.csproj" />
     <Project Path="Tests/Partie.Engines.AspNetCore.Tests/Brigade.Net.Partie.Engines.AspNetCore.Tests.csproj" />
     <Project Path="Tests/Partie.Generator.Tests/Brigade.Net.Partie.Generator.Tests.csproj" />
+    <Project Path="Tests/Mise.Tests/Brigade.Net.Mise.Tests.csproj" />
+    <Project Path="Tests/Mise.Generator.Tests/Brigade.Net.Mise.Generator.Tests.csproj" />
+    <Project Path="Tests/Mise.Engines.SqlServer.Tests/Brigade.Net.Mise.Engines.SqlServer.Tests.csproj" />
+    <Project Path="Tests/Mise.Engines.PostgreSQL.Tests/Brigade.Net.Mise.Engines.PostgreSQL.Tests.csproj" />
+    <Project Path="Tests/Mise.Engines.SQLite.Tests/Brigade.Net.Mise.Engines.SQLite.Tests.csproj" />
+    <Project Path="Tests/Mise.Engines.MySQL.Tests/Brigade.Net.Mise.Engines.MySQL.Tests.csproj" />
+    <Project Path="Tests/Mise.Engines.MariaDb.Tests/Brigade.Net.Mise.Engines.MariaDb.Tests.csproj" />
+    <Project Path="Tests/Partie.Extensions.Mise.Tests/Brigade.Net.Partie.Extensions.Mise.Tests.csproj" />
+    <Project Path="Tests/Mise.IntegrationTests/Brigade.Net.Mise.IntegrationTests.csproj" />
   </Folder>
   <Folder Name="/Tests/Expo.Tests/">
     <Project Path="Tests/Expo.Tests/Brigade.Net.Expo.Tests.csproj" />
