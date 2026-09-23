@@ -4,7 +4,7 @@ Depends: 01.
 
 ## Table metadata
 
-- [x] Define an engine-neutral table attribute with the required table name only. Put schema attributes and default-schema rules in engine runtime packages when their semantics differ. Reject null, empty, or whitespace identifiers at compile time.
+- [x] Define abstract `TableAttributeBase` in core and a distinctly named derived table attribute in each engine runtime package: `SqlServerTable`, `PostgreSqlTable`, `SqliteTable`, `MySqlTable`, and `MariaDbTable`. Each requires the table name. Reject null, empty, or whitespace identifiers and more than one engine table attribute on the same type at compile time.
 - [x] Require `[MiseColumn(string name)]` on each mapped scalar property. Ignore static properties and indexers. Diagnose duplicate column names using the engine identifier comparer.
 - [x] Define separate, single-purpose metadata for primary-key order, database-generated values, computed/read-only values, insert exclusion, and update exclusion. Validate contradictory combinations and require unique non-negative composite-key positions.
 - [x] Use Roslyn nullability and `required` metadata for materialization rules. Attributes must not restate C# nullability.
@@ -13,7 +13,7 @@ Depends: 01.
 
 ## Row targets
 
-- [x] Define an opt-in row attribute for generated materialization of class, struct, record class, and record struct targets. Each target and containing type must be partial so generated code can add the required interface and static members.
+- [x] Define abstract `RowAttributeBase` in core and matching engine-owned row markers: `SqlServerRow`, `PostgreSqlRow`, `SqliteRow`, `MySqlRow`, and `MariaDbRow`. Class, struct, record class, and record struct targets opt in through one of these markers. Each target and containing type must be partial so generated code can add the required interface and static members.
 - [x] Define an engine-neutral, static-abstract row materialization contract. Generated code binds projected column names to ordinals once per result set, then creates each target from `DbDataReader` and those ordinals.
 - [x] Define and document one deterministic constructor/member selection contract before implementation. Diagnose zero or multiple valid materialization paths; never pick an ambiguous constructor or member by reflection-style heuristics.
 - [x] Include inherited accessible mapped members in deterministic base-to-derived declaration order. Reject static, indexer, init-only-after-construction, inaccessible, duplicate, and unsupported ref-like members when the selected strategy cannot assign them.

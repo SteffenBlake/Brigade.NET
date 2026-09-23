@@ -1,4 +1,4 @@
 namespace Mise.PackageFixture;
 
-[Brigade.Net.Mise.MiseTable("mapped")]
+[Brigade.Net.Mise.MariaDb.MariaDbTable("mapped")]
 internal partial class MappedModel;

@@ -9,6 +9,7 @@ Mise follows the Expo split already used by this repository:
 - .NET 10 runtime assemblies hold public attributes, contracts, builders, and execution code.
 - `netstandard2.0` Roslyn assemblies hold incremental generators. Engine analyzers reuse a generator-helper assembly and package that dependency with the analyzer, as `Partie.Engines.AspNetCore` does for `Partie.Generator`.
 - Generator tests run `CSharpGeneratorDriver`, assert diagnostics and generated text, and compile the generated output. Runtime behavior stays in separate .NET 10 xUnit projects.
+- Generators emit readable, consistently formatted C# with four-space indentation and LF line endings. Each mapped source target gets its own generated file; generators must not combine unrelated targets into one monolithic output.
 - Public runtime APIs have XML documentation and treat missing documentation as an error, matching existing public projects.
 
 ## Fixed requirements
@@ -19,8 +20,11 @@ Mise follows the Expo split already used by this repository:
 - A database `NULL` mapped to a non-nullable C# member throws `MiseMappingException` with result type, member, column name, and ordinal.
 - Every `FormattableString` hole becomes a parameter unless its format is exactly `raw`. A Roslyn analyzer permits `:raw` only for compile-time constant strings, including generated Mise constants.
 - Generated/user API stays internal or private unless a consumer must name it. Public APIs have XML docs.
+- Keep one generated file per mapped source target with a stable, collision-free hint name. Generated C# must be formatted for human review.
 - Support SQL Server, PostgreSQL, SQLite, MySQL, and MariaDB. Integration tests run against each provider. MySQL and MariaDB share code only where their observable behavior is the same.
 - Core stays engine-neutral. Engine-specific schema, syntax, options, and attributes live in the matching .NET 10 engine package. Matching analyzer packages interpret those attributes without adding runtime-to-generator references.
+- Each engine runtime owns a distinctly named table attribute: `SqlServerTable`, `PostgreSqlTable`, `SqliteTable`, `MySqlTable`, or `MariaDbTable`. They derive from the abstract core `TableAttributeBase`. A mapped type may use only one engine table attribute; multiple engine table attributes are a compile-time error.
+- Row targets use matching engine-owned markers (`SqlServerRow`, `PostgreSqlRow`, `SqliteRow`, `MySqlRow`, or `MariaDbRow`) derived from core `RowAttributeBase`. A type cannot mix row markers or use table and row markers from different engines.
 - `DbReader` and `DbWriter` execute `IQueryBuilder`. Engine packages may provide specialized builders while preserving the shared execution contract.
 - The Example owns Liquibase and Aspire wiring. Mise packages expose no migration API.
 - Existing `UnitOfWorkPartie` owns transaction completion. Mise supplies an `ITxn`; it does not add a second commit/rollback Partie.
@@ -29,7 +33,7 @@ Mise follows the Expo split already used by this repository:
 
 - [x] [01 Projects](01-PROJECTS.md)
 - [x] [02 Contracts](02-CONTRACTS.md)
-- [ ] [03 Generator core](03-GENERATOR-CORE.md)
+- [x] [03 Generator core](03-GENERATOR-CORE.md)
 - [ ] [04 Engine generators](04-ENGINE-GENERATORS.md)
 - [ ] [05 Query API](05-QUERY-API.md)
 - [ ] [06 Execution](06-EXECUTION.md)

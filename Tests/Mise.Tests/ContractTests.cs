@@ -9,7 +9,7 @@ public sealed class ContractTests
     [Fact]
     public void MetadataAttributesExposeConstructorValuesAndExpectedUsage()
     {
-        Assert.Equal("people", new MiseTableAttribute("people").Name);
+        Assert.True(typeof(TableAttributeBase).IsAbstract);
         Assert.Equal("person_id", new MiseColumnAttribute("person_id").Name);
         Assert.Equal(2, new MisePrimaryKeyAttribute(2).Position);
         Assert.Equal("p", new MiseAliasAttribute("p").Name);
@@ -20,7 +20,7 @@ public sealed class ContractTests
         Assert.Equal("owner_id", relationship.SourceColumn);
         Assert.Equal("id", relationship.TargetColumn);
 
-        AssertUsage<MiseTableAttribute>(AttributeTargets.Class | AttributeTargets.Struct);
+        AssertUsage<TableAttributeBase>(AttributeTargets.Class | AttributeTargets.Struct);
         AssertUsage<MiseColumnAttribute>(AttributeTargets.Property, inherited: true);
         AssertUsage<MiseAliasAttribute>(AttributeTargets.Class | AttributeTargets.Struct, allowMultiple: true);
         AssertUsage<MiseRelationshipAttribute>(AttributeTargets.Class | AttributeTargets.Struct, allowMultiple: true);
@@ -39,7 +39,8 @@ public sealed class ContractTests
     [Fact]
     public void RowContractUsesStaticAbstractReaderOperations()
     {
-        AssertUsage<MiseRowAttribute>(AttributeTargets.Class | AttributeTargets.Struct);
+        Assert.True(typeof(RowAttributeBase).IsAbstract);
+        AssertUsage<RowAttributeBase>(AttributeTargets.Class | AttributeTargets.Struct);
 
         var methods = typeof(IMiseRow<>).GetMethods(BindingFlags.Public | BindingFlags.Static);
         Assert.Collection(

@@ -7,9 +7,13 @@ MISE002 | Mise | Error | Missing column metadata
 MISE003 | Mise | Error | Duplicate database identifier
 MISE004 | Mise | Error | Invalid primary key
 MISE005 | Mise | Error | Contradictory mapping metadata
-MISE006 | Mise | Error | Non-partial row target
+MISE006 | Mise | Error | Non-partial mapped target
 MISE007 | Mise | Error | Unsupported mapped member
 MISE008 | Mise | Error | Invalid materialization constructor
 MISE009 | Mise | Error | Unknown relationship column
 MISE010 | Mise | Error | Unsupported row type
 MISE011 | Mise | Error | Invalid relationship target
+MISE012 | Mise | Error | Unsafe raw SQL interpolation
+MISE013 | Mise | Error | Multiple database engines on one table
+MISE014 | Mise | Error | Multiple database engines on one row
+MISE015 | Mise | Error | Table and row engine mismatch
