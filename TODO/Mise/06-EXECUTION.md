@@ -3,12 +3,12 @@
 Depends: 02, 05.
 
 - [ ] Implement concrete `DbReader` and `DbWriter : DbReader` classes over `DbConnection`, `DbCommand`, `DbDataReader`, and `DbTransaction`.
-- [ ] Each terminal takes an `IQueryBuilder`; execution builds the engine-specific command immediately before creating the ADO.NET command.
+- [ ] Read terminals take `IQueryBuilder`; write terminals take `ICommandBuilder`. Execution calls `Compile()` immediately before creating the ADO.NET command and binds the returned `CompiledSql` snapshot. Neither reader nor writer exposes a terminal that accepts the other builder contract.
 - [ ] Provide async terminals for list, `FirstOrNotFound`, scalar, stream, and exists where the shape is valid. Do not expose `First`, `Single`, `FirstOrDefault`, or `SingleOrDefault`. Use `IAsyncEnumerable<T>` for streaming and `[EnumeratorCancellation]` for its token.
 - [ ] `FirstOrNotFound` reads at most the first row and returns `NotFound` when no row exists. It does not impose single-row cardinality.
 - [ ] Writer terminals execute non-query, INSERT/UPDATE/DELETE, generated-value/returning, stored procedure, and trusted custom commands. Return affected-row counts unless a more specific method name documents another shape.
 - [ ] Every public terminal accepts `CancellationToken`. Pass it to open, execute, read, commit/rollback adapter, and async disposal calls where the provider API permits.
-- [ ] Create a fresh `DbCommand` and provider parameters from each immutable `MiseCommand`. Dispose commands/readers on success, `Result` failure, exception, and cancellation. A streaming enumerator owns them until enumeration completes or is disposed.
+- [ ] Create a fresh `DbCommand` and provider parameters from each immutable `CompiledSql`. Dispose commands/readers on success, `Result` failure, exception, and cancellation. A streaming enumerator owns them until enumeration completes or is disposed.
 - [ ] Typed terminals constrain the result to the static-abstract generated materialization interface. Bind ordinals once per result set, then call the generated static reader for each row. Dynamic/reflection fallback is forbidden.
 - [ ] Let all ADO.NET and provider exceptions escape unchanged, including cancellation, connection, command, reader, transaction, and disposal faults. Mise throws its own exception only for a fault it detects, such as invalid generated mapping or non-nullable `NULL`.
 - [ ] Support command timeout and engine-neutral command behavior through immutable execution options. Engine-specific knobs stay in engine packages.
@@ -23,4 +23,4 @@ Tests:
 - [ ] Transaction-adapter tests cover commit, rollback, double completion, commit failure, rollback failure, and disposal exactly once.
 - [ ] The shared integration suite runs all terminal and transaction cases against five providers, with capability-gated generated-value cases.
 
-Done: unit and five-engine integration tests pass every `IQueryBuilder` terminal, ownership, cancellation, mapping, concurrency, and transaction outcome named above.
+Done: unit and five-engine integration tests pass every read `IQueryBuilder` terminal and write `ICommandBuilder` terminal, including compilation, ownership, cancellation, mapping, concurrency, and transaction outcomes named above.

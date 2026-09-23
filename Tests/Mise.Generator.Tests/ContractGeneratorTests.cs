@@ -280,6 +280,44 @@ public sealed class ContractGeneratorTests
     }
 
     [Fact]
+    public void GeneratedRelationshipConstantCanBeUsedByJoinBuilder()
+    {
+        const string source = """
+            using Brigade.Net.Mise;
+            using Brigade.Net.Mise.SqlServer;
+            [SqlServerTable("targets")]
+            partial class Target { [MiseColumn("id")] public int Id { get; set; } }
+            [SqlServerTable("sources"), MiseAlias("s")]
+            [MiseRelationship("Owner", typeof(Target), "target_id", "id")]
+            partial class Source { [MiseColumn("target_id")] public int TargetId { get; set; } }
+            class Query
+            {
+                IQueryBuilder Inner() => new SqlServerQueryBuilder()
+                    .Select($"{Source.Tbl.s.TargetId:raw}")
+                    .From($"{Source.Tbl.s.Table:raw}")
+                    .InnerJoin($"{Source.Tbl.s.Owner:raw}");
+                IQueryBuilder Left() => new SqlServerQueryBuilder()
+                    .Select($"{Source.Tbl.s.TargetId:raw}")
+                    .From($"{Source.Tbl.s.Table:raw}")
+                    .LeftJoin($"{Source.Tbl.s.Owner:raw}");
+                IQueryBuilder Right() => new SqlServerQueryBuilder()
+                    .Select($"{Source.Tbl.s.TargetId:raw}")
+                    .From($"{Source.Tbl.s.Table:raw}")
+                    .RightJoin($"{Source.Tbl.s.Owner:raw}");
+                IQueryBuilder Full() => new SqlServerQueryBuilder()
+                    .Select($"{Source.Tbl.s.TargetId:raw}")
+                    .From($"{Source.Tbl.s.Table:raw}")
+                    .FullJoin($"{Source.Tbl.s.Owner:raw}");
+            }
+            """;
+
+        var result = GeneratorTestHost.Run(source);
+
+        Assert.Empty(result.Run.Diagnostics);
+        Assert.DoesNotContain(result.CompilationDiagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+    }
+
+    [Fact]
     public void RelationshipTargetMustBeMappedTable()
     {
         const string source = """

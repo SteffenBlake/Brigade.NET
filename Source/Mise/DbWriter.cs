@@ -14,14 +14,14 @@ public class DbWriter(IMiseConfig? config = null, DbConnection? connection = nul
 {
     /// <summary>Executes a write and returns its affected-row count, including zero.</summary>
     public async Task<Result<int>> ExecuteAsync(
-        IQueryBuilder query,
+        ICommandBuilder query,
         CancellationToken cancellationToken = default
     )
     {
         Enter();
         try
         {
-            await using var command = await CreateCommandAsync(query, cancellationToken);
+            await using var command = await CreateCommandAsync(query.Compile(), cancellationToken);
             return await command.ExecuteNonQueryAsync(cancellationToken);
         }
         finally

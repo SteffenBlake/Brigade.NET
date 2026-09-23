@@ -88,6 +88,24 @@ internal static class GeneratorTestHost
         return await compilation.WithAnalyzers([new MiseRawInterpolationAnalyzer()]).GetAnalyzerDiagnosticsAsync();
     }
 
+    public static async Task<ImmutableArray<Diagnostic>> AnalyzeJoinAsync(
+        string source,
+        bool runGenerator = false
+    )
+    {
+        var tree = CSharpSyntaxTree.ParseText(source, CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Preview));
+        Compilation compilation = CreateCompilation([tree]);
+        if (runGenerator)
+        {
+            GeneratorDriver driver = CSharpGeneratorDriver.Create(
+                [new TestMiseGenerator("SqlServer").AsSourceGenerator()],
+                parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Preview)
+            );
+            driver.RunGeneratorsAndUpdateCompilation(compilation, out compilation, out _);
+        }
+        return await compilation.WithAnalyzers([new MiseJoinCapabilityAnalyzer()]).GetAnalyzerDiagnosticsAsync();
+    }
+
     public static GeneratorDriverRunResult RunSources(params (string Path, string Source)[] sources)
     {
         var parseOptions = CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Preview);

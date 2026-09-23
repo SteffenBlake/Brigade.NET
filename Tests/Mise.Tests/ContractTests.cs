@@ -139,6 +139,22 @@ public sealed class ContractTests
         }
     }
 
+    [Fact]
+    public void ReadAndWriteBuilderContractsAreSeparate()
+    {
+        Assert.Equal(typeof(CompiledSql), typeof(IQueryBuilder).GetMethod("Compile")!.ReturnType);
+        Assert.Equal(typeof(CompiledSql), typeof(ICommandBuilder).GetMethod("Compile")!.ReturnType);
+        Assert.DoesNotContain(typeof(ICommandBuilder), typeof(QueryBuilder).GetInterfaces());
+        Assert.DoesNotContain(typeof(IQueryBuilder), typeof(CommandBuilder).GetInterfaces());
+
+        var execute = typeof(DbWriter).GetMethod(nameof(DbWriter.ExecuteAsync))!;
+        Assert.Equal(typeof(ICommandBuilder), execute.GetParameters()[0].ParameterType);
+        Assert.All(typeof(DbReader).GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            .Where(method => method.Name is nameof(DbReader.ListAsync) or nameof(DbReader.FirstOrNotFoundAsync)
+                or nameof(DbReader.ScalarAsync) or nameof(DbReader.ExistsAsync)),
+            method => Assert.Equal(typeof(IQueryBuilder), method.GetParameters()[0].ParameterType));
+    }
+
     private static void AssertUsage<TAttribute>(
         AttributeTargets targets,
         bool allowMultiple = false,

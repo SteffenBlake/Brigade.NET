@@ -25,7 +25,8 @@ Mise follows the Expo split already used by this repository:
 - Core stays engine-neutral. Engine-specific schema, syntax, options, and attributes live in the matching .NET 10 engine package. Matching analyzer packages interpret those attributes without adding runtime-to-generator references.
 - Each engine runtime owns a distinctly named table attribute: `SqlServerTable`, `PostgreSqlTable`, `SqliteTable`, `MySqlTable`, or `MariaDbTable`. They derive from the abstract core `TableAttributeBase`. A mapped type may use only one engine table attribute; multiple engine table attributes are a compile-time error.
 - Row targets use matching engine-owned markers (`SqlServerRow`, `PostgreSqlRow`, `SqliteRow`, `MySqlRow`, or `MariaDbRow`) derived from core `RowAttributeBase`. A type cannot mix row markers or use table and row markers from different engines.
-- `DbReader` and `DbWriter` execute `IQueryBuilder`. Engine packages may provide specialized builders while preserving the shared execution contract.
+- `DbReader` accepts `IQueryBuilder` for read terminals; `DbWriter` accepts `ICommandBuilder` for write terminals. Each builder compiles to an immutable `CompiledSql` snapshot with SQL text and ordered parameter specifications. Nested queries share one parameter-name allocation scope.
+- Fluent call order does not set SQL clause order. Builders collect structured clauses; `Compile()` emits them in dialect SQL order. Repeated list-like calls keep their own call order within the clause.
 - The Example owns Liquibase and Aspire wiring. Mise packages expose no migration API.
 - Existing `UnitOfWorkPartie` owns transaction completion. Mise supplies an `ITxn`; it does not add a second commit/rollback Partie.
 
@@ -35,7 +36,7 @@ Mise follows the Expo split already used by this repository:
 - [x] [02 Contracts](02-CONTRACTS.md)
 - [x] [03 Generator core](03-GENERATOR-CORE.md)
 - [x] [04 Engine generators](04-ENGINE-GENERATORS.md)
-- [ ] [05 Query API](05-QUERY-API.md)
+- [x] [05 Query API](05-QUERY-API.md)
 - [ ] [06 Execution](06-EXECUTION.md)
 - [ ] [07 Partie](07-PARTIE.md)
 - [ ] [08 Verification and example](08-VERIFY-EXAMPLE.md)

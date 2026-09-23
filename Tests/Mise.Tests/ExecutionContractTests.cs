@@ -194,7 +194,7 @@ public sealed class ExecutionContractTests
     {
         var connection = new FakeDbConnection();
         await using var reader = new DbReader(connection: connection);
-        var query = new TestQueryBuilder(new MiseCommand(
+        var query = new TestQueryBuilder(new CompiledSql(
             "select",
             [new MiseParameter("@value", null)]
         ));
@@ -255,11 +255,11 @@ public sealed class ExecutionContractTests
         Assert.DoesNotContain("credential", both.Message, StringComparison.Ordinal);
     }
 
-    private static TestQueryBuilder Query() => new(new MiseCommand("select"));
+    private static TestQueryBuilder Query() => new(new CompiledSql("select"));
 
     private static TestQueryBuilder QueryWithParameter()
     {
-        return new TestQueryBuilder(new MiseCommand(
+        return new TestQueryBuilder(new CompiledSql(
             "select",
             [new MiseParameter("@id", 7, DbType.Int32)],
             timeout: 19

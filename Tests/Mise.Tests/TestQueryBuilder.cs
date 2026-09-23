@@ -2,7 +2,7 @@ using Brigade.Net.Mise;
 
 namespace Brigade.Net.Mise.Tests;
 
-internal sealed class TestQueryBuilder(MiseCommand command) : IQueryBuilder
+internal sealed class TestQueryBuilder(CompiledSql command) : IQueryBuilder, ICommandBuilder
 {
-    public MiseCommand Build() => command;
+    public CompiledSql Compile() => command;
 }

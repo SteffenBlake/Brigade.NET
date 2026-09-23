@@ -17,3 +17,5 @@ MISE012 | Mise | Error | Unsafe raw SQL interpolation
 MISE013 | Mise | Error | Multiple database engines on one table
 MISE014 | Mise | Error | Multiple database engines on one row
 MISE015 | Mise | Error | Table and row engine mismatch
+MISE016 | Mise | Error | Generated member name collision
+MISE017 | Mise | Error | Unsupported database join

@@ -30,8 +30,9 @@ public class DbReader(IMiseConfig? config = null, DbConnection? connection = nul
         Enter();
         try
         {
-            await using var command = await CreateCommandAsync(query, cancellationToken);
-            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            var compiled = query.Compile();
+            await using var command = await CreateCommandAsync(compiled, cancellationToken);
+            await using var reader = await command.ExecuteReaderAsync(compiled.Behavior, cancellationToken);
             var ordinals = T.BindOrdinals(reader);
             var values = new List<T>();
             while (await reader.ReadAsync(cancellationToken))
@@ -56,8 +57,9 @@ public class DbReader(IMiseConfig? config = null, DbConnection? connection = nul
         Enter();
         try
         {
-            await using var command = await CreateCommandAsync(query, cancellationToken);
-            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            var compiled = query.Compile();
+            await using var command = await CreateCommandAsync(compiled, cancellationToken);
+            await using var reader = await command.ExecuteReaderAsync(compiled.Behavior | CommandBehavior.SingleRow, cancellationToken);
             if (!await reader.ReadAsync(cancellationToken))
             {
                 return new NotFound();
@@ -99,8 +101,9 @@ public class DbReader(IMiseConfig? config = null, DbConnection? connection = nul
         Enter();
         try
         {
-            await using var command = await CreateCommandAsync(query, cancellationToken);
-            await using var reader = await command.ExecuteReaderAsync(CommandBehavior.SingleRow, cancellationToken);
+            var compiled = query.Compile();
+            await using var command = await CreateCommandAsync(compiled, cancellationToken);
+            await using var reader = await command.ExecuteReaderAsync(compiled.Behavior | CommandBehavior.SingleRow, cancellationToken);
             return await reader.ReadAsync(cancellationToken);
         }
         finally
@@ -134,7 +137,15 @@ public class DbReader(IMiseConfig? config = null, DbConnection? connection = nul
         CancellationToken cancellationToken
     )
     {
-        var built = query.Build();
+        return await CreateCommandAsync(query.Compile(), cancellationToken);
+    }
+
+    /// <summary>Creates a command from an immutable snapshot.</summary>
+    protected async ValueTask<DbCommand> CreateCommandAsync(
+        CompiledSql built,
+        CancellationToken cancellationToken
+    )
+    {
         var activeConnection = await GetConnectionAsync(cancellationToken);
         var command = activeConnection.CreateCommand();
         try
