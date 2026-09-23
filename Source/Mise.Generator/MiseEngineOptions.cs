@@ -13,7 +13,8 @@ public sealed class MiseEngineOptions(
     Func<string, string> quoteIdentifier,
     string? qualifierAttributeMetadataName = null,
     Func<INamedTypeSymbol, CancellationToken, ImmutableArray<Diagnostic>>? validateTarget = null,
-    Func<INamedTypeSymbol, CancellationToken, string>? emitExtraMembers = null
+    Func<INamedTypeSymbol, CancellationToken, string>? emitExtraMembers = null,
+    bool ordinalNamesIgnoreCase = false
 )
 {
     public string Name { get; } = name;
@@ -32,6 +33,8 @@ public sealed class MiseEngineOptions(
 
     public Func<INamedTypeSymbol, CancellationToken, string>? EmitExtraMembers { get; } = emitExtraMembers;
 
+    public bool OrdinalNamesIgnoreCase { get; } = ordinalNamesIgnoreCase;
+
     internal static MiseEngineOptions Create(string name)
     {
         if (name == "SqlServer")
@@ -42,7 +45,8 @@ public sealed class MiseEngineOptions(
                 "Brigade.Net.Mise.SqlServer.SqlServerRowAttribute",
                 StringComparer.OrdinalIgnoreCase,
                 identifier => "[" + identifier.Replace("]", "]]") + "]",
-                "Brigade.Net.Mise.SqlServer.MiseSchemaAttribute"
+                "Brigade.Net.Mise.SqlServer.MiseSchemaAttribute",
+                ordinalNamesIgnoreCase: true
             );
         }
 
@@ -67,7 +71,8 @@ public sealed class MiseEngineOptions(
                 "Brigade.Net.Mise." + runtimeName + "." + (name == "MySQL" ? "MySql" : "MariaDb") + "RowAttribute",
                 StringComparer.OrdinalIgnoreCase,
                 identifier => "`" + identifier.Replace("`", "``") + "`",
-                "Brigade.Net.Mise." + runtimeName + ".MiseDatabaseAttribute"
+                "Brigade.Net.Mise." + runtimeName + ".MiseDatabaseAttribute",
+                ordinalNamesIgnoreCase: true
             );
         }
 
@@ -76,7 +81,8 @@ public sealed class MiseEngineOptions(
             "Brigade.Net.Mise.SQLite.SqliteTableAttribute",
             "Brigade.Net.Mise.SQLite.SqliteRowAttribute",
             StringComparer.OrdinalIgnoreCase,
-            QuoteDouble
+            QuoteDouble,
+            ordinalNamesIgnoreCase: true
         );
     }
 

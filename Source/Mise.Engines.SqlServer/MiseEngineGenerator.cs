@@ -13,7 +13,8 @@ public sealed class MiseEngineGenerator : IIncrementalGenerator
         "Brigade.Net.Mise.SqlServer.SqlServerRowAttribute",
         StringComparer.OrdinalIgnoreCase,
         identifier => "[" + identifier.Replace("]", "]]") + "]",
-        "Brigade.Net.Mise.SqlServer.MiseSchemaAttribute"
+        "Brigade.Net.Mise.SqlServer.MiseSchemaAttribute",
+        ordinalNamesIgnoreCase: true
     );
 
     public void Initialize(IncrementalGeneratorInitializationContext context)

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO.Compression;
 
 namespace Brigade.Net.Mise.Generator.Tests;
 
@@ -28,6 +29,7 @@ public sealed class PackageFixtureTests
             Pack(repositoryRoot, packages, "Source/Mise/Brigade.Net.Mise.csproj");
             Pack(repositoryRoot, packages, $"Source/Mise.{projectSuffix}/Brigade.Net.Mise.{projectSuffix}.csproj");
             Pack(repositoryRoot, packages, $"Source/Mise.Engines.{projectSuffix}/Brigade.Net.Mise.Engines.{projectSuffix}.csproj");
+            AssertAnalyzerPackageContents(packages, projectSuffix);
             var tableAttribute = projectSuffix switch
             {
                 "SqlServer" => "SqlServerTable",
@@ -171,6 +173,28 @@ public sealed class PackageFixtureTests
             "--disable-build-servers",
             "--output",
             output
+        );
+    }
+
+    private static void AssertAnalyzerPackageContents(string packages, string suffix)
+    {
+        using var archive = ZipFile.OpenRead(Path.Combine(
+            packages,
+            $"Brigade.Net.Mise.Engines.{suffix}.1.0.0.nupkg"
+        ));
+        var analyzers = archive.Entries
+            .Where(entry => entry.FullName.StartsWith("analyzers/", StringComparison.Ordinal))
+            .Select(entry => entry.FullName)
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Equal(
+            new[]
+            {
+                "analyzers/dotnet/cs/Brigade.Net.Mise.Generator.dll",
+                $"analyzers/dotnet/cs/Brigade.Net.Mise.Engines.{suffix}.dll"
+            }.OrderBy(name => name, StringComparer.Ordinal),
+            analyzers
         );
     }
 

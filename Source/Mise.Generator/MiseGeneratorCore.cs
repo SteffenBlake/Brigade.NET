@@ -169,6 +169,10 @@ public static class MiseGeneratorCore
         var properties = MappedProperties(type, cancellationToken).ToArray();
         ValidateProperties(diagnostics, properties, comparer, cancellationToken);
         ValidateRelationships(diagnostics, type, properties, comparer, engine, cancellationToken);
+        if (table is not null)
+        {
+            ValidateGeneratedNames(diagnostics, type, properties);
+        }
         if (Attribute(type, engine.RowAttributeMetadataName) is not null)
         {
             ValidateRow(diagnostics, type, properties, cancellationToken);
@@ -178,6 +182,45 @@ public static class MiseGeneratorCore
             diagnostics.AddRange(engine.ValidateTarget(type, cancellationToken));
         }
         return diagnostics.ToImmutable();
+    }
+
+    private static void ValidateGeneratedNames(
+        ImmutableArray<Diagnostic>.Builder diagnostics,
+        INamedTypeSymbol type,
+        IPropertySymbol[] properties
+    )
+    {
+        if (type.GetMembers("Tbl").Length != 0)
+        {
+            diagnostics.Add(Diagnostic.Create(MiseDiagnostics.GeneratedMemberCollision, type.Locations.FirstOrDefault(), "Tbl"));
+        }
+
+        var names = new HashSet<string>(StringComparer.Ordinal) { "Table" };
+        foreach (var property in properties)
+        {
+            if (!names.Add(property.Name))
+            {
+                diagnostics.Add(Diagnostic.Create(MiseDiagnostics.GeneratedMemberCollision, property.Locations.FirstOrDefault(), property.Name));
+            }
+        }
+
+        foreach (var relationship in Attributes(type, RelationshipAttribute))
+        {
+            var name = CSharpName(StringArgument(relationship, 0) ?? string.Empty).TrimStart('@');
+            if (!names.Add(name))
+            {
+                diagnostics.Add(Diagnostic.Create(MiseDiagnostics.GeneratedMemberCollision, AttributeLocation(relationship), name));
+            }
+        }
+
+        foreach (var alias in Attributes(type, AliasAttribute))
+        {
+            var name = CSharpName(StringArgument(alias, 0) ?? string.Empty).TrimStart('@');
+            if (!names.Add(name))
+            {
+                diagnostics.Add(Diagnostic.Create(MiseDiagnostics.GeneratedMemberCollision, AttributeLocation(alias), name));
+            }
+        }
     }
 
     private static void ValidateProperties(
@@ -392,7 +435,7 @@ public static class MiseGeneratorCore
         EmitTableMembers(builder, indent, model, engine, cancellationToken);
         if (model.Row is not null)
         {
-            EmitRowMembers(builder, indent, model, cancellationToken);
+            EmitRowMembers(builder, indent, model, engine, cancellationToken);
         }
         if (engine.EmitExtraMembers is not null)
         {
@@ -483,6 +526,7 @@ public static class MiseGeneratorCore
         StringBuilder builder,
         string indent,
         MiseTargetModel model,
+        MiseEngineOptions engine,
         CancellationToken cancellationToken
     )
     {
@@ -492,15 +536,49 @@ public static class MiseGeneratorCore
         var rowInterface = "global::Brigade.Net.Mise.IMiseRow<" + TypeReference(type) + ">";
         builder.Append(indent).Append("static int[] ").Append(rowInterface)
             .Append(".BindOrdinals(global::System.Data.Common.DbDataReader reader)\n")
-            .Append(indent).Append("{\n").Append(indent).Append("    return new int[]\n")
+            .Append(indent).Append("{\n").Append(indent).Append("    string[] names =\n")
             .Append(indent).Append("    {\n");
         foreach (var column in model.Columns)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            builder.Append(indent).Append("        reader.GetOrdinal(")
-                .Append(SymbolDisplay.FormatLiteral(column.Name, true)).Append("),\n");
+            builder.Append(indent).Append("        ")
+                .Append(SymbolDisplay.FormatLiteral(column.Name, true)).Append(",\n");
         }
-        builder.Append(indent).Append("    };\n").Append(indent).Append("}\n\n")
+        builder.Append(indent).Append("    };\n")
+            .Append(indent).Append("    var ordinals = new int[names.Length];\n")
+            .Append(indent).Append("    for (var column = 0; column < names.Length; column++)\n")
+            .Append(indent).Append("    {\n")
+            .Append(indent).Append("        var ordinal = -1;\n")
+            .Append(indent).Append("        for (var index = 0; index < reader.FieldCount; index++)\n")
+            .Append(indent).Append("        {\n")
+            .Append(indent).Append("            if (global::System.String.Equals(reader.GetName(index), names[column], global::System.StringComparison.Ordinal))\n")
+            .Append(indent).Append("            {\n")
+            .Append(indent).Append("                ordinal = index;\n")
+            .Append(indent).Append("                break;\n")
+            .Append(indent).Append("            }\n")
+            .Append(indent).Append("        }\n");
+        if (engine.OrdinalNamesIgnoreCase)
+        {
+            builder.Append(indent).Append("        if (ordinal < 0)\n")
+                .Append(indent).Append("        {\n")
+                .Append(indent).Append("            for (var index = 0; index < reader.FieldCount; index++)\n")
+                .Append(indent).Append("            {\n")
+                .Append(indent).Append("                if (global::System.String.Equals(reader.GetName(index), names[column], global::System.StringComparison.OrdinalIgnoreCase))\n")
+                .Append(indent).Append("                {\n")
+                .Append(indent).Append("                    ordinal = index;\n")
+                .Append(indent).Append("                    break;\n")
+                .Append(indent).Append("                }\n")
+                .Append(indent).Append("            }\n")
+                .Append(indent).Append("        }\n");
+        }
+        builder.Append(indent).Append("        if (ordinal < 0)\n")
+            .Append(indent).Append("        {\n")
+            .Append(indent).Append("            throw new global::System.IndexOutOfRangeException(\"Column '\" + names[column] + \"' was not found.\");\n")
+            .Append(indent).Append("        }\n")
+            .Append(indent).Append("        ordinals[column] = ordinal;\n")
+            .Append(indent).Append("    }\n")
+            .Append(indent).Append("    return ordinals;\n")
+            .Append(indent).Append("}\n\n")
             .Append(indent).Append("static ").Append(TypeReference(type)).Append(' ').Append(rowInterface)
             .Append(".Materialize(global::System.Data.Common.DbDataReader reader, global::System.ReadOnlySpan<int> ordinals)\n")
             .Append(indent).Append("{\n");
@@ -543,6 +621,9 @@ public static class MiseGeneratorCore
         var typeName = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         var nullable = property.NullableAnnotation == NullableAnnotation.Annotated
             || property.Type.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T;
+        var fieldType = property.Type.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T
+            ? ((INamedTypeSymbol)property.Type).TypeArguments[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+            : typeName;
         builder.Append(indent).Append(typeName).Append(" value").Append(property.Name).Append(";\n")
             .Append(indent).Append("if (reader.IsDBNull(ordinals[").Append(index).Append("]))\n")
             .Append(indent).Append("{\n");
@@ -558,7 +639,7 @@ public static class MiseGeneratorCore
         }
         builder.Append(indent).Append("}\n").Append(indent).Append("else\n").Append(indent).Append("{\n")
             .Append(indent).Append("    value").Append(property.Name).Append(" = reader.GetFieldValue<")
-            .Append(typeName).Append(">(ordinals[").Append(index).Append("]);\n")
+            .Append(fieldType).Append(">(ordinals[").Append(index).Append("]);\n")
             .Append(indent).Append("}\n");
     }
 

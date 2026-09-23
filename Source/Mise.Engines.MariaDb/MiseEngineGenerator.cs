@@ -13,7 +13,8 @@ public sealed class MiseEngineGenerator : IIncrementalGenerator
         "Brigade.Net.Mise.MariaDb.MariaDbRowAttribute",
         StringComparer.OrdinalIgnoreCase,
         identifier => "`" + identifier.Replace("`", "``") + "`",
-        "Brigade.Net.Mise.MariaDb.MiseDatabaseAttribute"
+        "Brigade.Net.Mise.MariaDb.MiseDatabaseAttribute",
+        ordinalNamesIgnoreCase: true
     );
 
     public void Initialize(IncrementalGeneratorInitializationContext context)

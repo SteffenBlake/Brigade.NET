@@ -21,6 +21,7 @@ public static class MiseDiagnostics
     public static readonly DiagnosticDescriptor MultipleEngineTables = Error("MISE013", "Multiple database engines on one table", "Mapped target '{0}' has table attributes for more than one database engine");
     public static readonly DiagnosticDescriptor MultipleEngineRows = Error("MISE014", "Multiple database engines on one row", "Mapped target '{0}' has row attributes for more than one database engine");
     public static readonly DiagnosticDescriptor MismatchedEngineRow = Error("MISE015", "Table and row engine mismatch", "Mapped target '{0}' must use table and row attributes from the same database engine");
+    public static readonly DiagnosticDescriptor GeneratedMemberCollision = Error("MISE016", "Generated member name collision", "Generated member name '{0}' collides within Tbl");
 
     private static DiagnosticDescriptor Error(string id, string title, string message)
     {

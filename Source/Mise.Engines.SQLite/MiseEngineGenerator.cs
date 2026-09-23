@@ -12,7 +12,8 @@ public sealed class MiseEngineGenerator : IIncrementalGenerator
         "Brigade.Net.Mise.SQLite.SqliteTableAttribute",
         "Brigade.Net.Mise.SQLite.SqliteRowAttribute",
         StringComparer.OrdinalIgnoreCase,
-        identifier => "\"" + identifier.Replace("\"", "\"\"") + "\""
+        identifier => "\"" + identifier.Replace("\"", "\"\"") + "\"",
+        ordinalNamesIgnoreCase: true
     );
 
     public void Initialize(IncrementalGeneratorInitializationContext context)

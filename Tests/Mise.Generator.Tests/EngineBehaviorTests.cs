@@ -22,6 +22,14 @@ public sealed class EngineBehaviorTests
         { typeof(Brigade.Net.Mise.MariaDb.MariaDbRowAttribute), "MariaDbRowAttribute" }
     };
 
+    public static TheoryData<Type> RuntimeQualifierAttributes => new()
+    {
+        { typeof(Brigade.Net.Mise.SqlServer.MiseSchemaAttribute) },
+        { typeof(Brigade.Net.Mise.PostgreSQL.MiseSchemaAttribute) },
+        { typeof(Brigade.Net.Mise.MySQL.MiseDatabaseAttribute) },
+        { typeof(Brigade.Net.Mise.MariaDb.MiseDatabaseAttribute) }
+    };
+
     public static TheoryData<string, string> IsolationCases => new()
     {
         { "SqlServer", "Brigade.Net.Mise.PostgreSQL.PostgreSqlTable" },
@@ -78,6 +86,105 @@ public sealed class EngineBehaviorTests
         { "SQLite", "Brigade.Net.Mise.SQLite.SqliteTable", "Brigade.Net.Mise.MariaDb.MariaDbTable" },
         { "MySQL", "Brigade.Net.Mise.MySQL.MySqlTable", "Brigade.Net.Mise.MariaDb.MariaDbTable" }
     };
+
+    [Theory]
+    [InlineData("SqlServer", "SqlServerTable", "[people]")]
+    [InlineData("PostgreSQL", "PostgreSqlTable", "\"people\"")]
+    [InlineData("SQLite", "SqliteTable", "\"people\"")]
+    [InlineData("MySQL", "MySqlTable", "`people`")]
+    [InlineData("MariaDb", "MariaDbTable", "`people`")]
+    public void UnqualifiedTablesUseTheConnectionsDefaultNamespace(
+        string engine,
+        string tableAttribute,
+        string expected
+    )
+    {
+        var source = $$"""
+            using Brigade.Net.Mise.{{engine}};
+            [{{tableAttribute}}("people")]
+            partial class Person;
+            """;
+
+        var result = GeneratorTestHost.Run(source, engine);
+
+        Assert.Empty(result.Run.Diagnostics);
+        var generated = result.Run.Results.Single().GeneratedSources.Single().SourceText.ToString();
+        Assert.Contains("public const string Table = \"" + expected.Replace("\"", "\\\"") + "\";", generated);
+    }
+
+    [Theory]
+    [InlineData("SqlServer", "SqlServerTable", "SqlServerRow", "]", "[select]]雪]", "[order]")]
+    [InlineData("PostgreSQL", "PostgreSqlTable", "PostgreSqlRow", "\"", "\"select\"\"雪\"", "\"order\"")]
+    [InlineData("SQLite", "SqliteTable", "SqliteRow", "\"", "\"select\"\"雪\"", "\"order\"")]
+    [InlineData("MySQL", "MySqlTable", "MySqlRow", "`", "`select``雪`", "`order`")]
+    [InlineData("MariaDb", "MariaDbTable", "MariaDbRow", "`", "`select``雪`", "`order`")]
+    public void EachEngineBuildsAttributeUsableConstantsAndAliasedRelationships(
+        string engine,
+        string tableAttribute,
+        string rowAttribute,
+        string quoteCharacter,
+        string quotedTable,
+        string quotedAlias
+    )
+    {
+        var tableName = "select" + quoteCharacter + "雪";
+        var source = $$"""
+            using System;
+            using Brigade.Net.Mise;
+            using Brigade.Net.Mise.{{engine}};
+
+            [{{tableAttribute}}("to")]
+            partial class Target { [MiseColumn("key")] public int Key { get; set; } }
+
+            [{{tableAttribute}}("{{tableName.Replace("\"", "\\\"")}}")]
+            [{{rowAttribute}}]
+            [MiseAlias("order"), MiseAlias("other")]
+            [MiseRelationship("Lookup", typeof(Target), "from", "key")]
+            partial class Source { [MiseColumn("from")] public int Key { get; set; } }
+
+            [ConstProbe(Source.Tbl.Table, Source.Tbl.Key, Source.Tbl.order.Table,
+                Source.Tbl.order.Key, Source.Tbl.order.Lookup, Source.Tbl.other.Lookup)]
+            partial class Probe;
+
+            [AttributeUsage(AttributeTargets.Class)]
+            sealed class ConstProbeAttribute(params string[] values) : Attribute;
+            """;
+
+        var result = GeneratorTestHost.Run(source, engine);
+
+        Assert.Empty(result.Run.Diagnostics);
+        Assert.DoesNotContain(result.CompilationDiagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        var generated = string.Join("\n", result.Run.Results.Single().GeneratedSources.Select(item => item.SourceText.ToString()));
+        Assert.Contains("public const string Table = \"" + quotedTable.Replace("\"", "\\\"") + "\";", generated);
+        Assert.Contains(quotedAlias.Replace("\"", "\\\"") + ".", generated);
+        Assert.Contains(" ON ", generated);
+        Assert.DoesNotContain(" INNER ", generated);
+        Assert.DoesNotContain(" LEFT ", generated);
+        Assert.DoesNotContain(" RIGHT ", generated);
+        Assert.DoesNotContain(" FULL ", generated);
+        Assert.DoesNotContain("static readonly string", generated);
+    }
+
+    [Theory]
+    [InlineData("[MiseColumn(\"table\")] public int Table { get; set; }")]
+    [InlineData("[MiseColumn(\"id\")] public int Id { get; set; }", "[MiseAlias(\"Id\")]")]
+    [InlineData("[MiseColumn(\"id\")] public int Id { get; set; }", "[MiseAlias(\"Table\")]")]
+    [InlineData("[MiseColumn(\"id\")] public int Id { get; set; }", "[MiseAlias(\"a-b\"), MiseAlias(\"a_002Db\")]")]
+    [InlineData("public class Tbl;", "")]
+    public void GeneratedTableMemberCollisionsAreDiagnosed(string member, string attribute = "")
+    {
+        var source = $$"""
+            using Brigade.Net.Mise;
+            [Brigade.Net.Mise.SqlServer.SqlServerTable("people")]
+            {{attribute}}
+            partial class Person { {{member}} }
+            """;
+
+        var result = GeneratorTestHost.Run(source);
+
+        Assert.Contains(result.Run.Diagnostics, diagnostic => diagnostic.Id == "MISE016");
+        Assert.Empty(result.Run.Results.Single().GeneratedSources);
+    }
 
     [Theory]
     [MemberData(nameof(Engines))]
@@ -313,6 +420,24 @@ public sealed class EngineBehaviorTests
         Assert.Equal(AttributeTargets.Class | AttributeTargets.Struct, attributeUsage.ValidOn);
         Assert.False(attributeUsage.AllowMultiple);
         Assert.False(attributeUsage.Inherited);
+    }
+
+    [Theory]
+    [MemberData(nameof(RuntimeQualifierAttributes))]
+    public void EngineQualifierAttributesExposeTheirNameAndTargetContract(Type attributeType)
+    {
+        var usage = Assert.IsType<AttributeUsageAttribute>(
+            Assert.Single(attributeType.GetCustomAttributes(typeof(AttributeUsageAttribute), inherit: false))
+        );
+        var attribute = Assert.IsAssignableFrom<Attribute>(Activator.CreateInstance(attributeType, "audit"));
+        var name = Assert.IsType<string>(attributeType.GetProperty("Name")!.GetValue(attribute));
+
+        Assert.Equal("audit", name);
+        Assert.True(attributeType.IsSealed);
+        Assert.Equal(typeof(Attribute), attributeType.BaseType);
+        Assert.Equal(AttributeTargets.Class | AttributeTargets.Struct, usage.ValidOn);
+        Assert.False(usage.AllowMultiple);
+        Assert.False(usage.Inherited);
     }
 
     private static string EngineForAttribute(string attributeName)

@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Brigade.Net.Mise.Generator;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace Brigade.Net.Mise.Generator.Tests;
 
@@ -34,6 +35,50 @@ public sealed class EngineHookTests
             expected.Replace("\"", "\\\""),
             result.Run.Results.Single().GeneratedSources.Single().SourceText.ToString()
         );
+    }
+
+    [Theory]
+    [InlineData("SqlServer", "SqlServerTable", "]", "[", "]")]
+    [InlineData("PostgreSQL", "PostgreSqlTable", "\"", "\"", "\"")]
+    [InlineData("SQLite", "SqliteTable", "\"", "\"", "\"")]
+    [InlineData("MySQL", "MySqlTable", "`", "`", "`")]
+    [InlineData("MariaDb", "MariaDbTable", "`", "`", "`")]
+    public void QuotesColumnAliasAndRelationshipIdentifiers(
+        string engine,
+        string tableAttribute,
+        string embeddedQuote,
+        string openingQuote,
+        string closingQuote
+    )
+    {
+        var alias = "a" + embeddedQuote + "b";
+        var sourceColumn = "f" + embeddedQuote + "rom";
+        var targetColumn = "k" + embeddedQuote + "ey";
+        var source = $$"""
+            using Brigade.Net.Mise;
+            using Brigade.Net.Mise.{{engine}};
+            [{{tableAttribute}}("target")]
+            partial class Target { [MiseColumn("{{targetColumn.Replace("\"", "\\\"")}}")]
+                public int Key { get; set; } }
+            [{{tableAttribute}}("source")]
+            [MiseAlias("{{alias.Replace("\"", "\\\"")}}")]
+            [MiseRelationship("Join", typeof(Target), "{{sourceColumn.Replace("\"", "\\\"")}}", "{{targetColumn.Replace("\"", "\\\"")}}")]
+            partial class Source { [MiseColumn("{{sourceColumn.Replace("\"", "\\\"")}}")]
+                public int Key { get; set; } }
+            """;
+        var result = GeneratorTestHost.Run(source, engine);
+
+        Assert.Empty(result.Run.Diagnostics);
+        Assert.DoesNotContain(result.CompilationDiagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        var generated = string.Join("\n", result.Run.Results.Single().GeneratedSources.Select(item => item.SourceText.ToString()));
+        string Quote(string value) => openingQuote + value.Replace(embeddedQuote, embeddedQuote + embeddedQuote) + closingQuote;
+        var join = Quote("target") + " ON " + Quote("source") + "." + Quote(sourceColumn)
+            + " = " + Quote("target") + "." + Quote(targetColumn);
+        var aliasedJoin = Quote("target") + " ON " + Quote(alias) + "." + Quote(sourceColumn)
+            + " = " + Quote("target") + "." + Quote(targetColumn);
+        Assert.Contains(SymbolDisplay.FormatLiteral(join, true), generated);
+        Assert.Contains(SymbolDisplay.FormatLiteral(aliasedJoin, true), generated);
+        Assert.Contains(SymbolDisplay.FormatLiteral(Quote(alias) + "." + Quote(sourceColumn), true), generated);
     }
 
     [Fact]

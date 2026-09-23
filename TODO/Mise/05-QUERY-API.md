@@ -10,6 +10,8 @@ Depends: 02, 04.
 - [ ] Define `MiseCommand` as an immutable command snapshot: command text, ordered parameter specifications, `CommandType`, timeout, and supported engine-neutral behavior flags. Building twice must not share mutable parameters.
 - [ ] Support the common surface: WITH and recursive WITH; SELECT/DISTINCT; FROM; generated aliases; supported joins; subqueries; WHERE; GROUP BY; HAVING; ORDER BY; paging through engine rendering; set operations; INSERT values/select; UPDATE; DELETE; scalar/existence; stored procedure; and custom SQL.
 - [ ] `InnerJoin`, `LeftJoin`, `RightJoin`, and `FullJoin` take one generated relationship const string that already contains the target and `ON` predicate. Alias relationship constants rewrite source qualification. `CrossJoin` takes only a table, alias, or child builder because it has no `ON` predicate.
+- [ ] Add engine capability checks for fluent join operations.
+- [ ] Diagnose use of a join kind unsupported by the selected engine. Cross joins use table/alias constants or child builders and do not use relationship constants.
 - [ ] Fluent operations that contain a query accept `IQueryBuilder` children, including CTEs, recursive CTE anchor/recursive members, derived tables, correlated subqueries, existence checks, and set operations.
 - [ ] Render recursive CTEs per engine. PostgreSQL, SQLite, MySQL, and MariaDB use `WITH RECURSIVE`; SQL Server uses its recursive CTE form and keeps `MAXRECURSION` in its engine builder.
 - [ ] Model repeated predicates/order terms and nested/set queries as structured fragments. Empty collections and list expansion need explicit APIs and documented SQL; they must not silently create invalid `IN ()` text.
@@ -22,6 +24,7 @@ Tests:
 - [ ] Safety tests cover quote characters, SQL comments, semicolons, malicious values, generated constants, user const strings, rejected non-const raw expressions, nulls, repeated arguments, escaped braces, and nested parameter-name collisions.
 - [ ] Reuse tests build the same child into multiple parents and concurrently build independent commands without text or parameter mutation.
 - [ ] Join tests prove the same generated relationship constant works with every supported join kind and that source aliases rewrite the predicate. Cross-join tests prove no `ON` clause is emitted.
+- [ ] Dialect capability tests assert the diagnostic for unsupported joins and assert no SQL is emitted for the rejected operation.
 - [ ] Dialect tests cover recursive CTE rendering, paging, identifier quoting, parameter markers, stored-procedure command type, and every declared engine deviation.
 
 Done: `IQueryBuilder` trees compose valid parameterized CRUD, joins, CTEs, recursive CTEs, and correlated subqueries for all five engines; only compile-time constant `:raw` values enter command text.

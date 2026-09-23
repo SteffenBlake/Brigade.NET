@@ -21,7 +21,7 @@ public sealed class GeneratorCoreTests
             .OrderBy(descriptor => descriptor.Id, StringComparer.Ordinal)
             .ToArray();
 
-        Assert.Equal(Enumerable.Range(1, 15).Select(number => $"MISE{number:000}"), descriptors.Select(item => item.Id));
+        Assert.Equal(Enumerable.Range(1, 16).Select(number => $"MISE{number:000}"), descriptors.Select(item => item.Id));
         Assert.All(descriptors, descriptor =>
         {
             Assert.Equal("Mise", descriptor.Category);

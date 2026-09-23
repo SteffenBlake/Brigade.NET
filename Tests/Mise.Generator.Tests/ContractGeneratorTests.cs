@@ -175,7 +175,8 @@ public sealed class ContractGeneratorTests
         Assert.DoesNotContain(result.CompilationDiagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
         var generated = Assert.Single(result.Run.Results).GeneratedSources.Single().SourceText.ToString();
         Assert.Contains("IMiseRow<Good>", generated);
-        Assert.Contains("reader.GetOrdinal(\"id\")", generated);
+        Assert.Contains("\"id\"", generated);
+        Assert.Contains("reader.GetName(index)", generated);
         Assert.Contains("valueName = null", generated);
         Assert.Contains("MiseMappingException", generated);
     }
@@ -205,7 +206,7 @@ public sealed class ContractGeneratorTests
         Assert.Empty(result.Run.Diagnostics);
         Assert.DoesNotContain(result.CompilationDiagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
         var generated = result.Run.Results.Single().GeneratedSources.Single().SourceText.ToString();
-        Assert.True(generated.IndexOf("base_id", StringComparison.Ordinal) < generated.IndexOf("name", StringComparison.Ordinal));
+        Assert.True(generated.IndexOf("\"base_id\"", StringComparison.Ordinal) < generated.IndexOf("\"name\"", StringComparison.Ordinal));
         Assert.Contains("private string? Name", source);
     }
 
