@@ -239,7 +239,7 @@ public sealed class OrderedProvidedValuesTests
                 CancellationToken ct
             )
             {
-                using var uow = new UnitOfWork([]);
+                await using var uow = new UnitOfWork([]);
                 var result = await next(uow);
                 await uow.CommitAsync();
                 return result;

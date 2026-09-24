@@ -17,14 +17,15 @@ public sealed class AppHostFixture : IAsyncLifetime
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
         builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.Brigade_Net_Example_AppHost>(
+            args: ["--Mise:UseVolumes=false"],
             cancellationToken: timeout.Token
         );
         try
         {
             application = await builder.BuildAsync(timeout.Token);
             await application.StartAsync(timeout.Token);
-            await application.ResourceNotifications.WaitForResourceHealthyAsync("web", timeout.Token);
-            WebClient = application.CreateHttpClient("web", "http");
+            await application.ResourceNotifications.WaitForResourceHealthyAsync("WebApp", timeout.Token);
+            WebClient = application.CreateHttpClient("WebApp", "http");
             WebClient.Timeout = TimeSpan.FromSeconds(30);
         }
         catch

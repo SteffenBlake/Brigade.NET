@@ -18,35 +18,67 @@ public sealed class UnitOfWorkPartie<TCommand, TResult> :
         CancellationToken ct
     )
     {
-        return ExecuteAsync(ctx, next);
+        return ExecuteAsync(ctx, next, ct);
     }
 
-    private static async ValueTask<Result<TResult>> ExecuteAsync(UnitOfWorkContext ctx, Next<UnitOfWork, TResult> next)
+    private static async ValueTask<Result<TResult>> ExecuteAsync(
+        UnitOfWorkContext ctx,
+        Next<UnitOfWork, TResult> next,
+        CancellationToken cancellationToken
+    )
     {
-        using var work = new UnitOfWork(ctx.Transactions);
-        Result<TResult> result;
+        var work = new UnitOfWork(ctx.Transactions);
+        Exception? primary = null;
         try
         {
-            result = await next(work);
+            var result = await next(work);
+            if (result.IsSuccess(out _) || result.IsDeprecated(out _))
+            {
+                await work.CommitAsync(cancellationToken);
+            }
+            else
+            {
+                await RollbackForCleanupAsync(work);
+            }
+
+            return result;
         }
-        catch
+        catch (Exception exception)
         {
-            await work.RollbackAsync();
+            primary = exception;
+            try
+            {
+                await RollbackForCleanupAsync(work);
+            }
+            catch (Exception rollbackFault)
+            {
+                exception.Data["UnitOfWork.RollbackException"] = rollbackFault;
+            }
             throw;
         }
-
-        await result.MapAsync(
-            success: async value =>
+        finally
         {
-            await work.CommitAsync();
-            return Unit.Default;
-        },
-            failure: async failure =>
-        {
-            await work.RollbackAsync();
-            return Unit.Default;
+            if (primary is null)
+            {
+                await work.DisposeAsync();
+            }
+            else
+            {
+                try
+                {
+                    await work.DisposeAsync();
+                }
+                catch (Exception disposalFault)
+                {
+                    primary.Data["UnitOfWork.DisposeException"] = disposalFault;
+                }
+            }
         }
-        );
-        return result;
+    }
+
+    private static async Task RollbackForCleanupAsync(UnitOfWork work)
+    {
+        using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        await work.RollbackAsync(cleanup.Token);
     }
 }

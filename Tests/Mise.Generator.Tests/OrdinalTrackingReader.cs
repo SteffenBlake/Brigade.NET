@@ -4,7 +4,7 @@ using System.Data.Common;
 
 namespace Brigade.Net.Mise.Generator.Tests;
 
-public sealed class OrdinalTrackingReader(DbDataReader inner) : DbDataReader
+public sealed class OrdinalTrackingReader(DbDataReader inner, string[]? projectedNames = null) : DbDataReader
 {
     public int NameLookupCount { get; private set; }
 
@@ -78,7 +78,7 @@ public sealed class OrdinalTrackingReader(DbDataReader inner) : DbDataReader
         }
 
         NameLookupCount++;
-        return inner.GetName(ordinal);
+        return projectedNames is null ? inner.GetName(ordinal) : projectedNames[ordinal];
     }
 
     public override int GetOrdinal(string name) => inner.GetOrdinal(name);

@@ -4,9 +4,11 @@ using System.Data.Common;
 
 namespace Brigade.Net.Mise.Tests;
 
-internal sealed class CountingDbDataReader(DbDataReader inner) : DbDataReader
+internal sealed class CountingDbDataReader(DbDataReader inner, Action<string>? recordEvent = null) : DbDataReader
 {
     public int DisposeCount { get; private set; }
+
+    public int ReadCount { get; private set; }
 
     public override object this[int ordinal] => inner[ordinal];
 
@@ -76,10 +78,16 @@ internal sealed class CountingDbDataReader(DbDataReader inner) : DbDataReader
 
     public override bool NextResult() => inner.NextResult();
 
-    public override bool Read() => inner.Read();
+    public override bool Read()
+    {
+        ReadCount++;
+        return inner.Read();
+    }
 
     public override Task<bool> ReadAsync(CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        ReadCount++;
         return inner.ReadAsync(cancellationToken);
     }
 
@@ -92,6 +100,7 @@ internal sealed class CountingDbDataReader(DbDataReader inner) : DbDataReader
 
     public override async ValueTask DisposeAsync()
     {
+        recordEvent?.Invoke("reader.dispose");
         DisposeCount++;
         await inner.DisposeAsync();
         GC.SuppressFinalize(this);

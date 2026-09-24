@@ -63,27 +63,77 @@ public sealed class RowMaterializationTests
                             && error.MemberName == "Id"
                             && error.ColumnName == "id"
                             && error.Ordinal == 1
-                            && CaseMatches();
+                            && InvalidMappings();
                     }
                 }
 
-                private static bool CaseMatches()
+                private static bool InvalidMappings()
                 {
+                    var missingTable = new DataTable();
+                    missingTable.Columns.Add("count", typeof(int));
+                    using var missingReader = missingTable.CreateDataReader();
+                    try
+                    {
+                        TReader<Row>.Bind(missingReader);
+                        return false;
+                    }
+                    catch (MiseInvalidMappingException error)
+                    {
+                        if (error.ResultType != typeof(Row))
+                        {
+                            return false;
+                        }
+                    }
+
+                    var duplicateTable = new DataTable();
+                    duplicateTable.Columns.Add("first", typeof(int));
+                    duplicateTable.Columns.Add("second", typeof(int));
+                    using var duplicateReader = new OrdinalTrackingReader(
+                        duplicateTable.CreateDataReader(), new[] { "id", "id" });
+                    try
+                    {
+                        TReader<Row>.Bind(duplicateReader);
+                        return false;
+                    }
+                    catch (MiseInvalidMappingException error)
+                    {
+                        if (error.ResultType != typeof(Row))
+                        {
+                            return false;
+                        }
+                    }
+
+                    var badValueTable = new DataTable();
+                    badValueTable.Columns.Add("id", typeof(string));
+                    badValueTable.Columns.Add("count", typeof(int));
+                    badValueTable.Rows.Add("not an integer", 1);
+                    using var badValueReader = badValueTable.CreateDataReader();
+                    var ordinals = TReader<Row>.Bind(badValueReader);
+                    badValueReader.Read();
+                    try
+                    {
+                        TReader<Row>.Read(badValueReader, ordinals);
+                        return false;
+                    }
+                    catch (InvalidCastException)
+                    {
+                    }
+
                     if (!{{(engine == "PostgreSQL" ? "true" : "false")}})
                     {
                         return true;
                     }
 
-                    var table = new DataTable();
-                    table.Columns.Add("count", typeof(int));
-                    table.Columns.Add("ID", typeof(int));
-                    using var reader = table.CreateDataReader();
+                    var caseTable = new DataTable();
+                    caseTable.Columns.Add("count", typeof(int));
+                    caseTable.Columns.Add("ID", typeof(int));
+                    using var caseReader = caseTable.CreateDataReader();
                     try
                     {
-                        TReader<Row>.Bind(reader);
+                        TReader<Row>.Bind(caseReader);
                         return false;
                     }
-                    catch (IndexOutOfRangeException)
+                    catch (MiseInvalidMappingException)
                     {
                         return true;
                     }

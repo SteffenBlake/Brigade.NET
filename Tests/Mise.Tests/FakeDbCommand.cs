@@ -30,9 +30,13 @@ internal sealed class FakeDbCommand(FakeDbConnection connection) : DbCommand
 
     public int DisposeCount { get; private set; }
 
+    public DbTransaction? AttachedTransaction => DbTransaction;
+
     public CountingDbDataReader? LastReader { get; private set; }
 
     public CancellationToken LastCancellationToken { get; private set; }
+
+    public CommandBehavior LastBehavior { get; private set; }
 
     public override void Cancel()
     {
@@ -58,8 +62,9 @@ internal sealed class FakeDbCommand(FakeDbConnection connection) : DbCommand
 
     protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior)
     {
+        LastBehavior = behavior;
         ThrowIfSet();
-        LastReader = new CountingDbDataReader(CreateReader());
+        LastReader = new CountingDbDataReader(CreateReader(), connection.LifecycleEvents.Add);
         return LastReader;
     }
 
@@ -93,6 +98,7 @@ internal sealed class FakeDbCommand(FakeDbConnection connection) : DbCommand
 
     protected override void Dispose(bool disposing)
     {
+        connection.LifecycleEvents.Add("command.dispose");
         IsDisposed = true;
         DisposeCount++;
         base.Dispose(disposing);

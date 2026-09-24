@@ -5,6 +5,67 @@ namespace Brigade.Net.Partie.Tests;
 
 public sealed class UnitOfWorkPartieTests
 {
+    [Fact]
+    public async Task DownstreamFaultRemainsPrimaryWhenRollbackFails()
+    {
+        var expected = new InvalidOperationException("downstream failed");
+        var transaction = new BasicTxn(
+            rollback: _ => throw new InvalidOperationException("rollback failed")
+        );
+
+        var actual = await Record.ExceptionAsync(() =>
+            UnitOfWorkPartie<Unit, int>.OnCommandAsync(
+                new UnitOfWorkContext([transaction]),
+                new Unit(),
+                _ => ValueTask.FromException<Result<int>>(expected),
+                CancellationToken.None
+            ).AsTask()
+        );
+
+        Assert.Same(expected, actual);
+        Assert.IsType<AggregateException>(actual.Data["UnitOfWork.RollbackException"]);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task RouteTokenReachesTransaction(bool success)
+    {
+        using var source = new CancellationTokenSource();
+        CancellationToken seen = default;
+        var transaction = new BasicTxn(
+            commit: token =>
+            {
+                seen = token;
+                return Task.CompletedTask;
+            },
+            rollback: token =>
+            {
+                seen = token;
+                return Task.CompletedTask;
+            }
+        );
+        Result<int> result = success ? 1 : new Conflict("busy");
+
+        await UnitOfWorkPartie<Unit, int>.OnCommandAsync(
+            new UnitOfWorkContext([transaction]),
+            new Unit(),
+            _ => ValueTask.FromResult(result),
+            source.Token
+        );
+
+        if (success)
+        {
+            Assert.Equal(source.Token, seen);
+        }
+        else
+        {
+            Assert.NotEqual(source.Token, seen);
+            Assert.True(seen.CanBeCanceled);
+            Assert.False(seen.IsCancellationRequested);
+        }
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -14,12 +75,12 @@ public sealed class UnitOfWorkPartieTests
         var rollbacks = 0;
         var context = new UnitOfWorkContext(
             [new BasicTxn(
-                commit: () =>
+                commit: _ =>
         {
             commits++;
             return Task.CompletedTask;
         },
-                rollback: () =>
+                rollback: _ =>
         {
             rollbacks++;
             return Task.CompletedTask;
@@ -39,8 +100,8 @@ public sealed class UnitOfWorkPartieTests
         var rollbacks = 0;
         var context = new UnitOfWorkContext(
             [new BasicTxn(
-                commit: () => throw new InvalidOperationException("Must not commit"),
-                rollback: () =>
+                commit: _ => throw new InvalidOperationException("Must not commit"),
+                rollback: _ =>
         {
             rollbacks++;
             return Task.CompletedTask;
@@ -61,7 +122,7 @@ public sealed class UnitOfWorkPartieTests
         var rollbacks = 0;
         var context = new UnitOfWorkContext(
             [new BasicTxn(
-                rollback: () =>
+                rollback: _ =>
         {
             rollbacks++;
             return Task.CompletedTask;
@@ -88,8 +149,8 @@ public sealed class UnitOfWorkPartieTests
         var expected = new InvalidOperationException("commit failed");
         var context = new UnitOfWorkContext(
             [new BasicTxn(
-                commit: () => throw expected,
-                rollback: () =>
+                commit: _ => throw expected,
+                rollback: _ =>
         {
             rollbacks++;
             return Task.CompletedTask;
@@ -118,7 +179,7 @@ public sealed class UnitOfWorkPartieTests
             work =>
         {
             work.AddTxn(
-                    commit: () =>
+                    commit: _ =>
             {
                 committed = true;
                 return Task.CompletedTask;

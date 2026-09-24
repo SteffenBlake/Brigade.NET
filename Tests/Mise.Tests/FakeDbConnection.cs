@@ -27,6 +27,8 @@ internal sealed class FakeDbConnection : DbConnection
 
     public List<object?[]> Rows { get; } = [];
 
+    public List<string> LifecycleEvents { get; } = [];
+
     public object? ScalarValue { get; set; }
 
     public int NonQueryResult { get; set; }
@@ -39,8 +41,15 @@ internal sealed class FakeDbConnection : DbConnection
 
     public FakeDbCommand? LastCommand { get; private set; }
 
+    public FakeDbTransaction? LastTransaction { get; private set; }
+
+    public int BeginTransactionCount { get; private set; }
+
+    public CancellationToken LastBeginTransactionToken { get; private set; }
+
     public override void Open()
     {
+        LifecycleEvents.Add("connection.open");
         OpenCount++;
         _state = ConnectionState.Open;
     }
@@ -64,7 +73,20 @@ internal sealed class FakeDbConnection : DbConnection
 
     protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel)
     {
-        throw new NotSupportedException();
+        LifecycleEvents.Add("transaction.begin");
+        BeginTransactionCount++;
+        LastTransaction = new FakeDbTransaction(this, isolationLevel);
+        return LastTransaction;
+    }
+
+    protected override ValueTask<DbTransaction> BeginDbTransactionAsync(
+        IsolationLevel isolationLevel,
+        CancellationToken cancellationToken
+    )
+    {
+        LastBeginTransactionToken = cancellationToken;
+        cancellationToken.ThrowIfCancellationRequested();
+        return ValueTask.FromResult(BeginDbTransaction(isolationLevel));
     }
 
     protected override DbCommand CreateDbCommand()
@@ -75,6 +97,7 @@ internal sealed class FakeDbConnection : DbConnection
 
     protected override void Dispose(bool disposing)
     {
+        LifecycleEvents.Add("connection.dispose");
         DisposeCount++;
         _state = ConnectionState.Closed;
         base.Dispose(disposing);

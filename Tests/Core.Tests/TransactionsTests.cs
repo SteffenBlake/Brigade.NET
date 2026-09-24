@@ -5,10 +5,45 @@ namespace Brigade.Net.Core.Tests;
 public class TransactionsTests
 {
     [Fact]
+    public async Task UnitOfWorkPassesCommitTokenAndDisposesChildOnce()
+    {
+        using var source = new CancellationTokenSource();
+        var child = new TrackingTxn();
+        var work = new UnitOfWork([child]);
+
+        await work.CommitAsync(source.Token);
+        await work.DisposeAsync();
+        await work.DisposeAsync();
+
+        Assert.Equal(source.Token, child.CommitToken);
+        Assert.Equal(1, child.DisposeCount);
+    }
+
+    [Fact]
+    public async Task CommitFailureUsesFreshCleanupTokenAndKeepsPrimaryError()
+    {
+        using var source = new CancellationTokenSource();
+        source.Cancel();
+        var expected = new InvalidOperationException("commit failed");
+        var child = new TrackingTxn { CommitException = expected };
+        var work = new UnitOfWork([child]);
+
+        var actual = await Assert.ThrowsAsync<InvalidOperationException>(() => work.CommitAsync(source.Token));
+        await work.DisposeAsync();
+
+        Assert.Same(expected, actual);
+        Assert.Equal(source.Token, child.CommitToken);
+        Assert.NotEqual(source.Token, child.RollbackToken);
+        Assert.True(child.RollbackToken.CanBeCanceled);
+        Assert.False(child.RollbackToken.IsCancellationRequested);
+        Assert.Equal(1, child.DisposeCount);
+    }
+
+    [Fact]
     public async Task BasicTxn_CommitAsync_InvokesDelegate()
     {
         var invoked = false;
-        var txn = new BasicTxn(commit: () =>
+        var txn = new BasicTxn(commit: _ =>
         {
             invoked = true;
             return Task.CompletedTask;
@@ -31,7 +66,7 @@ public class TransactionsTests
     public async Task BasicTxn_RollbackAsync_InvokesDelegate()
     {
         var invoked = false;
-        var txn = new BasicTxn(rollback: () =>
+        var txn = new BasicTxn(rollback: _ =>
         {
             invoked = true;
             return Task.CompletedTask;
@@ -65,12 +100,12 @@ public class TransactionsTests
     {
         var committed = new List<int>();
         var uow = new UnitOfWork([])
-            .AddTxn(commit: () =>
+            .AddTxn(commit: _ =>
             {
                 committed.Add(1);
                 return Task.CompletedTask;
             })
-            .AddTxn(commit: () =>
+            .AddTxn(commit: _ =>
             {
                 committed.Add(2);
                 return Task.CompletedTask;
@@ -79,7 +114,7 @@ public class TransactionsTests
         await uow.CommitAsync();
 
         Assert.Equal([1, 2], committed);
-        uow.Dispose();
+        await uow.DisposeAsync();
     }
 
     [Fact]
@@ -88,13 +123,13 @@ public class TransactionsTests
         var rolledBack = new List<int>();
         var uow = new UnitOfWork([])
             .AddTxn(
-                commit: () => throw new InvalidOperationException("commit failed"),
-                rollback: () =>
+                commit: _ => throw new InvalidOperationException("commit failed"),
+                rollback: _ =>
                 {
                     rolledBack.Add(1);
                     return Task.CompletedTask;
                 })
-            .AddTxn(rollback: () =>
+            .AddTxn(rollback: _ =>
             {
                 rolledBack.Add(2);
                 return Task.CompletedTask;
@@ -104,7 +139,7 @@ public class TransactionsTests
 
         Assert.Equal("commit failed", ex.Message);
         Assert.Equal([1, 2], rolledBack);
-        uow.Dispose();
+        await uow.DisposeAsync();
     }
 
     [Fact]
@@ -112,12 +147,12 @@ public class TransactionsTests
     {
         var rolledBack = new List<int>();
         var uow = new UnitOfWork([])
-            .AddTxn(rollback: () =>
+            .AddTxn(rollback: _ =>
             {
                 rolledBack.Add(1);
                 return Task.CompletedTask;
             })
-            .AddTxn(rollback: () =>
+            .AddTxn(rollback: _ =>
             {
                 rolledBack.Add(2);
                 return Task.CompletedTask;
@@ -126,7 +161,7 @@ public class TransactionsTests
         await uow.RollbackAsync();
 
         Assert.Equal([1, 2], rolledBack);
-        uow.Dispose();
+        await uow.DisposeAsync();
     }
 
     [Fact]
@@ -134,27 +169,27 @@ public class TransactionsTests
     {
         var rolledBack = new List<int>();
         var uow = new UnitOfWork([])
-            .AddTxn(rollback: () => throw new InvalidOperationException("rollback 1 failed"))
-            .AddTxn(rollback: () =>
+            .AddTxn(rollback: _ => throw new InvalidOperationException("rollback 1 failed"))
+            .AddTxn(rollback: _ =>
             {
                 rolledBack.Add(2);
                 return Task.CompletedTask;
             })
-            .AddTxn(rollback: () => throw new InvalidOperationException("rollback 3 failed"));
+            .AddTxn(rollback: _ => throw new InvalidOperationException("rollback 3 failed"));
 
         var ex = await Assert.ThrowsAsync<AggregateException>(() => uow.RollbackAsync());
 
         Assert.Equal(2, ex.InnerExceptions.Count);
         Assert.Equal([2], rolledBack);
-        uow.Dispose();
+        await uow.DisposeAsync();
     }
 
     [Fact]
-    public void Dispose_WithoutCommitOrRollback_Throws()
+    public async Task Dispose_WithoutCommitOrRollback_Throws()
     {
         var uow = new UnitOfWork([]);
 
-        Assert.Throws<InvalidOperationException>(uow.Dispose);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => uow.DisposeAsync().AsTask());
     }
 
     [Fact]
@@ -164,7 +199,7 @@ public class TransactionsTests
 
         await uow.CommitAsync();
 
-        uow.Dispose();
+        await uow.DisposeAsync();
     }
 
     [Fact]
@@ -174,6 +209,6 @@ public class TransactionsTests
 
         await uow.RollbackAsync();
 
-        uow.Dispose();
+        await uow.DisposeAsync();
     }
 }

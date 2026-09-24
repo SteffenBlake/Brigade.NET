@@ -16,5 +16,7 @@
     <ProjectReference Include="../../Source/Partie.Engines.AspNetCore/Brigade.Net.Partie.Engines.AspNetCore.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="true" />
     <ProjectReference Include="../../Source/Partie/Brigade.Net.Partie.csproj" />
     <ProjectReference Include="../../Source/Partie.AspNetCore/Brigade.Net.Partie.AspNetCore.csproj" />
+    <ProjectReference Include="../../Source/Partie.Extensions.Mise/Brigade.Net.Partie.Extensions.Mise.csproj" />
+    <ProjectReference Include="../../Source/Mise/Brigade.Net.Mise.csproj" />
   </ItemGroup>
 </Project>

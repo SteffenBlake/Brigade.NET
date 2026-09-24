@@ -5,6 +5,21 @@ internal static partial class BrigadeRoutes
 {
     public static void Register(global::Brigade.Net.Partie.IPartieEngine engine)
     {
+        engine.Map(Route_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eMise_0);
+        engine.Map(Route_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eMise_1);
+        engine.Map(Route_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eMise_2);
+        engine.Map(Route_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eMise_3);
+        engine.Map(Route_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eMise_4);
+        engine.Map(Route_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eMise_5);
+        engine.Map(Route_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eMise_6);
+        engine.Map(Route_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eMise_7);
+        engine.Map(Route_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eMise_8);
+        engine.Map(Route_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eMise_9);
+        engine.Map(Route_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eMise_10);
+        engine.Map(Route_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eMise_11);
+        engine.Map(Route_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eMise_12);
+        engine.Map(Route_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eMise_13);
+        engine.Map(Route_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eMise_14);
         engine.Map(Route_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eOrders_0);
         engine.Map(Route_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eOrders_1);
         engine.Map(Route_Group_Brigade_002eNet_002eExample_002eWeb_002eRouting_002eOrders_2);

@@ -12,7 +12,17 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../../Source/Mise.SQLite/Brigade.Net.Mise.SQLite.csproj" />
     <Using Include="Xunit" />
     <ProjectReference Include="../../Source/Partie.Extensions.Mise/Brigade.Net.Partie.Extensions.Mise.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../Mise.Tests/CountingDbDataReader.cs" Link="Fakes/CountingDbDataReader.cs" />
+    <Compile Include="../Mise.Tests/FakeDbCommand.cs" Link="Fakes/FakeDbCommand.cs" />
+    <Compile Include="../Mise.Tests/FakeDbConnection.cs" Link="Fakes/FakeDbConnection.cs" />
+    <Compile Include="../Mise.Tests/FakeDbParameter.cs" Link="Fakes/FakeDbParameter.cs" />
+    <Compile Include="../Mise.Tests/FakeDbParameterCollection.cs" Link="Fakes/FakeDbParameterCollection.cs" />
+    <Compile Include="../Mise.Tests/FakeDbProviderFactory.cs" Link="Fakes/FakeDbProviderFactory.cs" />
+    <Compile Include="../Mise.Tests/FakeDbTransaction.cs" Link="Fakes/FakeDbTransaction.cs" />
   </ItemGroup>
 </Project>

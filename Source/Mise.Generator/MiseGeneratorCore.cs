@@ -553,27 +553,33 @@ public static class MiseGeneratorCore
             .Append(indent).Append("        {\n")
             .Append(indent).Append("            if (global::System.String.Equals(reader.GetName(index), names[column], global::System.StringComparison.Ordinal))\n")
             .Append(indent).Append("            {\n")
+            .Append(indent).Append("                if (ordinal >= 0)\n")
+            .Append(indent).Append("                {\n")
+            .Append(indent).Append("                    throw new global::Brigade.Net.Mise.MiseInvalidMappingException(typeof(")
+            .Append(TypeReference(type)).Append("), \"Column '\" + names[column] + \"' was projected more than once.\");\n")
+            .Append(indent).Append("                }\n")
             .Append(indent).Append("                ordinal = index;\n")
-            .Append(indent).Append("                break;\n")
             .Append(indent).Append("            }\n")
             .Append(indent).Append("        }\n");
         if (engine.OrdinalNamesIgnoreCase)
         {
-            builder.Append(indent).Append("        if (ordinal < 0)\n")
+            builder.Append(indent).Append("        for (var index = 0; index < reader.FieldCount; index++)\n")
                 .Append(indent).Append("        {\n")
-                .Append(indent).Append("            for (var index = 0; index < reader.FieldCount; index++)\n")
+                .Append(indent).Append("            if (global::System.String.Equals(reader.GetName(index), names[column], global::System.StringComparison.OrdinalIgnoreCase))\n")
                 .Append(indent).Append("            {\n")
-                .Append(indent).Append("                if (global::System.String.Equals(reader.GetName(index), names[column], global::System.StringComparison.OrdinalIgnoreCase))\n")
+                .Append(indent).Append("                if (ordinal >= 0 && ordinal != index)\n")
                 .Append(indent).Append("                {\n")
-                .Append(indent).Append("                    ordinal = index;\n")
-                .Append(indent).Append("                    break;\n")
+                .Append(indent).Append("                    throw new global::Brigade.Net.Mise.MiseInvalidMappingException(typeof(")
+                .Append(TypeReference(type)).Append("), \"Column '\" + names[column] + \"' was projected more than once.\");\n")
                 .Append(indent).Append("                }\n")
+                .Append(indent).Append("                ordinal = index;\n")
                 .Append(indent).Append("            }\n")
                 .Append(indent).Append("        }\n");
         }
         builder.Append(indent).Append("        if (ordinal < 0)\n")
             .Append(indent).Append("        {\n")
-            .Append(indent).Append("            throw new global::System.IndexOutOfRangeException(\"Column '\" + names[column] + \"' was not found.\");\n")
+            .Append(indent).Append("            throw new global::Brigade.Net.Mise.MiseInvalidMappingException(typeof(")
+            .Append(TypeReference(type)).Append("), \"Column '\" + names[column] + \"' was not projected.\");\n")
             .Append(indent).Append("        }\n")
             .Append(indent).Append("        ordinals[column] = ordinal;\n")
             .Append(indent).Append("    }\n")
@@ -618,7 +624,10 @@ public static class MiseGeneratorCore
     )
     {
         var property = column.Property;
-        var typeName = property.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        var nullableTypeFormat = SymbolDisplayFormat.FullyQualifiedFormat.WithMiscellaneousOptions(
+            SymbolDisplayFormat.FullyQualifiedFormat.MiscellaneousOptions
+                | SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
+        var typeName = property.Type.ToDisplayString(nullableTypeFormat);
         var nullable = property.NullableAnnotation == NullableAnnotation.Annotated
             || property.Type.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T;
         var fieldType = property.Type.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T
@@ -847,7 +856,11 @@ public static class MiseGeneratorCore
     private static string HintName(INamedTypeSymbol type)
     {
         var identity = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-        return "Mise." + string.Join("_", identity.Select(character => ((int)character).ToString("X4"))) + ".g.cs";
+        using (var hash = System.Security.Cryptography.SHA256.Create())
+        {
+            var digest = hash.ComputeHash(Encoding.UTF8.GetBytes(identity));
+            return "Mise." + BitConverter.ToString(digest).Replace("-", string.Empty) + ".g.cs";
+        }
     }
 
     private static string Format(string source)

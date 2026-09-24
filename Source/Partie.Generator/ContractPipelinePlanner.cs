@@ -25,6 +25,7 @@ internal sealed class ContractPipelinePlanner(
     private int resolutionDepth;
     private RegistrationModel[] registrations = Array.Empty<RegistrationModel>();
     private int currentPosition;
+    private int currentExecutionPosition;
     private INamedTypeSymbol requestType = null!;
     private ITypeSymbol resultType = null!;
     private bool isCommand;
@@ -86,6 +87,7 @@ internal sealed class ContractPipelinePlanner(
         AddValue(request, "value0", -1);
         registrations = orderedRegistrations.ToArray();
         currentPosition = registrations.Length;
+        currentExecutionPosition = currentPosition;
         foreach (var registration in registrations.Where(registration => registration.IsProvider))
         {
             var provider = registration.Type;
@@ -392,7 +394,7 @@ internal sealed class ContractPipelinePlanner(
             foreach (var provider in matches)
             {
                 var executionPosition = includeDownstream
-                    ? Math.Min(provider.Position, currentPosition)
+                    ? Math.Min(provider.Position, currentExecutionPosition)
                     : provider.Position;
                 if (!AddProvider(provider.Type, provider.Position, executionPosition))
                 {
@@ -509,7 +511,9 @@ internal sealed class ContractPipelinePlanner(
     )
     {
         var consumerPosition = currentPosition;
+        var consumerExecutionPosition = currentExecutionPosition;
         currentPosition = position;
+        currentExecutionPosition = executionPosition ?? position;
         string context;
         try
         {
@@ -518,6 +522,7 @@ internal sealed class ContractPipelinePlanner(
         finally
         {
             currentPosition = consumerPosition;
+            currentExecutionPosition = consumerExecutionPosition;
         }
 
         var name = "value" + nextId++;

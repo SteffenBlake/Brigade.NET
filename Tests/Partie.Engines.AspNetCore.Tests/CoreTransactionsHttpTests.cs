@@ -13,14 +13,14 @@ public class CoreTransactionsHttpTests
         var events = new List<string>();
         var body = await CoreHttpScenario.Run(async () =>
         {
-            using var work = new UnitOfWork([]);
+            await using var work = new UnitOfWork([]);
             work.AddTxn();
             for (var index = 0; index < 2; index++)
             {
                 var transaction = index;
                 work.AddTxn(
-                    commit: () => { events.Add("commit:" + transaction); return Task.CompletedTask; },
-                    rollback: () => { events.Add("rollback:" + transaction); return Task.CompletedTask; }
+                    commit: _ => { events.Add("commit:" + transaction); return Task.CompletedTask; },
+                    rollback: _ => { events.Add("rollback:" + transaction); return Task.CompletedTask; }
                 );
             }
             if (rollback)
@@ -45,12 +45,12 @@ public class CoreTransactionsHttpTests
         var events = new List<string>();
         var body = await CoreHttpScenario.Run(async () =>
         {
-            using var work = new UnitOfWork([])
+            await using var work = new UnitOfWork([])
                 .AddTxn(
-                    commit: () => throw new InvalidOperationException("commit failed"),
-                    rollback: () => { events.Add("first"); return Task.CompletedTask; }
+                    commit: _ => throw new InvalidOperationException("commit failed"),
+                    rollback: _ => { events.Add("first"); return Task.CompletedTask; }
                 )
-                .AddTxn(rollback: () => { events.Add("second"); return Task.CompletedTask; });
+                .AddTxn(rollback: _ => { events.Add("second"); return Task.CompletedTask; });
             try
             {
                 await work.CommitAsync();
@@ -72,10 +72,10 @@ public class CoreTransactionsHttpTests
         var rolledBack = false;
         var body = await CoreHttpScenario.Run(async () =>
         {
-            using var work = new UnitOfWork([])
-                .AddTxn(rollback: () => throw new InvalidOperationException("first"))
-                .AddTxn(rollback: () => { rolledBack = true; return Task.CompletedTask; })
-                .AddTxn(rollback: () => throw new InvalidOperationException("last"));
+            await using var work = new UnitOfWork([])
+                .AddTxn(rollback: _ => throw new InvalidOperationException("first"))
+                .AddTxn(rollback: _ => { rolledBack = true; return Task.CompletedTask; })
+                .AddTxn(rollback: _ => throw new InvalidOperationException("last"));
             try
             {
                 await work.RollbackAsync();
@@ -99,17 +99,12 @@ public class CoreTransactionsHttpTests
             var work = new UnitOfWork([]);
             try
             {
-                work.Dispose();
+                await work.DisposeAsync();
                 return new Success<object?>("unexpected disposal");
             }
             catch (InvalidOperationException exception)
             {
                 return new Conflict(exception.Message);
-            }
-            finally
-            {
-                await work.RollbackAsync();
-                work.Dispose();
             }
         });
 

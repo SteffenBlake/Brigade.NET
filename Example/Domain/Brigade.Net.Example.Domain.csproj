@@ -8,6 +8,16 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Source\Partie\Brigade.Net.Partie.csproj" />
+    <ProjectReference Include="..\..\Source\Mise.SqlServer\Brigade.Net.Mise.SqlServer.csproj" />
+    <ProjectReference Include="..\..\Source\Mise.PostgreSQL\Brigade.Net.Mise.PostgreSQL.csproj" />
+    <ProjectReference Include="..\..\Source\Mise.SQLite\Brigade.Net.Mise.SQLite.csproj" />
+    <ProjectReference Include="..\..\Source\Mise.MySQL\Brigade.Net.Mise.MySQL.csproj" />
+    <ProjectReference Include="..\..\Source\Mise.MariaDb\Brigade.Net.Mise.MariaDb.csproj" />
+    <ProjectReference Include="..\..\Source\Mise.Engines.SqlServer\Brigade.Net.Mise.Engines.SqlServer.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\Source\Mise.Engines.PostgreSQL\Brigade.Net.Mise.Engines.PostgreSQL.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\Source\Mise.Engines.SQLite\Brigade.Net.Mise.Engines.SQLite.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\Source\Mise.Engines.MySQL\Brigade.Net.Mise.Engines.MySQL.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\Source\Mise.Engines.MariaDb\Brigade.Net.Mise.Engines.MariaDb.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\Source\Expo\Brigade.Net.Expo.csproj" />
     <ProjectReference Include="..\..\Source\Expo.Engines.Domain\Brigade.Net.Expo.Engines.Domain.csproj"
                       OutputItemType="Analyzer"

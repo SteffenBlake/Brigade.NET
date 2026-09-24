@@ -37,8 +37,8 @@ Mise follows the Expo split already used by this repository:
 - [x] [03 Generator core](03-GENERATOR-CORE.md)
 - [x] [04 Engine generators](04-ENGINE-GENERATORS.md)
 - [x] [05 Query API](05-QUERY-API.md)
-- [ ] [06 Execution](06-EXECUTION.md)
-- [ ] [07 Partie](07-PARTIE.md)
+- [x] [06 Execution](06-EXECUTION.md)
+- [x] [07 Partie](07-PARTIE.md)
 - [ ] [08 Verification and example](08-VERIFY-EXAMPLE.md)
 
 ## Required test layers

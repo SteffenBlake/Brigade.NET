@@ -1,5 +1,6 @@
 using System.Data;
 using System.Data.Common;
+using System.Runtime.CompilerServices;
 using Brigade.Net.Core.Results;
 
 namespace Brigade.Net.Mise;
@@ -40,6 +41,31 @@ public class DbReader(IMiseConfig? config = null, DbConnection? connection = nul
                 values.Add(T.Materialize(reader, ordinals));
             }
             return values;
+        }
+        finally
+        {
+            Exit();
+        }
+    }
+
+    /// <summary>Streams mapped rows. The enumerator owns its command and reader until it ends or is disposed.</summary>
+    public async IAsyncEnumerable<T> StreamAsync<T>(
+        IQueryBuilder query,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default
+    )
+        where T : IMiseRow<T>
+    {
+        Enter();
+        try
+        {
+            var compiled = query.Compile();
+            await using var command = await CreateCommandAsync(compiled, cancellationToken);
+            await using var reader = await command.ExecuteReaderAsync(compiled.Behavior, cancellationToken);
+            var ordinals = T.BindOrdinals(reader);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                yield return T.Materialize(reader, ordinals);
+            }
         }
         finally
         {
@@ -147,9 +173,11 @@ public class DbReader(IMiseConfig? config = null, DbConnection? connection = nul
     )
     {
         var activeConnection = await GetConnectionAsync(cancellationToken);
+        await BeforeCreateCommandAsync(activeConnection, cancellationToken);
         var command = activeConnection.CreateCommand();
         try
         {
+            ConfigureCommand(command);
             command.CommandText = built.Text;
             command.CommandType = built.CommandType;
             if (built.Timeout is int timeout)
@@ -192,7 +220,19 @@ public class DbReader(IMiseConfig? config = null, DbConnection? connection = nul
     /// <summary>Ends exclusive use of this instance.</summary>
     protected void Exit() => Volatile.Write(ref _active, 0);
 
-    private async ValueTask<DbConnection> GetConnectionAsync(CancellationToken cancellationToken)
+    /// <summary>Runs before a command is created on an open connection.</summary>
+    protected virtual ValueTask BeforeCreateCommandAsync(
+        DbConnection connection,
+        CancellationToken cancellationToken
+    ) => ValueTask.CompletedTask;
+
+    /// <summary>Applies command settings supplied by a derived executor.</summary>
+    protected virtual void ConfigureCommand(DbCommand command)
+    {
+    }
+
+    /// <summary>Gets and opens this instance's connection.</summary>
+    protected async ValueTask<DbConnection> GetConnectionAsync(CancellationToken cancellationToken)
     {
         if (_connection is null)
         {

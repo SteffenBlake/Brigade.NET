@@ -128,9 +128,15 @@ public sealed class ContractTests
         Assert.DoesNotContain(methods, method => method.Name is "First" or "Single"
             || method.Name.Contains("OrDefault", StringComparison.Ordinal));
         foreach (var method in methods.Where(method => method.Name.EndsWith("Async", StringComparison.Ordinal)
-            && method.Name != nameof(IAsyncDisposable.DisposeAsync)))
+            && method.Name != nameof(IAsyncDisposable.DisposeAsync)
+            && method.Name != nameof(DbWriter.BeginTransactionAsync)))
         {
             Assert.True(method.ReturnType.IsGenericType);
+            if (method.Name == nameof(DbReader.StreamAsync))
+            {
+                Assert.Equal(typeof(IAsyncEnumerable<>), method.ReturnType.GetGenericTypeDefinition());
+                continue;
+            }
             Assert.Equal(typeof(Task<>), method.ReturnType.GetGenericTypeDefinition());
             Assert.Equal(
                 typeof(Brigade.Net.Core.Results.Result<>),
@@ -147,11 +153,17 @@ public sealed class ContractTests
         Assert.DoesNotContain(typeof(ICommandBuilder), typeof(QueryBuilder).GetInterfaces());
         Assert.DoesNotContain(typeof(IQueryBuilder), typeof(CommandBuilder).GetInterfaces());
 
-        var execute = typeof(DbWriter).GetMethod(nameof(DbWriter.ExecuteAsync))!;
-        Assert.Equal(typeof(ICommandBuilder), execute.GetParameters()[0].ParameterType);
+        Assert.All(typeof(DbWriter).GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            .Where(method => method.DeclaringType == typeof(DbWriter)
+                && method.Name is nameof(DbWriter.ExecuteAsync)
+                    or nameof(DbWriter.ExecuteScalarAsync)
+                    or nameof(DbWriter.ReturningListAsync)
+                    or nameof(DbWriter.ReturningFirstOrNotFoundAsync)),
+            method => Assert.Equal(typeof(ICommandBuilder), method.GetParameters()[0].ParameterType));
         Assert.All(typeof(DbReader).GetMethods(BindingFlags.Public | BindingFlags.Instance)
             .Where(method => method.Name is nameof(DbReader.ListAsync) or nameof(DbReader.FirstOrNotFoundAsync)
-                or nameof(DbReader.ScalarAsync) or nameof(DbReader.ExistsAsync)),
+                or nameof(DbReader.ScalarAsync) or nameof(DbReader.ExistsAsync)
+                or nameof(DbReader.StreamAsync)),
             method => Assert.Equal(typeof(IQueryBuilder), method.GetParameters()[0].ParameterType));
     }
 
