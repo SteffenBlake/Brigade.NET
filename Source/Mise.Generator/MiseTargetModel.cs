@@ -7,7 +7,7 @@ internal sealed record MiseTargetModel(
     INamedTypeSymbol Type,
     MiseTableModel? Table,
     MiseRowModel? Row,
-    ImmutableArray<MiseColumnModel> Columns,
-    ImmutableArray<MiseAliasModel> Aliases,
-    ImmutableArray<MiseRelationshipModel> Relationships
+    ImmutableArray<ColumnModel> Columns,
+    ImmutableArray<AliasModel> Aliases,
+    ImmutableArray<RelationshipModel> Relationships
 );

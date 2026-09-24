@@ -10,30 +10,27 @@ public sealed class ContractTests
     public void MetadataAttributesExposeConstructorValuesAndExpectedUsage()
     {
         Assert.True(typeof(TableAttributeBase).IsAbstract);
-        Assert.Equal("person_id", new MiseColumnAttribute("person_id").Name);
-        Assert.Equal(2, new MisePrimaryKeyAttribute(2).Position);
-        Assert.Equal("p", new MiseAliasAttribute("p").Name);
+        Assert.Equal("person_id", new ColumnAttribute("person_id").Name);
+        Assert.Equal(2, new PrimaryKeyAttribute(2).Position);
+        Assert.Equal("p", new AliasAttribute("p").Name);
 
-        var relationship = new MiseRelationshipAttribute("Owner", typeof(string), "owner_id", "id");
-        Assert.Equal("Owner", relationship.Name);
-        Assert.Equal(typeof(string), relationship.TargetType);
-        Assert.Equal("owner_id", relationship.SourceColumn);
+        var relationship = new RelationshipAttribute("id");
         Assert.Equal("id", relationship.TargetColumn);
 
         AssertUsage<TableAttributeBase>(AttributeTargets.Class | AttributeTargets.Struct);
-        AssertUsage<MiseColumnAttribute>(AttributeTargets.Property, inherited: true);
-        AssertUsage<MiseAliasAttribute>(AttributeTargets.Class | AttributeTargets.Struct, allowMultiple: true);
-        AssertUsage<MiseRelationshipAttribute>(AttributeTargets.Class | AttributeTargets.Struct, allowMultiple: true);
+        AssertUsage<ColumnAttribute>(AttributeTargets.Property, inherited: true);
+        AssertUsage<AliasAttribute>(AttributeTargets.Class | AttributeTargets.Struct, allowMultiple: true);
+        AssertUsage<RelationshipAttribute>(AttributeTargets.Property);
     }
 
     [Fact]
     public void SinglePurposePropertyMetadataTargetsProperties()
     {
-        AssertUsage<MisePrimaryKeyAttribute>(AttributeTargets.Property, inherited: true);
-        AssertUsage<MiseDatabaseGeneratedAttribute>(AttributeTargets.Property, inherited: true);
-        AssertUsage<MiseComputedAttribute>(AttributeTargets.Property, inherited: true);
-        AssertUsage<MiseExcludeFromInsertAttribute>(AttributeTargets.Property, inherited: true);
-        AssertUsage<MiseExcludeFromUpdateAttribute>(AttributeTargets.Property, inherited: true);
+        AssertUsage<PrimaryKeyAttribute>(AttributeTargets.Property, inherited: true);
+        AssertUsage<DatabaseGeneratedAttribute>(AttributeTargets.Property, inherited: true);
+        AssertUsage<ComputedAttribute>(AttributeTargets.Property, inherited: true);
+        AssertUsage<ExcludeFromInsertAttribute>(AttributeTargets.Property, inherited: true);
+        AssertUsage<ExcludeFromUpdateAttribute>(AttributeTargets.Property, inherited: true);
     }
 
     [Fact]
@@ -42,7 +39,7 @@ public sealed class ContractTests
         Assert.True(typeof(RowAttributeBase).IsAbstract);
         AssertUsage<RowAttributeBase>(AttributeTargets.Class | AttributeTargets.Struct);
 
-        var methods = typeof(IMiseRow<>).GetMethods(BindingFlags.Public | BindingFlags.Static);
+        var methods = typeof(IRow<>).GetMethods(BindingFlags.Public | BindingFlags.Static);
         Assert.Collection(
             methods.OrderBy(method => method.Name),
             method => Assert.Equal("BindOrdinals", method.Name),
@@ -54,18 +51,18 @@ public sealed class ContractTests
     [Fact]
     public void ConfigExposesOnlyConnectionStringAndProviderFactory()
     {
-        var properties = typeof(IMiseConfig).GetProperties();
+        var properties = typeof(IDbConfig).GetProperties();
 
         Assert.Collection(
             properties.OrderBy(property => property.Name),
             property =>
             {
-                Assert.Equal(nameof(IMiseConfig.ConnectionString), property.Name);
+                Assert.Equal(nameof(IDbConfig.ConnectionString), property.Name);
                 Assert.Equal(typeof(string), property.PropertyType);
             },
             property =>
             {
-                Assert.Equal(nameof(IMiseConfig.ProviderFactory), property.Name);
+                Assert.Equal(nameof(IDbConfig.ProviderFactory), property.Name);
                 Assert.Equal(typeof(DbProviderFactory), property.PropertyType);
             }
         );
@@ -74,7 +71,7 @@ public sealed class ContractTests
     [Fact]
     public void NullMappingFaultHasSafeStructuralContext()
     {
-        var exception = new MiseMappingException(typeof(ContractTests), "Name", "person_name", 3);
+        var exception = new MappingException(typeof(ContractTests), "Name", "person_name", 3);
 
         Assert.Equal(typeof(ContractTests), exception.ResultType);
         Assert.Equal("Name", exception.MemberName);
@@ -89,7 +86,7 @@ public sealed class ContractTests
     [Fact]
     public void InvalidGeneratedMappingFaultNamesResultType()
     {
-        var exception = new MiseInvalidMappingException(typeof(ContractTests), "column was not projected");
+        var exception = new InvalidMappingException(typeof(ContractTests), "column was not projected");
 
         Assert.Equal(typeof(ContractTests), exception.ResultType);
         Assert.Contains(typeof(ContractTests).FullName!, exception.Message);

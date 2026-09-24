@@ -17,9 +17,9 @@ public sealed class AccountUpdateSqliteV1Handler : ICommandHandler<AccountUpdate
         CancellationToken ct)
     {
         var sql = new SqliteCommandBuilder()
-            .Update($"{AccountTblSqlite.Tbl.Table:raw}")
+            .Update($"{AccountTblSqlite.Table:raw}")
             .Set($"note = {command.Note}")
-            .Where($"{AccountTblSqlite.Tbl.Id:raw} = {command.Id}");
+            .Where($"{AccountTblSqlite.IdCol:raw} = {command.Id}");
         return ctx.Writer.ExecuteAsync(sql, ct);
     }
 }

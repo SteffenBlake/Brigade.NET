@@ -5,12 +5,12 @@ using Brigade.Net.Partie;
 namespace Brigade.Net.Example.Domain.ResultCases.DeleteV1;
 
 public sealed class ResultCaseDeleteV1Handler :
-    ICommandHandler<ResultCaseDeleteV1Cmd, Unit, Unit>
+    ICommandHandler<Unit, Unit, Unit>
 {
     public static Task<Result<Unit>> RunAsync(
         UnitOfWork uow,
         Unit ctx,
-        ResultCaseDeleteV1Cmd cmd,
+        Unit cmd,
         CancellationToken ct
     )
     {

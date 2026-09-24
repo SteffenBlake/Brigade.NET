@@ -18,15 +18,15 @@ public sealed class MiseTxnOutcomeTests
     public async Task RealUnitOfWorkChoosesOneOutcome(int outcome, int commits, int rollbacks)
     {
         var connection = new FakeDbConnection();
-        var transaction = new MiseWriterTransaction(Config(connection));
+        var transaction = new DbWriterTxn(Config(connection));
 
         var result = await UnitOfWorkPartie<Unit, Unit>.OnCommandAsync(
             new UnitOfWorkContext([transaction]),
             Unit.Default,
             async _ =>
             {
-                var written = await MiseWriterProvider<Unit, Unit>.OnCommandAsync(
-                    new MiseWriterProviderContext(transaction),
+                var written = await DbWriterProvider<Unit, Unit>.OnCommandAsync(
+                    new DbWriterProviderContext(transaction),
                     Unit.Default,
                     async writer =>
                     {
@@ -56,7 +56,7 @@ public sealed class MiseTxnOutcomeTests
     public async Task DownstreamThrowOrCancellationRollsBackAndRethrows(bool canceled)
     {
         var connection = new FakeDbConnection();
-        var transaction = new MiseWriterTransaction(Config(connection));
+        var transaction = new DbWriterTxn(Config(connection));
         Exception expected = canceled
             ? new OperationCanceledException("canceled")
             : new InvalidOperationException("failed");
@@ -84,7 +84,7 @@ public sealed class MiseTxnOutcomeTests
     public async Task CommitFailureRollsBackOnceAndDisposes()
     {
         var connection = new FakeDbConnection();
-        var transaction = new MiseWriterTransaction(Config(connection));
+        var transaction = new DbWriterTxn(Config(connection));
         var expected = new InvalidOperationException("commit failed");
 
         var actual = await Record.ExceptionAsync(() =>
@@ -112,7 +112,7 @@ public sealed class MiseTxnOutcomeTests
     public async Task ShortCircuitBeforeWriterOpensNoResource()
     {
         var connection = new FakeDbConnection();
-        var transaction = new MiseWriterTransaction(Config(connection));
+        var transaction = new DbWriterTxn(Config(connection));
         var result = await UnitOfWorkPartie<Unit, Unit>.OnCommandAsync(
             new UnitOfWorkContext([transaction]),
             Unit.Default,
@@ -126,7 +126,7 @@ public sealed class MiseTxnOutcomeTests
         Assert.Equal(0, connection.DisposeCount);
     }
 
-    private static MiseRouteConfig Config(FakeDbConnection connection) =>
+    private static DbRouteConfig Config(FakeDbConnection connection) =>
         new("fake", new FakeDbProviderFactory(connection));
 
     private static Result<Unit> Outcome(int index) => index switch

@@ -17,9 +17,9 @@ public sealed class AccountUpdateSqlServerV1Handler : ICommandHandler<AccountUpd
         CancellationToken ct)
     {
         var sql = new SqlServerCommandBuilder()
-            .Update($"{AccountTblSqlServer.Tbl.Table:raw}")
+            .Update($"{AccountTblSqlServer.Table:raw}")
             .Set($"note = {command.Note}")
-            .Where($"{AccountTblSqlServer.Tbl.Id:raw} = {command.Id}");
+            .Where($"{AccountTblSqlServer.IdCol:raw} = {command.Id}");
         return ctx.Writer.ExecuteAsync(sql, ct);
     }
 }

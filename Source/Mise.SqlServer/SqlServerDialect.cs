@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 
 namespace Brigade.Net.Mise.SqlServer;
@@ -37,12 +38,12 @@ public sealed class SqlServerDialect : SqlDialect
             return;
         }
         text.Append(" OFFSET ")
-            .Append((offset ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture))
+            .Append((offset ?? 0).ToString(CultureInfo.InvariantCulture))
             .Append(" ROWS");
         if (limit is int take)
         {
             text.Append(" FETCH NEXT ")
-                .Append(take.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                .Append(take.ToString(CultureInfo.InvariantCulture))
                 .Append(" ROWS ONLY");
         }
     }

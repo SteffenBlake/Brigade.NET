@@ -1,3 +1,5 @@
+using System.Text;
+using System.Globalization;
 namespace Brigade.Net.Mise.MySQL;
 
 /// <summary>MySQL syntax for Mise builders.</summary>
@@ -18,7 +20,7 @@ public sealed class MySqlDialect : SqlDialect
 
     /// <inheritdoc />
     public override void AppendPaging(
-        System.Text.StringBuilder text,
+        StringBuilder text,
         int? limit,
         int? offset
     )
@@ -28,10 +30,10 @@ public sealed class MySqlDialect : SqlDialect
             return;
         }
         text.Append(" LIMIT ")
-            .Append(limit?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "18446744073709551615");
+            .Append(limit?.ToString(CultureInfo.InvariantCulture) ?? "18446744073709551615");
         if (offset is int skip)
         {
-            text.Append(" OFFSET ").Append(skip.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            text.Append(" OFFSET ").Append(skip.ToString(CultureInfo.InvariantCulture));
         }
     }
 }

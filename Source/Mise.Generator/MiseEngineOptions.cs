@@ -42,10 +42,10 @@ public sealed class MiseEngineOptions(
             return new MiseEngineOptions(
                 name,
                 "Brigade.Net.Mise.SqlServer.SqlServerTableAttribute",
-                "Brigade.Net.Mise.SqlServer.SqlServerRowAttribute",
+                "Brigade.Net.Mise.SqlServer.MiseAttribute",
                 StringComparer.OrdinalIgnoreCase,
                 identifier => "[" + identifier.Replace("]", "]]") + "]",
-                "Brigade.Net.Mise.SqlServer.MiseSchemaAttribute",
+                "Brigade.Net.Mise.SqlServer.SchemaAttribute",
                 ordinalNamesIgnoreCase: true
             );
         }
@@ -55,10 +55,10 @@ public sealed class MiseEngineOptions(
             return new MiseEngineOptions(
                 name,
                 "Brigade.Net.Mise.PostgreSQL.PostgreSqlTableAttribute",
-                "Brigade.Net.Mise.PostgreSQL.PostgreSqlRowAttribute",
+                "Brigade.Net.Mise.PostgreSQL.MiseAttribute",
                 StringComparer.Ordinal,
                 QuoteDouble,
-                "Brigade.Net.Mise.PostgreSQL.MiseSchemaAttribute"
+                "Brigade.Net.Mise.PostgreSQL.SchemaAttribute"
             );
         }
 
@@ -68,10 +68,10 @@ public sealed class MiseEngineOptions(
             return new MiseEngineOptions(
                 name,
                 "Brigade.Net.Mise." + runtimeName + "." + (name == "MySQL" ? "MySql" : "MariaDb") + "TableAttribute",
-                "Brigade.Net.Mise." + runtimeName + "." + (name == "MySQL" ? "MySql" : "MariaDb") + "RowAttribute",
+                "Brigade.Net.Mise." + runtimeName + ".MiseAttribute",
                 StringComparer.OrdinalIgnoreCase,
                 identifier => "`" + identifier.Replace("`", "``") + "`",
-                "Brigade.Net.Mise." + runtimeName + ".MiseDatabaseAttribute",
+                "Brigade.Net.Mise." + runtimeName + ".DatabaseAttribute",
                 ordinalNamesIgnoreCase: true
             );
         }
@@ -79,7 +79,7 @@ public sealed class MiseEngineOptions(
         return new MiseEngineOptions(
             name,
             "Brigade.Net.Mise.SQLite.SqliteTableAttribute",
-            "Brigade.Net.Mise.SQLite.SqliteRowAttribute",
+            "Brigade.Net.Mise.SQLite.MiseAttribute",
             StringComparer.OrdinalIgnoreCase,
             QuoteDouble,
             ordinalNamesIgnoreCase: true

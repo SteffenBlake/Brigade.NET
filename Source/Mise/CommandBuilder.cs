@@ -8,7 +8,7 @@ public class CommandBuilder : ICommandBuilder
     private readonly List<Action<SqlRenderContext>> _assignments = [];
     private readonly List<FormattableString> _predicates = [];
     private readonly List<FormattableString> _values = [];
-    private readonly List<MiseParameter> _procedureParameters = [];
+    private readonly List<SqlParameterSpec> _procedureParameters = [];
     private FormattableString? _target;
     private FormattableString? _columns;
     private FormattableString? _custom;
@@ -136,7 +136,7 @@ public class CommandBuilder : ICommandBuilder
         {
             throw new InvalidOperationException("Stored procedure parameter name is already set.");
         }
-        _procedureParameters.Add(new MiseParameter(name, value, dbType));
+        _procedureParameters.Add(new SqlParameterSpec(name, value, dbType));
         return this;
     }
 

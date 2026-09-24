@@ -21,7 +21,7 @@ public sealed class GeneratorCoreTests
             .OrderBy(descriptor => descriptor.Id, StringComparer.Ordinal)
             .ToArray();
 
-        Assert.Equal(Enumerable.Range(1, 17).Select(number => $"MISE{number:000}"), descriptors.Select(item => item.Id));
+        Assert.Equal(Enumerable.Range(1, 18).Select(number => $"MISE{number:000}"), descriptors.Select(item => item.Id));
         Assert.All(descriptors, descriptor =>
         {
             Assert.Equal("Mise", descriptor.Category);
@@ -38,9 +38,9 @@ public sealed class GeneratorCoreTests
             using Brigade.Net.Mise.SqlServer;
             namespace Models;
             [SqlServerTable("people")]
-            partial class Person { [MiseColumn("id")] public int Id { get; set; } }
-            [SqlServerTable("orders")]
-            partial class Order { [MiseColumn("id")] public int Id { get; set; } }
+            static partial class Person { [Column("id")] private static int Id { get; } }
+            [SqlServerTable("purchases")]
+            static partial class Order { [Column("id")] private static int Id { get; } }
             """;
 
         var generated = GeneratorTestHost.Run(source).Run.Results.Single().GeneratedSources;
@@ -52,7 +52,7 @@ public sealed class GeneratorCoreTests
             var text = item.SourceText.ToString();
             Assert.DoesNotContain('\r', text);
             Assert.EndsWith("\n", text, StringComparison.Ordinal);
-            Assert.Contains("    public static class Tbl", text);
+            Assert.Contains("public const string Table", text);
         });
     }
 
@@ -63,13 +63,13 @@ public sealed class GeneratorCoreTests
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
             namespace One;
-            [SqlServerTable("same")] partial class Item { [MiseColumn("id")] public int Id { get; set; } }
+            [SqlServerTable("same")] static partial class Item { [Column("id")] private static int Id { get; } }
             """;
         const string second = """
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
             namespace Two;
-            [SqlServerTable("same")] partial class Item { [MiseColumn("id")] public int Id { get; set; } }
+            [SqlServerTable("same")] static partial class Item { [Column("id")] private static int Id { get; } }
             """;
 
         var normal = GeneratedOutput(GeneratorTestHost.RunSources(("One.cs", first), ("Two.cs", second)));
@@ -88,14 +88,14 @@ public sealed class GeneratorCoreTests
             using Brigade.Net.Mise.SqlServer;
             namespace Models;
             [SqlServerTable("people")]
-            [MiseAlias("p")]
-            partial class Person { [MiseColumn("id")] public int Id { get; set; } }
+            [Alias("p")]
+            static partial class Person { [Column("id")] private static int Id { get; } }
             """;
         const string second = """
             using Brigade.Net.Mise;
             namespace Models;
-            [MiseAlias("person")]
-            partial class Person { [MiseColumn("name")] public string Name { get; set; } = ""; }
+            [Alias("person")]
+            static partial class Person { [Column("name")] private static string Name => string.Empty; }
             """;
 
         var normal = GeneratedOutput(GeneratorTestHost.RunSources(("First.cs", first), ("Second.cs", second)));
@@ -111,8 +111,8 @@ public sealed class GeneratorCoreTests
         const string original = """
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
-            [SqlServerTable("people")] partial class Person { [MiseColumn("id")] public int Id { get; set; } }
-            [SqlServerTable("orders")] partial class Order { [MiseColumn("id")] public int Id { get; set; } }
+            [SqlServerTable("people")] static partial class Person { [Column("id")] private static int Id { get; } }
+            [SqlServerTable("purchases")] static partial class Order { [Column("id")] private static int Id { get; } }
             """;
         var updated = original.Replace("SqlServerTable(\"people\")", "SqlServerTable(\"persons\")", StringComparison.Ordinal);
 

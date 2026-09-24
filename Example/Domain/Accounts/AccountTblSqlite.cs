@@ -4,23 +4,22 @@ using Brigade.Net.Mise.SQLite;
 namespace Brigade.Net.Example.Domain.Accounts;
 
 [SqliteTable("accounts")]
-[SqliteRow]
-[MiseAlias("BuyerAlias")]
-[MiseAlias("SellerAlias")]
-public partial class AccountTblSqlite
+[Alias("Buyer")]
+[Alias("Seller")]
+public static partial class AccountTblSqlite
 {
-    [MiseColumn("id")]
-    public int Id { get; set; }
+    [Column("id")]
+    private static int Id { get; }
 
-    [MiseColumn("name")]
-    public string Name { get; set; } = string.Empty;
+    [Column("name")]
+    private static string Name => string.Empty;
 
-    [MiseColumn("parent_id")]
-    public int? ParentId { get; set; }
+    [Column("parent_id")]
+    private static int? ParentId { get; }
 
-    [MiseColumn("group")]
-    public string? Group { get; set; }
+    [Column("group")]
+    private static string? Group { get; }
 
-    [MiseColumn("note")]
-    public string? Note { get; set; }
+    [Column("note")]
+    private static string? Note { get; }
 }

@@ -24,7 +24,7 @@ public sealed class EngineHookTests
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.{{engineName}};
             [{{attributeName}}("{{tableName.Replace("\"", "\\\"")}}")]
-            partial class Item { [MiseColumn("id")] public int Id { get; set; } }
+            static partial class Item { [Column("id")] private static int Id { get; } }
             """;
 
         var result = GeneratorTestHost.Run(source, engineName);
@@ -58,13 +58,12 @@ public sealed class EngineHookTests
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.{{engine}};
             [{{tableAttribute}}("target")]
-            partial class Target { [MiseColumn("{{targetColumn.Replace("\"", "\\\"")}}")]
-                public int Key { get; set; } }
+            static partial class Target { [Column("{{targetColumn.Replace("\"", "\\\"")}}")]
+                private static int Key { get; } }
             [{{tableAttribute}}("source")]
-            [MiseAlias("{{alias.Replace("\"", "\\\"")}}")]
-            [MiseRelationship("Join", typeof(Target), "{{sourceColumn.Replace("\"", "\\\"")}}", "{{targetColumn.Replace("\"", "\\\"")}}")]
-            partial class Source { [MiseColumn("{{sourceColumn.Replace("\"", "\\\"")}}")]
-                public int Key { get; set; } }
+            [Alias("{{alias.Replace("\"", "\\\"")}}")]
+            static partial class Source { [Column("{{sourceColumn.Replace("\"", "\\\"")}}")]
+                [Relationship(Target.KeyCol)] private static int Key { get; } }
             """;
         var result = GeneratorTestHost.Run(source, engine);
 
@@ -90,8 +89,8 @@ public sealed class EngineHookTests
             namespace Models
             {
                 [SqlServerTable("people")]
-                [Brigade.Net.Mise.SqlServer.MiseSchema("audit")]
-                partial class Person { [MiseColumn("id")] public int Id { get; set; } }
+                [Brigade.Net.Mise.SqlServer.Schema("audit")]
+                static partial class Person { [Column("id")] private static int Id { get; } }
             }
             """;
 
@@ -111,8 +110,8 @@ public sealed class EngineHookTests
             namespace Models
             {
                 [SqlServerTable("people")]
-                [Brigade.Net.Mise.SqlServer.MiseSchema(" ")]
-                partial class Person { [MiseColumn("id")] public int Id { get; set; } }
+                [Brigade.Net.Mise.SqlServer.Schema(" ")]
+                static partial class Person { [Column("id")] private static int Id { get; } }
             }
             """;
 
@@ -129,13 +128,13 @@ public sealed class EngineHookTests
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
             [SqlServerTable("people")]
-            partial class Person { [MiseColumn("id")] public int Id { get; set; } }
+            static partial class Person { [Column("id")] private static int Id { get; } }
             """;
         var validated = false;
         var options = new MiseEngineOptions(
             "Test",
             "Brigade.Net.Mise.SqlServer.SqlServerTableAttribute",
-            "Brigade.Net.Mise.SqlServer.SqlServerRowAttribute",
+            "Brigade.Net.Mise.SqlServer.MiseAttribute",
             StringComparer.Ordinal,
             identifier => "\"" + identifier + "\"",
             validateTarget: (_, _) =>

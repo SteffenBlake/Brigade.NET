@@ -1,5 +1,6 @@
 using Aspire.Hosting;
 using Aspire.Hosting.Testing;
+using Microsoft.Extensions.Hosting;
 
 namespace Brigade.Net.Example.IntegrationTests;
 
@@ -13,6 +14,8 @@ public sealed class AppHostFixture : IAsyncLifetime
 
     public HttpClient WebClient { get; private set; } = null!;
 
+    public string SqliteConnectionString { get; private set; } = null!;
+
     public async Task InitializeAsync()
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
@@ -25,6 +28,8 @@ public sealed class AppHostFixture : IAsyncLifetime
             application = await builder.BuildAsync(timeout.Token);
             await application.StartAsync(timeout.Token);
             await application.ResourceNotifications.WaitForResourceHealthyAsync("WebApp", timeout.Token);
+            SqliteConnectionString = await application.GetConnectionStringAsync(ServiceNames.Sqlite, timeout.Token)
+                ?? throw new InvalidOperationException("SQLite connection string is unavailable.");
             WebClient = application.CreateHttpClient("WebApp", "http");
             WebClient.Timeout = TimeSpan.FromSeconds(30);
         }

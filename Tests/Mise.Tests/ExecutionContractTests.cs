@@ -545,7 +545,7 @@ public sealed class ExecutionContractTests
         await using var reader = new DbReader(connection: connection);
         var query = new TestQueryBuilder(new CompiledSql(
             "select",
-            [new MiseParameter("@value", null)]
+            [new SqlParameterSpec("@value", null)]
         ));
 
         await reader.ExistsAsync(query);
@@ -561,7 +561,7 @@ public sealed class ExecutionContractTests
         var factory = new FakeDbProviderFactory(connection) { ReturnNullConnection = true };
         await using var reader = new DbReader(new TestConfig("secret", factory));
 
-        var exception = await Assert.ThrowsAsync<MiseInvalidMappingException>(() => reader.ExistsAsync(Query()));
+        var exception = await Assert.ThrowsAsync<InvalidMappingException>(() => reader.ExistsAsync(Query()));
 
         Assert.DoesNotContain("secret", exception.Message, StringComparison.Ordinal);
     }
@@ -573,7 +573,7 @@ public sealed class ExecutionContractTests
         var factory = new FakeDbProviderFactory(connection) { ReturnNullParameter = true };
         await using var reader = new DbReader(new TestConfig("secret", factory));
 
-        var exception = await Assert.ThrowsAsync<MiseInvalidMappingException>(() => reader.ExistsAsync(QueryWithParameter()));
+        var exception = await Assert.ThrowsAsync<InvalidMappingException>(() => reader.ExistsAsync(QueryWithParameter()));
 
         Assert.DoesNotContain("secret", exception.Message, StringComparison.Ordinal);
         Assert.Equal(1, connection.LastCommand!.DisposeCount);
@@ -610,7 +610,7 @@ public sealed class ExecutionContractTests
     {
         return new TestQueryBuilder(new CompiledSql(
             "select",
-            [new MiseParameter("@id", 7, DbType.Int32)],
+            [new SqlParameterSpec("@id", 7, DbType.Int32)],
             timeout: 19,
             behavior: CommandBehavior.SingleResult
         ));

@@ -10,10 +10,10 @@ public sealed class MiseEngineGenerator : IIncrementalGenerator
     private static readonly MiseEngineOptions Engine = new(
         "MariaDb",
         "Brigade.Net.Mise.MariaDb.MariaDbTableAttribute",
-        "Brigade.Net.Mise.MariaDb.MariaDbRowAttribute",
+        "Brigade.Net.Mise.MariaDb.MiseAttribute",
         StringComparer.OrdinalIgnoreCase,
         identifier => "`" + identifier.Replace("`", "``") + "`",
-        "Brigade.Net.Mise.MariaDb.MiseDatabaseAttribute",
+        "Brigade.Net.Mise.MariaDb.DatabaseAttribute",
         ordinalNamesIgnoreCase: true
     );
 

@@ -5,7 +5,6 @@ namespace Brigade.Net.Mise.Generator.Tests;
 public sealed class ContractGeneratorTests
 {
     [Theory]
-    [InlineData("null")]
     [InlineData("")]
     [InlineData("   ")]
     public void InvalidTableNameReportsMise001(string name)
@@ -15,7 +14,7 @@ public sealed class ContractGeneratorTests
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
             [SqlServerTable({{argument}})]
-            partial class Bad;
+            static partial class Bad;
             """;
 
         var diagnostic = Assert.Single(GeneratorTestHost.Run(source).Run.Diagnostics);
@@ -33,12 +32,12 @@ public sealed class ContractGeneratorTests
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
             [SqlServerTable("people")]
-            partial class Bad
+            static partial class Bad
             {
-                public int Missing { get; set; }
-                [MiseColumn("same")] public int One { get; set; }
-                [MiseColumn("SAME")] public int Two { get; set; }
-                public static int Static { get; set; }
+                private static int Missing { get; }
+                [Column("same")] private static int One { get; }
+                [Column("SAME")] private static int Two { get; }
+                [Column("static")] private static int Static { get; }
                 public int this[int index] => index;
             }
             """;
@@ -47,11 +46,11 @@ public sealed class ContractGeneratorTests
         var missing = Assert.Single(diagnostics, diagnostic => diagnostic.Id == "MISE002");
         var duplicate = Assert.Single(diagnostics, diagnostic => diagnostic.Id == "MISE003");
 
-        Assert.Equal("Mapped property 'Missing' must have MiseColumnAttribute", missing.GetMessage());
+        Assert.Equal("Mapped property 'Missing' must have ColumnAttribute", missing.GetMessage());
         Assert.Equal("Missing", source.Substring(missing.Location.SourceSpan.Start, missing.Location.SourceSpan.Length));
         Assert.Equal("Column identifier 'SAME' is duplicated", duplicate.GetMessage());
         Assert.Equal(
-            "MiseColumn(\"SAME\")",
+            "Column(\"SAME\")",
             source.Substring(duplicate.Location.SourceSpan.Start, duplicate.Location.SourceSpan.Length)
         );
     }
@@ -63,12 +62,12 @@ public sealed class ContractGeneratorTests
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
             [SqlServerTable("people")]
-            partial class Bad
+            static partial class Bad
             {
-                [MiseColumn("one"), MisePrimaryKey(-1)] public int One { get; set; }
-                [MiseColumn("two"), MisePrimaryKey(0)] public int Two { get; set; }
-                [MiseColumn("three"), MisePrimaryKey(0)] public int Three { get; set; }
-                [MiseColumn("four"), MiseDatabaseGenerated, MiseComputed] public int Four { get; set; }
+                [Column("one"), PrimaryKey(-1)] private static int One { get; }
+                [Column("two"), PrimaryKey(0)] private static int Two { get; }
+                [Column("three"), PrimaryKey(0)] private static int Three { get; }
+                [Column("four"), DatabaseGenerated, Computed] private static int Four { get; }
             }
             """;
 
@@ -85,7 +84,7 @@ public sealed class ContractGeneratorTests
             keys.Select(diagnostic => diagnostic.GetMessage()).ToArray()
         );
         Assert.Equal(
-            ["MisePrimaryKey(-1)", "MisePrimaryKey(0)"],
+            ["PrimaryKey(-1)", "PrimaryKey(0)"],
             keys.Select(diagnostic => source.Substring(
                 diagnostic.Location.SourceSpan.Start,
                 diagnostic.Location.SourceSpan.Length
@@ -99,36 +98,27 @@ public sealed class ContractGeneratorTests
     }
 
     [Fact]
-    public void DuplicateAliasesAndUnknownRelationshipColumnsAreDiagnosed()
+    public void DuplicateAliasesUseCompilerDiagnostic()
     {
         const string source = """
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
             [SqlServerTable("targets")]
-            partial class Target
+            static partial class Target
             {
-                [MiseColumn("id")] public int Id { get; set; }
+                [Column("id")] private static int Id { get; }
             }
-            [SqlServerTable("sources"), MiseAlias("s"), MiseAlias("S")]
-            [MiseRelationship("Target", typeof(Target), "missing", "id")]
-            partial class Source
+            [SqlServerTable("sources"), Alias("s"), Alias("s")]
+            static partial class Source
             {
-                [MiseColumn("id")] public int Id { get; set; }
+                [Column("id"), Relationship(Target.IdCol)] private static int Id { get; }
             }
             """;
 
-        var diagnostics = GeneratorTestHost.Run(source).Run.Diagnostics;
-        var duplicate = Assert.Single(diagnostics, diagnostic => diagnostic.Id == "MISE003");
-        var relationship = Assert.Single(diagnostics, diagnostic => diagnostic.Id == "MISE009");
+        var result = GeneratorTestHost.Run(source);
 
-        Assert.Equal("Alias identifier 'S' is duplicated", duplicate.GetMessage());
-        Assert.Equal("MiseAlias(\"S\")", source.Substring(duplicate.Location.SourceSpan.Start, duplicate.Location.SourceSpan.Length));
-        Assert.Equal("Relationship 'Target' refers to unknown mapped column 'missing'", relationship.GetMessage());
-        Assert.StartsWith(
-            "MiseRelationship(\"Target\"",
-            source.Substring(relationship.Location.SourceSpan.Start, relationship.Location.SourceSpan.Length),
-            StringComparison.Ordinal
-        );
+        Assert.Empty(result.Run.Diagnostics);
+        Assert.Contains(result.CompilationDiagnostics, diagnostic => diagnostic.Id == "CS0102");
     }
 
     [Fact]
@@ -137,11 +127,11 @@ public sealed class ContractGeneratorTests
         const string source = """
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.PostgreSQL;
-            [PostgreSqlTable("people"), MiseAlias("p"), MiseAlias("P")]
-            partial class Good
+            [PostgreSqlTable("people"), Alias("p"), Alias("P")]
+            static partial class Good
             {
-                [MiseColumn("id")] public int One { get; set; }
-                [MiseColumn("ID")] public int Two { get; set; }
+                [Column("id")] private static int One { get; }
+                [Column("ID")] private static int Two { get; }
             }
             """;
 
@@ -161,11 +151,11 @@ public sealed class ContractGeneratorTests
         var source = $$"""
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
-            [SqlServerRow]
+            [Mise]
             partial {{kind}} Good
             {
-                [MiseColumn("id")] public required int Id { get; init; }
-                [MiseColumn("name")] public string? Name { get; init; }
+                [Column("id")] public required int Id { get; init; }
+                [Column("name")] public string? Name { get; init; }
             }
             """;
 
@@ -174,11 +164,11 @@ public sealed class ContractGeneratorTests
         Assert.Empty(result.Run.Diagnostics);
         Assert.DoesNotContain(result.CompilationDiagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
         var generated = Assert.Single(result.Run.Results).GeneratedSources.Single().SourceText.ToString();
-        Assert.Contains("IMiseRow<Good>", generated);
+        Assert.Contains("IRow<Good>", generated);
         Assert.Contains("\"id\"", generated);
         Assert.Contains("reader.GetName(index)", generated);
         Assert.Contains("valueName = null", generated);
-        Assert.Contains("MiseMappingException", generated);
+        Assert.Contains("MappingException", generated);
     }
 
     [Fact]
@@ -191,12 +181,12 @@ public sealed class ContractGeneratorTests
             {
                 class Base
                 {
-                    [MiseColumn("base_id")] public int BaseId { get; protected set; }
+                    [Column("base_id")] public int BaseId { get; protected set; }
                 }
-                [SqlServerRow]
+                [Mise]
                 partial class Row : Base
                 {
-                    [MiseColumn("name")] private string? Name { get; init; }
+                    [Column("name")] private string? Name { get; init; }
                 }
             }
             """;
@@ -218,9 +208,9 @@ public sealed class ContractGeneratorTests
             using Brigade.Net.Mise.SqlServer;
             class Outer
             {
-                [SqlServerRow] ref partial struct Bad
+                [Mise] ref partial struct Bad
                 {
-                    [MiseColumn("id")] public int Id { get; set; }
+                    [Column("id")] public int Id { get; set; }
                 }
             }
             """;
@@ -240,11 +230,11 @@ public sealed class ContractGeneratorTests
         const string source = """
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
-            [SqlServerRow]
+            [Mise]
             partial class Bad
             {
-                [MiseColumn("Id")] public int Id { get; }
-                [MiseColumn("Name")] public string Name { get; set; }
+                [Column("Id")] public int Id { get; }
+                [Column("Name")] public string Name { get; set; }
                 public Bad(int id) { Id = id; Name = ""; }
                 public Bad(int id, string name) { Id = id; Name = name; }
             }
@@ -263,10 +253,9 @@ public sealed class ContractGeneratorTests
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
             [SqlServerTable("targets")]
-            partial class Target { [MiseColumn("id")] public int Id { get; set; } }
-            [SqlServerTable("sources"), MiseAlias("source alias")]
-            [MiseRelationship("Owner Join", typeof(Target), "target_id", "id")]
-            partial class Source { [MiseColumn("target_id")] public int TargetId { get; set; } }
+            static partial class Target { [Column("id")] private static int Id { get; } }
+            [SqlServerTable("sources"), Alias("source alias")]
+            static partial class Source { [Column("target_id"), Relationship(Target.IdCol)] private static int TargetId { get; } }
             """;
 
         var result = GeneratorTestHost.Run(source);
@@ -286,28 +275,27 @@ public sealed class ContractGeneratorTests
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
             [SqlServerTable("targets")]
-            partial class Target { [MiseColumn("id")] public int Id { get; set; } }
-            [SqlServerTable("sources"), MiseAlias("s")]
-            [MiseRelationship("Owner", typeof(Target), "target_id", "id")]
-            partial class Source { [MiseColumn("target_id")] public int TargetId { get; set; } }
+            static partial class Target { [Column("id")] private static int Id { get; } }
+            [SqlServerTable("sources"), Alias("s")]
+            static partial class Source { [Column("target_id"), Relationship(Target.IdCol)] private static int TargetId { get; } }
             class Query
             {
                 IQueryBuilder Inner() => new SqlServerQueryBuilder()
-                    .Select($"{Source.Tbl.s.TargetId:raw}")
-                    .From($"{Source.Tbl.s.Table:raw}")
-                    .InnerJoin($"{Source.Tbl.s.Owner:raw}");
+                    .Select($"{Source.s.TargetIdCol:raw}")
+                    .From($"{Source.s.Table:raw}")
+                    .InnerJoin($"{Source.s.TargetIdJoin:raw}");
                 IQueryBuilder Left() => new SqlServerQueryBuilder()
-                    .Select($"{Source.Tbl.s.TargetId:raw}")
-                    .From($"{Source.Tbl.s.Table:raw}")
-                    .LeftJoin($"{Source.Tbl.s.Owner:raw}");
+                    .Select($"{Source.s.TargetIdCol:raw}")
+                    .From($"{Source.s.Table:raw}")
+                    .LeftJoin($"{Source.s.TargetIdJoin:raw}");
                 IQueryBuilder Right() => new SqlServerQueryBuilder()
-                    .Select($"{Source.Tbl.s.TargetId:raw}")
-                    .From($"{Source.Tbl.s.Table:raw}")
-                    .RightJoin($"{Source.Tbl.s.Owner:raw}");
+                    .Select($"{Source.s.TargetIdCol:raw}")
+                    .From($"{Source.s.Table:raw}")
+                    .RightJoin($"{Source.s.TargetIdJoin:raw}");
                 IQueryBuilder Full() => new SqlServerQueryBuilder()
-                    .Select($"{Source.Tbl.s.TargetId:raw}")
-                    .From($"{Source.Tbl.s.Table:raw}")
-                    .FullJoin($"{Source.Tbl.s.Owner:raw}");
+                    .Select($"{Source.s.TargetIdCol:raw}")
+                    .From($"{Source.s.Table:raw}")
+                    .FullJoin($"{Source.s.TargetIdJoin:raw}");
             }
             """;
 
@@ -323,18 +311,17 @@ public sealed class ContractGeneratorTests
         const string source = """
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
-            partial class Target { [MiseColumn("id")] public int Id { get; set; } }
+            static partial class Target { [Column("id")] private static int Id { get; } }
             [SqlServerTable("sources")]
-            [MiseRelationship("Target", typeof(Target), "target_id", "id")]
-            partial class Source { [MiseColumn("target_id")] public int TargetId { get; set; } }
+            static partial class Source { [Column("target_id"), Relationship(Target.IdCol)] private static int TargetId { get; } }
             """;
 
         var diagnostic = Assert.Single(GeneratorTestHost.Run(source).Run.Diagnostics);
 
         Assert.Equal("MISE011", diagnostic.Id);
-        Assert.Equal("Relationship 'Target' target must have the active engine's table attribute", diagnostic.GetMessage());
+        Assert.Equal("Relationship 'TargetIdJoin' target must have the active engine's table attribute", diagnostic.GetMessage());
         Assert.StartsWith(
-            "MiseRelationship(\"Target\"",
+            "Relationship(Target.IdCol)",
             source.Substring(diagnostic.Location.SourceSpan.Start, diagnostic.Location.SourceSpan.Length),
             StringComparison.Ordinal
         );
@@ -347,8 +334,7 @@ public sealed class ContractGeneratorTests
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
             [SqlServerTable("sources")]
-            [MiseRelationship("Target", typeof(T), "id", "id")]
-            partial class Source<T> { [MiseColumn("id")] public int Id { get; set; } }
+            static partial class Source<T> { [Column("id"), Relationship(T.IdCol)] private static int Id { get; } }
             """;
 
         var result = GeneratorTestHost.Run(source);
@@ -363,11 +349,10 @@ public sealed class ContractGeneratorTests
         const string source = """
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
-            [SqlServerTable("targets"), MiseSchema("sales")]
-            partial class Target { [MiseColumn("id")] public int Id { get; set; } }
+            [SqlServerTable("targets"), Schema("sales")]
+            static partial class Target { [Column("id")] private static int Id { get; } }
             [SqlServerTable("sources")]
-            [MiseRelationship("Target", typeof(Target), "target_id", "id")]
-            partial class Source { [MiseColumn("target_id")] public int TargetId { get; set; } }
+            static partial class Source { [Column("target_id"), Relationship(Target.IdCol)] private static int TargetId { get; } }
             """;
 
         var result = GeneratorTestHost.Run(source);
@@ -385,16 +370,15 @@ public sealed class ContractGeneratorTests
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
             [SqlServerTable("targets")]
-            partial class Target { public int Id { get; set; } }
+            static partial class Target { private static int Id { get; } }
             [SqlServerTable("sources")]
-            [MiseRelationship("Target", typeof(Target), "target_id", "id")]
-            partial class Source { [MiseColumn("target_id")] public int TargetId { get; set; } }
+            static partial class Source { [Column("target_id"), Relationship(Target.IdCol)] private static int TargetId { get; } }
             """;
 
         var diagnostics = GeneratorTestHost.Run(source).Run.Diagnostics;
 
         Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MISE002");
-        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MISE009");
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MISE001");
     }
 
     [Fact]
@@ -405,9 +389,9 @@ public sealed class ContractGeneratorTests
             using Brigade.Net.Mise.SqlServer;
             class Base
             {
-                [MiseColumn("id")] public int Id { get; private set; }
+                [Column("id")] public int Id { get; private set; }
             }
-            [SqlServerRow]
+            [Mise]
             partial class Bad : Base;
             """;
 
@@ -424,8 +408,8 @@ public sealed class ContractGeneratorTests
         const string source = """
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
-            [SqlServerRow]
-            partial class Bad { [MiseColumn("id")] public int Id { get; } }
+            [Mise]
+            partial class Bad { [Column("id")] public int Id { get; } }
             """;
 
         var diagnostic = Assert.Single(GeneratorTestHost.Run(source).Run.Diagnostics);
@@ -440,11 +424,11 @@ public sealed class ContractGeneratorTests
         const string source = """
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
-            [SqlServerRow]
+            [Mise]
             partial class Bad
             {
                 public Bad(string id) { }
-                [MiseColumn("id")] public int Id { get; }
+                [Column("id")] public int Id { get; }
             }
             """;
 
@@ -461,7 +445,7 @@ public sealed class ContractGeneratorTests
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
             [SqlServerTable("people")]
-            class Bad { [MiseColumn("id")] public int Id { get; set; } }
+            static class Bad { [Column("id")] private static int Id { get; } }
             """;
 
         var result = GeneratorTestHost.Run(source);
@@ -479,11 +463,11 @@ public sealed class ContractGeneratorTests
         const string source = """
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
-            [SqlServerTable("odd]table"), MiseAlias("alias with space")]
-            partial class @class
+            [SqlServerTable("odd]table"), Alias("alias with space")]
+            static partial class @class
             {
-                [MiseColumn("first]key"), MisePrimaryKey(0)] public int @event { get; set; }
-                [MiseColumn("second key"), MisePrimaryKey(1)] public int Value { get; set; }
+                [Column("first]key"), PrimaryKey(0)] private static int @event { get; }
+                [Column("second key"), PrimaryKey(1)] private static int Value { get; }
             }
             """;
 
@@ -492,8 +476,8 @@ public sealed class ContractGeneratorTests
         Assert.Empty(result.Run.Diagnostics);
         Assert.DoesNotContain(result.CompilationDiagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
         var generated = result.Run.Results.Single().GeneratedSources.Single().SourceText.ToString();
-        Assert.Contains("partial class @class", generated);
-        Assert.Contains("public const string @event = \"[odd]]table].[first]]key]\";", generated);
+        Assert.Contains("static partial class @class", generated);
+        Assert.Contains("public const string eventCol = \"[odd]]table].[first]]key]\";", generated);
         Assert.Contains("public static class alias_0020with_0020space", generated);
     }
 
@@ -503,10 +487,10 @@ public sealed class ContractGeneratorTests
         const string source = """
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
-            [SqlServerRow]
+            [Mise]
             partial class Bad
             {
-                [MiseColumn("id")] public int Id { get; set; }
+                [Column("id")] public int Id { get; set; }
                 public Bad(string unknown) { }
             }
             """;
@@ -525,11 +509,11 @@ public sealed class ContractGeneratorTests
         const string source = """
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
-            [SqlServerRow]
+            [Mise]
             partial class Good
             {
-                [MiseColumn("id")] public int Id { get; }
-                [MiseColumn("score")] public int? Score { get; }
+                [Column("id")] public int Id { get; }
+                [Column("score")] public int? Score { get; }
                 public Good(int id, int? score) { Id = id; Score = score; }
             }
             """;
@@ -549,8 +533,8 @@ public sealed class ContractGeneratorTests
         const string source = """
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
-            [SqlServerTable("people"), MiseAlias(" ")]
-            partial class Bad { [MiseColumn("id")] public int Id { get; set; } }
+            [SqlServerTable("people"), Alias(" ")]
+            static partial class Bad { [Column("id")] private static int Id { get; } }
             """;
 
         var result = GeneratorTestHost.Run(source);
@@ -558,18 +542,18 @@ public sealed class ContractGeneratorTests
 
         Assert.Equal("MISE001", diagnostic.Id);
         Assert.Equal("Alias name must not be null, empty, or whitespace", diagnostic.GetMessage());
-        Assert.Equal("MiseAlias(\" \")", source.Substring(diagnostic.Location.SourceSpan.Start, diagnostic.Location.SourceSpan.Length));
+        Assert.Equal("Alias(\" \")", source.Substring(diagnostic.Location.SourceSpan.Start, diagnostic.Location.SourceSpan.Length));
         Assert.Empty(result.Run.Results.Single().GeneratedSources);
     }
 
     [Theory]
-    [InlineData("[MiseColumn(null)] public int Id { get; set; }")]
-    [InlineData("[MiseColumn] public int Id { get; set; }")]
+    [InlineData("[Column(null)] private static int Id { get; }")]
+    [InlineData("[Column] private static int Id { get; }")]
     public void NullOrIncompleteColumnMetadataIsDiagnosed(string property)
     {
         // Deliberately invalid compiler input: IDE edits may leave an attribute incomplete.
         var source = "using Brigade.Net.Mise; using Brigade.Net.Mise.SqlServer; "
-            + "[SqlServerTable(\"people\")] partial class Person { " + property + " }";
+            + "[SqlServerTable(\"people\")] static partial class Person { " + property + " }";
 
         var result = GeneratorTestHost.Run(source);
 
@@ -578,13 +562,13 @@ public sealed class ContractGeneratorTests
     }
 
     [Theory]
-    [InlineData("[MiseAlias(null)]")]
-    [InlineData("[MiseAlias]")]
+    [InlineData("[Alias(null)]")]
+    [InlineData("[Alias]")]
     public void NullOrIncompleteAliasMetadataIsDiagnosed(string alias)
     {
         // Deliberately invalid compiler input: a missing argument must not crash the generator.
         var source = "using Brigade.Net.Mise; using Brigade.Net.Mise.SqlServer; "
-            + "[SqlServerTable(\"people\")] " + alias + " partial class Person;";
+            + "[SqlServerTable(\"people\")] " + alias + " static partial class Person;";
 
         var result = GeneratorTestHost.Run(source);
 
@@ -600,13 +584,11 @@ public sealed class ContractGeneratorTests
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
             [SqlServerTable("sources")]
-            [MiseRelationship]
-            partial class Source { [MiseColumn("id")] public int Id { get; set; } }
+            static partial class Source { [Column("id"), Relationship] private static int Id { get; } }
             """;
 
         var result = GeneratorTestHost.Run(source);
 
-        Assert.Contains(result.Run.Diagnostics, diagnostic => diagnostic.Id == "MISE001");
         Assert.Contains(result.Run.Diagnostics, diagnostic => diagnostic.Id == "MISE011");
         Assert.Empty(result.Run.Results.Single().GeneratedSources);
     }
@@ -618,49 +600,39 @@ public sealed class ContractGeneratorTests
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
             [SqlServerTable("targets")]
-            partial class Target { [MiseColumn("id")] public int Id { get; set; } }
+            static partial class Target { [Column("id")] private static int Id { get; } }
             [SqlServerTable("sources")]
-            [MiseRelationship(null, typeof(Target), null, null)]
-            partial class Source { [MiseColumn("id")] public int Id { get; set; } }
+            static partial class Source { [Column("id"), Relationship(null)] private static int Id { get; } }
             """;
 
         var result = GeneratorTestHost.Run(source);
 
-        Assert.Contains(result.Run.Diagnostics, diagnostic => diagnostic.Id == "MISE001");
+        Assert.Contains(result.Run.Diagnostics, diagnostic => diagnostic.Id == "MISE011");
         Assert.Single(result.Run.Results.Single().GeneratedSources);
     }
 
     [Theory]
-    [InlineData("id", "missing", "missing")]
-    [InlineData(" ", "id", null)]
+    [InlineData("id", "MissingCol", "Relationship column")]
+    [InlineData(" ", "IdCol", "Column name")]
     public void TargetSideAndEmptyRelationshipColumnsAreDiagnosed(
         string sourceColumn,
         string targetColumn,
-        string? unknownColumn
+        string expectedKind
     )
     {
         var source = $$"""
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
             [SqlServerTable("targets")]
-            partial class Target { [MiseColumn("id")] public int Id { get; set; } }
+            static partial class Target { [Column("id")] private static int Id { get; } }
             [SqlServerTable("sources")]
-            [MiseRelationship("Target", typeof(Target), "{{sourceColumn}}", "{{targetColumn}}")]
-            partial class Source { [MiseColumn("id")] public int Id { get; set; } }
+            static partial class Source { [Column("{{sourceColumn}}"), Relationship(Target.{{targetColumn}})] private static int Id { get; } }
             """;
 
         var diagnostic = Assert.Single(GeneratorTestHost.Run(source).Run.Diagnostics);
 
-        if (unknownColumn is null)
-        {
-            Assert.Equal("MISE001", diagnostic.Id);
-            Assert.Equal("Relationship column must not be null, empty, or whitespace", diagnostic.GetMessage());
-        }
-        else
-        {
-            Assert.Equal("MISE009", diagnostic.Id);
-            Assert.Equal($"Relationship 'Target' refers to unknown mapped column '{unknownColumn}'", diagnostic.GetMessage());
-        }
+        Assert.Equal("MISE001", diagnostic.Id);
+        Assert.Equal($"{expectedKind} must not be null, empty, or whitespace", diagnostic.GetMessage());
     }
 
     [Fact]
@@ -669,8 +641,8 @@ public sealed class ContractGeneratorTests
         const string source = """
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
-            [SqlServerRow]
-            abstract partial class Bad { [MiseColumn("id")] public int Id { get; set; } }
+            [Mise]
+            abstract partial class Bad { [Column("id")] public int Id { get; set; } }
             """;
 
         var diagnostics = GeneratorTestHost.Run(source).Run.Diagnostics;
@@ -679,11 +651,11 @@ public sealed class ContractGeneratorTests
     }
 
     [Theory]
-    [InlineData("static partial class Bad { [MiseColumn(\"id\")] public static int Id { get; set; } }")]
-    [InlineData("ref partial struct Bad { [MiseColumn(\"id\")] public int Id { get; set; } }")]
+    [InlineData("static partial class Bad { [Column(\"id\")] public static int Id { get; set; } }")]
+    [InlineData("ref partial struct Bad { [Column(\"id\")] public int Id { get; set; } }")]
     public void StaticAndRefLikeRowsAreUnsupported(string declaration)
     {
-        var source = "using Brigade.Net.Mise; using Brigade.Net.Mise.SqlServer; [SqlServerRow] " + declaration;
+        var source = "using Brigade.Net.Mise; using Brigade.Net.Mise.SqlServer; [Mise] " + declaration;
 
         var result = GeneratorTestHost.Run(source);
 
@@ -698,8 +670,8 @@ public sealed class ContractGeneratorTests
             using System;
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
-            [SqlServerRow]
-            ref partial struct Bad { [MiseColumn("data")] public Span<int> Data { get; set; } }
+            [Mise]
+            ref partial struct Bad { [Column("data")] public Span<int> Data { get; set; } }
             """;
 
         var diagnostics = GeneratorTestHost.Run(source).Run.Diagnostics;

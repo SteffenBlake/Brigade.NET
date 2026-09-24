@@ -28,13 +28,13 @@ public sealed class RawInterpolationAnalyzerTests
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
             [SqlServerTable("people")]
-            partial class Person
+            static partial class Person
             {
-                [MiseColumn("id")] public int Id { get; set; }
+                [Column("id")] private static int Id { get; }
             }
             class Query
             {
-                FormattableString Build() => $"SELECT {Person.Tbl.Id:raw}";
+                FormattableString Build() => $"SELECT {Person.IdCol:raw}";
             }
             """;
 

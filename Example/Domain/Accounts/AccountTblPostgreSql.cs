@@ -4,23 +4,22 @@ using Brigade.Net.Mise.PostgreSQL;
 namespace Brigade.Net.Example.Domain.Accounts;
 
 [PostgreSqlTable("accounts")]
-[PostgreSqlRow]
-[MiseAlias("BuyerAlias")]
-[MiseAlias("SellerAlias")]
-public partial class AccountTblPostgreSql
+[Alias("Buyer")]
+[Alias("Seller")]
+public static partial class AccountTblPostgreSql
 {
-    [MiseColumn("id")]
-    public int Id { get; set; }
+    [Column("id")]
+    private static int Id { get; }
 
-    [MiseColumn("name")]
-    public string Name { get; set; } = string.Empty;
+    [Column("name")]
+    private static string Name => string.Empty;
 
-    [MiseColumn("parent_id")]
-    public int? ParentId { get; set; }
+    [Column("parent_id")]
+    private static int? ParentId { get; }
 
-    [MiseColumn("group")]
-    public string? Group { get; set; }
+    [Column("group")]
+    private static string? Group { get; }
 
-    [MiseColumn("note")]
-    public string? Note { get; set; }
+    [Column("note")]
+    private static string? Note { get; }
 }

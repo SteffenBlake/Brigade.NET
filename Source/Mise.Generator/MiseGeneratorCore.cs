@@ -15,12 +15,12 @@ public static class MiseGeneratorCore
 {
     private const string TableAttributeBase = "Brigade.Net.Mise.TableAttributeBase";
     private const string RowAttributeBase = "Brigade.Net.Mise.RowAttributeBase";
-    private const string ColumnAttribute = "Brigade.Net.Mise.MiseColumnAttribute";
-    private const string AliasAttribute = "Brigade.Net.Mise.MiseAliasAttribute";
-    private const string RelationshipAttribute = "Brigade.Net.Mise.MiseRelationshipAttribute";
-    private const string KeyAttribute = "Brigade.Net.Mise.MisePrimaryKeyAttribute";
-    private const string GeneratedAttribute = "Brigade.Net.Mise.MiseDatabaseGeneratedAttribute";
-    private const string ComputedAttribute = "Brigade.Net.Mise.MiseComputedAttribute";
+    private const string ColumnAttribute = "Brigade.Net.Mise.ColumnAttribute";
+    private const string AliasAttribute = "Brigade.Net.Mise.AliasAttribute";
+    private const string RelationshipAttribute = "Brigade.Net.Mise.RelationshipAttribute";
+    private const string KeyAttribute = "Brigade.Net.Mise.PrimaryKeyAttribute";
+    private const string GeneratedAttribute = "Brigade.Net.Mise.DatabaseGeneratedAttribute";
+    private const string ComputedAttribute = "Brigade.Net.Mise.ComputedAttribute";
 
     public static (IncrementalValuesProvider<GeneratedTarget> Tables, IncrementalValuesProvider<GeneratedTarget> Rows) CreateTargets(
         IncrementalGeneratorInitializationContext context,
@@ -38,15 +38,15 @@ public static class MiseGeneratorCore
         var tables = context.SyntaxProvider.ForAttributeWithMetadataName(
             engine.TableAttributeMetadataName,
             static (node, _) => node is TypeDeclarationSyntax,
-            static (attributeContext, _) => (INamedTypeSymbol)attributeContext.TargetSymbol)
-            .Select((symbol, cancellationToken) => GenerateTarget(symbol, engine, cancellationToken))
+            static (attributeContext, _) => ((INamedTypeSymbol)attributeContext.TargetSymbol, attributeContext.SemanticModel.Compilation))
+            .Select((target, cancellationToken) => GenerateTarget(target.Item1, target.Item2, engine, cancellationToken))
             .WithTrackingName("MiseTableTargets");
         var rows = context.SyntaxProvider.ForAttributeWithMetadataName(
             engine.RowAttributeMetadataName,
             static (node, _) => node is TypeDeclarationSyntax,
-            static (attributeContext, _) => (INamedTypeSymbol)attributeContext.TargetSymbol)
-            .Where(symbol => !TableAttributes(symbol).Any())
-            .Select((symbol, cancellationToken) => GenerateTarget(symbol, engine, cancellationToken))
+            static (attributeContext, _) => ((INamedTypeSymbol)attributeContext.TargetSymbol, attributeContext.SemanticModel.Compilation))
+            .Where(target => !TableAttributes(target.Item1).Any())
+            .Select((target, cancellationToken) => GenerateTarget(target.Item1, target.Item2, engine, cancellationToken))
             .WithTrackingName("MiseRowTargets");
 
         return (tables, rows);
@@ -54,13 +54,14 @@ public static class MiseGeneratorCore
 
     private static GeneratedTarget GenerateTarget(
         INamedTypeSymbol type,
+        Compilation compilation,
         MiseEngineOptions engine,
         CancellationToken cancellationToken
     )
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var model = ParseTarget(type, engine, cancellationToken);
-        var diagnostics = Validate(type, engine, cancellationToken);
+        var model = ParseTarget(type, compilation, engine, cancellationToken);
+        var diagnostics = Validate(type, compilation, engine, cancellationToken);
         var source = diagnostics.All(diagnostic => diagnostic.Severity != DiagnosticSeverity.Error)
             ? Format(Emit(model, engine, cancellationToken))
             : null;
@@ -69,6 +70,7 @@ public static class MiseGeneratorCore
 
     private static MiseTargetModel ParseTarget(
         INamedTypeSymbol type,
+        Compilation compilation,
         MiseEngineOptions engine,
         CancellationToken cancellationToken
     )
@@ -77,10 +79,12 @@ public static class MiseGeneratorCore
         var qualifierAttribute = EngineQualifier(type, engine);
         var table = tableAttribute is null
             ? null
-            : new MiseTableModel(StringArgument(tableAttribute, 0) ?? string.Empty,
-                qualifierAttribute is null ? null : StringArgument(qualifierAttribute, 0));
-        var columns = MappedProperties(type, cancellationToken)
-            .Select(property => new MiseColumnModel(
+            : new MiseTableModel(
+                StringArgument(tableAttribute, 0) ?? VirtualTableName(type),
+                qualifierAttribute is null ? null : StringArgument(qualifierAttribute, 0),
+                StringArgument(tableAttribute, 0) is null);
+        var columns = MappedProperties(type, cancellationToken, tableAttribute is not null)
+            .Select(property => new ColumnModel(
                 Attribute(property, ColumnAttribute) is { } column ? StringArgument(column, 0) ?? string.Empty : string.Empty,
                 property))
             .ToImmutableArray();
@@ -88,18 +92,21 @@ public static class MiseGeneratorCore
             .Select(attribute =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                return new MiseAliasModel(StringArgument(attribute, 0) ?? string.Empty);
+                return new AliasModel(StringArgument(attribute, 0) ?? string.Empty);
             })
             .ToImmutableArray();
-        var relationships = Attributes(type, RelationshipAttribute)
-            .Select(attribute =>
+        var relationships = columns
+            .Where(column => Attribute(column.Property, RelationshipAttribute) is not null)
+            .Select(column =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                return new MiseRelationshipModel(
-                    StringArgument(attribute, 0) ?? string.Empty,
-                    attribute.ConstructorArguments.Length > 1 ? attribute.ConstructorArguments[1].Value as INamedTypeSymbol : null,
-                    StringArgument(attribute, 2) ?? string.Empty,
-                    StringArgument(attribute, 3) ?? string.Empty);
+                var attribute = Attribute(column.Property, RelationshipAttribute)!;
+                var target = RelationshipTarget(attribute, compilation);
+                return new RelationshipModel(
+                    column.Property.Name + "Join",
+                    target,
+                    column.Name,
+                    RelationshipTargetColumn(attribute, target));
             })
             .ToImmutableArray();
         var row = Attribute(type, engine.RowAttributeMetadataName) is null
@@ -124,6 +131,7 @@ public static class MiseGeneratorCore
 
     private static ImmutableArray<Diagnostic> Validate(
         INamedTypeSymbol type,
+        Compilation compilation,
         MiseEngineOptions engine,
         CancellationToken cancellationToken
     )
@@ -154,7 +162,7 @@ public static class MiseGeneratorCore
         {
             diagnostics.Add(Diagnostic.Create(MiseDiagnostics.MismatchedEngineRow, type.Locations.FirstOrDefault(), type.Name));
         }
-        if (table is not null)
+        if (table is not null && StringArgument(table, 0) is not null)
         {
             ValidateIdentifier(diagnostics, table, "Table name");
         }
@@ -165,10 +173,17 @@ public static class MiseGeneratorCore
             ValidateIdentifier(diagnostics, qualifier, "Schema or database name");
         }
 
-        ValidateNamedAttributes(diagnostics, Attributes(type, AliasAttribute).ToArray(), "Alias", comparer);
-        var properties = MappedProperties(type, cancellationToken).ToArray();
+        foreach (var alias in Attributes(type, AliasAttribute))
+        {
+            ValidateIdentifier(diagnostics, alias, "Alias name");
+        }
+        var properties = MappedProperties(type, cancellationToken, table is not null).ToArray();
+        if (table is not null && !type.IsStatic)
+        {
+            diagnostics.Add(Diagnostic.Create(MiseDiagnostics.StaticTableRequired, type.Locations.FirstOrDefault(), type.Name));
+        }
         ValidateProperties(diagnostics, properties, comparer, cancellationToken);
-        ValidateRelationships(diagnostics, type, properties, comparer, engine, cancellationToken);
+        ValidateRelationships(diagnostics, properties, comparer, engine, compilation, cancellationToken);
         if (table is not null)
         {
             ValidateGeneratedNames(diagnostics, type, properties);
@@ -190,37 +205,34 @@ public static class MiseGeneratorCore
         IPropertySymbol[] properties
     )
     {
-        if (type.GetMembers("Tbl").Length != 0)
+        if (type.GetMembers("Table").Length != 0)
         {
-            diagnostics.Add(Diagnostic.Create(MiseDiagnostics.GeneratedMemberCollision, type.Locations.FirstOrDefault(), "Tbl"));
+            diagnostics.Add(Diagnostic.Create(MiseDiagnostics.GeneratedMemberCollision, type.Locations.FirstOrDefault(), "Table"));
         }
 
         var names = new HashSet<string>(StringComparer.Ordinal) { "Table" };
         foreach (var property in properties)
         {
-            if (!names.Add(property.Name))
+            if (!names.Add(property.Name + "Col"))
             {
-                diagnostics.Add(Diagnostic.Create(MiseDiagnostics.GeneratedMemberCollision, property.Locations.FirstOrDefault(), property.Name));
+                diagnostics.Add(Diagnostic.Create(MiseDiagnostics.GeneratedMemberCollision, property.Locations.FirstOrDefault(), property.Name + "Col"));
             }
         }
 
-        foreach (var relationship in Attributes(type, RelationshipAttribute))
+        foreach (var property in properties)
         {
-            var name = CSharpName(StringArgument(relationship, 0) ?? string.Empty).TrimStart('@');
+            var relationship = Attribute(property, RelationshipAttribute);
+            if (relationship is null)
+            {
+                continue;
+            }
+            var name = property.Name + "Join";
             if (!names.Add(name))
             {
                 diagnostics.Add(Diagnostic.Create(MiseDiagnostics.GeneratedMemberCollision, AttributeLocation(relationship), name));
             }
         }
 
-        foreach (var alias in Attributes(type, AliasAttribute))
-        {
-            var name = CSharpName(StringArgument(alias, 0) ?? string.Empty).TrimStart('@');
-            if (!names.Add(name))
-            {
-                diagnostics.Add(Diagnostic.Create(MiseDiagnostics.GeneratedMemberCollision, AttributeLocation(alias), name));
-            }
-        }
     }
 
     private static void ValidateProperties(
@@ -268,22 +280,23 @@ public static class MiseGeneratorCore
 
     private static void ValidateRelationships(
         ImmutableArray<Diagnostic>.Builder diagnostics,
-        INamedTypeSymbol type,
         IPropertySymbol[] sourceProperties,
         StringComparer comparer,
         MiseEngineOptions engine,
+        Compilation compilation,
         CancellationToken cancellationToken
     )
     {
-        var relationships = Attributes(type, RelationshipAttribute).ToArray();
-        ValidateNamedAttributes(diagnostics, relationships, "Relationship", comparer);
-        foreach (var relationship in relationships)
+        foreach (var property in sourceProperties)
         {
+            var relationship = Attribute(property, RelationshipAttribute);
+            if (relationship is null)
+            {
+                continue;
+            }
             cancellationToken.ThrowIfCancellationRequested();
-            var name = StringArgument(relationship, 0) ?? string.Empty;
-            var target = relationship.ConstructorArguments.Length > 1
-                ? relationship.ConstructorArguments[1].Value as INamedTypeSymbol
-                : null;
+            var name = property.Name + "Join";
+            var target = RelationshipTarget(relationship, compilation);
             if (target is null || Attribute(target, engine.TableAttributeMetadataName) is null)
             {
                 diagnostics.Add(Diagnostic.Create(
@@ -293,13 +306,12 @@ public static class MiseGeneratorCore
                 ));
                 continue;
             }
-            ValidateRelationshipColumn(diagnostics, relationship, name, StringArgument(relationship, 2), sourceProperties, comparer);
             ValidateRelationshipColumn(
                 diagnostics,
                 relationship,
                 name,
-                StringArgument(relationship, 3),
-                MappedProperties(target, cancellationToken),
+                RelationshipTargetColumn(relationship, target),
+                MappedProperties(target, cancellationToken, true),
                 comparer
             );
         }
@@ -334,6 +346,72 @@ public static class MiseGeneratorCore
                 columnName
             ));
         }
+    }
+
+    private static INamedTypeSymbol? RelationshipTarget(AttributeData relationship, Compilation compilation)
+    {
+        var expression = RelationshipExpression(relationship);
+        if (expression is null)
+        {
+            return null;
+        }
+
+        var model = compilation.GetSemanticModel(expression.SyntaxTree);
+        if (expression is MemberAccessExpressionSyntax member)
+        {
+            return model.GetSymbolInfo(member.Expression).Symbol as INamedTypeSymbol;
+        }
+
+        if (model.GetSymbolInfo(expression).Symbol is IFieldSymbol field)
+        {
+            return field.ContainingType;
+        }
+
+        if (expression is not IdentifierNameSyntax identifier)
+        {
+            return null;
+        }
+
+        var candidates = compilation.SyntaxTrees
+            .SelectMany(tree => tree.GetRoot().DescendantNodes().OfType<UsingDirectiveSyntax>())
+            .Where(usingDirective => usingDirective.StaticKeyword.IsKind(SyntaxKind.StaticKeyword))
+            .Where(usingDirective => usingDirective.GlobalKeyword.IsKind(SyntaxKind.GlobalKeyword)
+                || usingDirective.SyntaxTree == expression.SyntaxTree)
+            .Select(usingDirective => compilation.GetSemanticModel(usingDirective.SyntaxTree)
+                .GetSymbolInfo(usingDirective.Name!).Symbol as INamedTypeSymbol)
+            .Where(type => type is not null && type.GetMembers(identifier.Identifier.ValueText.EndsWith("Col", StringComparison.Ordinal)
+                ? identifier.Identifier.ValueText.Substring(0, identifier.Identifier.ValueText.Length - 3)
+                : identifier.Identifier.ValueText).OfType<IPropertySymbol>().Any())
+            .Distinct(SymbolEqualityComparer.Default)
+            .OfType<INamedTypeSymbol>()
+            .ToArray();
+        return candidates.Length == 1 ? candidates[0] : null;
+    }
+
+    private static string RelationshipTargetColumn(AttributeData relationship, INamedTypeSymbol? target)
+    {
+        var expression = RelationshipExpression(relationship);
+        var name = expression switch
+        {
+            MemberAccessExpressionSyntax member => member.Name.Identifier.ValueText,
+            IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
+            _ => string.Empty
+        };
+        if (target is null || !name.EndsWith("Col", StringComparison.Ordinal))
+        {
+            return string.Empty;
+        }
+
+        var property = target.GetMembers(name.Substring(0, name.Length - 3))
+            .OfType<IPropertySymbol>().FirstOrDefault();
+        var column = property is null ? null : Attribute(property, ColumnAttribute);
+        return column is null ? string.Empty : StringArgument(column, 0) ?? string.Empty;
+    }
+
+    private static ExpressionSyntax? RelationshipExpression(AttributeData relationship)
+    {
+        return (relationship.ApplicationSyntaxReference?.GetSyntax() as AttributeSyntax)?
+            .ArgumentList?.Arguments.FirstOrDefault()?.Expression;
     }
 
     private static void ValidateRow(
@@ -426,7 +504,7 @@ public static class MiseGeneratorCore
             builder.Append(indent).Append(TypeHeader(declaration));
             if (SymbolEqualityComparer.Default.Equals(declaration, type) && model.Row is not null)
             {
-                builder.Append(" : global::Brigade.Net.Mise.IMiseRow<").Append(TypeReference(type)).Append('>');
+                builder.Append(" : global::Brigade.Net.Mise.IRow<").Append(TypeReference(type)).Append('>');
             }
             builder.Append("\n").Append(indent).Append("{\n");
             indent += "    ";
@@ -464,37 +542,40 @@ public static class MiseGeneratorCore
         }
 
         var tableName = QualifiedTable(table, engine);
-        builder.Append(indent).Append("public static class Tbl\n")
-            .Append(indent).Append("{\n")
-            .Append(indent).Append("    public const string Table = ").Append(SymbolDisplay.FormatLiteral(tableName, true)).Append(";\n");
+        if (table.IsVirtual)
+        {
+            builder.Append(indent).Append("public const string Name = ")
+                .Append(SymbolDisplay.FormatLiteral(table.Name, true)).Append(";\n");
+        }
+        builder.Append(indent).Append("public const string Table = ")
+            .Append(SymbolDisplay.FormatLiteral(tableName, true)).Append(";\n");
         foreach (var column in model.Columns)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var value = tableName + "." + engine.QuoteIdentifier(column.Name);
-            builder.Append(indent).Append("    public const string ").Append(EscapeIdentifier(column.Property.Name))
+            builder.Append(indent).Append("public const string ").Append(EscapeIdentifier(column.Property.Name + "Col"))
                 .Append(" = ").Append(SymbolDisplay.FormatLiteral(value, true)).Append(";\n");
         }
-        EmitRelationships(builder, indent + "    ", model, tableName, engine, cancellationToken);
+        EmitRelationships(builder, indent, model, tableName, engine, cancellationToken);
         foreach (var alias in model.Aliases)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var aliasName = alias.Name;
             var aliasSource = engine.QuoteIdentifier(aliasName);
-            builder.Append(indent).Append("    public static class ").Append(CSharpName(aliasName)).Append("\n")
-                .Append(indent).Append("    {\n")
-                .Append(indent).Append("        public const string Table = ")
+            builder.Append(indent).Append("public static class ").Append(CSharpName(aliasName)).Append("\n")
+                .Append(indent).Append("{\n")
+                .Append(indent).Append("    public const string Table = ")
                 .Append(SymbolDisplay.FormatLiteral(tableName + " AS " + aliasSource, true)).Append(";\n");
             foreach (var column in model.Columns)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var value = aliasSource + "." + engine.QuoteIdentifier(column.Name);
-                builder.Append(indent).Append("        public const string ").Append(EscapeIdentifier(column.Property.Name))
+                builder.Append(indent).Append("    public const string ").Append(EscapeIdentifier(column.Property.Name + "Col"))
                     .Append(" = ").Append(SymbolDisplay.FormatLiteral(value, true)).Append(";\n");
             }
-            EmitRelationships(builder, indent + "        ", model, aliasSource, engine, cancellationToken);
-            builder.Append(indent).Append("    }\n");
+            EmitRelationships(builder, indent + "    ", model, aliasSource, engine, cancellationToken);
+            builder.Append(indent).Append("}\n");
         }
-        builder.Append(indent).Append("}\n");
     }
 
     private static void EmitRelationships(
@@ -510,7 +591,8 @@ public static class MiseGeneratorCore
         {
             cancellationToken.ThrowIfCancellationRequested();
             var target = relationship.Target!;
-            var targetTable = StringArgument(Attribute(target, engine.TableAttributeMetadataName)!, 0)!;
+            var targetTable = StringArgument(Attribute(target, engine.TableAttributeMetadataName)!, 0)
+                ?? VirtualTableName(target);
             var targetSource = QualifiedTable(target, targetTable, engine);
             var sourceColumn = engine.QuoteIdentifier(relationship.SourceColumn);
             var targetColumn = engine.QuoteIdentifier(relationship.TargetColumn);
@@ -533,7 +615,7 @@ public static class MiseGeneratorCore
         var type = model.Type;
         var properties = model.Columns.Select(column => column.Property).ToArray();
         var constructor = model.Row!.Constructor!;
-        var rowInterface = "global::Brigade.Net.Mise.IMiseRow<" + TypeReference(type) + ">";
+        var rowInterface = "global::Brigade.Net.Mise.IRow<" + TypeReference(type) + ">";
         builder.Append(indent).Append("static int[] ").Append(rowInterface)
             .Append(".BindOrdinals(global::System.Data.Common.DbDataReader reader)\n")
             .Append(indent).Append("{\n").Append(indent).Append("    string[] names =\n")
@@ -555,7 +637,7 @@ public static class MiseGeneratorCore
             .Append(indent).Append("            {\n")
             .Append(indent).Append("                if (ordinal >= 0)\n")
             .Append(indent).Append("                {\n")
-            .Append(indent).Append("                    throw new global::Brigade.Net.Mise.MiseInvalidMappingException(typeof(")
+            .Append(indent).Append("                    throw new global::Brigade.Net.Mise.InvalidMappingException(typeof(")
             .Append(TypeReference(type)).Append("), \"Column '\" + names[column] + \"' was projected more than once.\");\n")
             .Append(indent).Append("                }\n")
             .Append(indent).Append("                ordinal = index;\n")
@@ -569,7 +651,7 @@ public static class MiseGeneratorCore
                 .Append(indent).Append("            {\n")
                 .Append(indent).Append("                if (ordinal >= 0 && ordinal != index)\n")
                 .Append(indent).Append("                {\n")
-                .Append(indent).Append("                    throw new global::Brigade.Net.Mise.MiseInvalidMappingException(typeof(")
+                .Append(indent).Append("                    throw new global::Brigade.Net.Mise.InvalidMappingException(typeof(")
                 .Append(TypeReference(type)).Append("), \"Column '\" + names[column] + \"' was projected more than once.\");\n")
                 .Append(indent).Append("                }\n")
                 .Append(indent).Append("                ordinal = index;\n")
@@ -578,7 +660,7 @@ public static class MiseGeneratorCore
         }
         builder.Append(indent).Append("        if (ordinal < 0)\n")
             .Append(indent).Append("        {\n")
-            .Append(indent).Append("            throw new global::Brigade.Net.Mise.MiseInvalidMappingException(typeof(")
+            .Append(indent).Append("            throw new global::Brigade.Net.Mise.InvalidMappingException(typeof(")
             .Append(TypeReference(type)).Append("), \"Column '\" + names[column] + \"' was not projected.\");\n")
             .Append(indent).Append("        }\n")
             .Append(indent).Append("        ordinals[column] = ordinal;\n")
@@ -619,7 +701,7 @@ public static class MiseGeneratorCore
         StringBuilder builder,
         string indent,
         INamedTypeSymbol resultType,
-        MiseColumnModel column,
+        ColumnModel column,
         int index
     )
     {
@@ -642,7 +724,7 @@ public static class MiseGeneratorCore
         }
         else
         {
-            builder.Append(indent).Append("    throw new global::Brigade.Net.Mise.MiseMappingException(typeof(")
+            builder.Append(indent).Append("    throw new global::Brigade.Net.Mise.MappingException(typeof(")
                 .Append(TypeReference(resultType)).Append("), ").Append(SymbolDisplay.FormatLiteral(property.Name, true))
                 .Append(", ").Append(SymbolDisplay.FormatLiteral(column.Name, true)).Append(", ordinals[").Append(index).Append("]);\n");
         }
@@ -654,7 +736,8 @@ public static class MiseGeneratorCore
 
     private static IEnumerable<IPropertySymbol> MappedProperties(
         INamedTypeSymbol type,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken = default,
+        bool staticProperties = false
     )
     {
         var hierarchy = new Stack<INamedTypeSymbol>();
@@ -667,32 +750,13 @@ public static class MiseGeneratorCore
         {
             cancellationToken.ThrowIfCancellationRequested();
             foreach (var property in hierarchy.Pop().GetMembers().OfType<IPropertySymbol>()
-                .Where(property => !property.IsStatic && !property.IsIndexer && !property.IsImplicitlyDeclared)
+                .Where(property => property.IsStatic == staticProperties && !property.IsIndexer && !property.IsImplicitlyDeclared)
                 .OrderBy(property => property.Locations.FirstOrDefault()?.SourceTree?.FilePath, StringComparer.Ordinal)
                 .ThenBy(property => property.Locations.FirstOrDefault()?.SourceSpan.Start ?? int.MaxValue)
                 .ThenBy(property => property.Name, StringComparer.Ordinal))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 yield return property;
-            }
-        }
-    }
-
-    private static void ValidateNamedAttributes(
-        ImmutableArray<Diagnostic>.Builder diagnostics,
-        AttributeData[] attributes,
-        string kind,
-        StringComparer comparer
-    )
-    {
-        var names = new HashSet<string>(comparer);
-        foreach (var attribute in attributes)
-        {
-            ValidateIdentifier(diagnostics, attribute, kind + " name");
-            var name = StringArgument(attribute, 0);
-            if (!string.IsNullOrWhiteSpace(name) && !names.Add(name!))
-            {
-                diagnostics.Add(Diagnostic.Create(MiseDiagnostics.DuplicateIdentifier, AttributeLocation(attribute), kind, name));
             }
         }
     }
@@ -752,6 +816,17 @@ public static class MiseGeneratorCore
     {
         var quotedTable = engine.QuoteIdentifier(table.Name);
         return table.Qualifier is null ? quotedTable : engine.QuoteIdentifier(table.Qualifier) + "." + quotedTable;
+    }
+
+    private static string VirtualTableName(INamedTypeSymbol type)
+    {
+        var name = type.Name;
+        var marker = name.LastIndexOf("Tbl", StringComparison.Ordinal);
+        if (marker > 0)
+        {
+            name = name.Substring(0, marker);
+        }
+        return char.ToLowerInvariant(name[0]) + name.Substring(1);
     }
 
     private static string QualifiedTable(
@@ -820,7 +895,7 @@ public static class MiseGeneratorCore
         var parameters = type.TypeParameters.Length == 0
             ? string.Empty
             : "<" + string.Join(", ", type.TypeParameters.Select(parameter => parameter.Name)) + ">";
-        return "partial " + kind + " " + EscapeIdentifier(type.Name) + parameters;
+        return (type.IsStatic ? "static " : string.Empty) + "partial " + kind + " " + EscapeIdentifier(type.Name) + parameters;
     }
 
     private static string TypeReference(INamedTypeSymbol type)

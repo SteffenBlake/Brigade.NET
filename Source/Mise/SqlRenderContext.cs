@@ -1,3 +1,4 @@
+using System.Data;
 using System.Globalization;
 using System.Text;
 
@@ -5,7 +6,7 @@ namespace Brigade.Net.Mise;
 
 internal sealed class SqlRenderContext
 {
-    private readonly List<MiseParameter> _parameters = [];
+    private readonly List<SqlParameterSpec> _parameters = [];
     private readonly HashSet<QueryBuilder> _active = [];
 
     internal SqlRenderContext(SqlDialect dialect)
@@ -120,16 +121,16 @@ internal sealed class SqlRenderContext
         }
     }
 
-    internal void Parameter(object? value, System.Data.DbType? dbType = null)
+    internal void Parameter(object? value, DbType? dbType = null)
     {
-        if (value is MiseParameter specification)
+        if (value is SqlParameterSpec specification)
         {
             value = specification.Value;
             dbType ??= specification.DbType;
         }
         var name = "@p" + _parameters.Count.ToString(CultureInfo.InvariantCulture);
         Text.Append(name);
-        _parameters.Add(new MiseParameter(name, value, dbType));
+        _parameters.Add(new SqlParameterSpec(name, value, dbType));
     }
 
     internal void Enter(QueryBuilder query)

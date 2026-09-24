@@ -35,7 +35,7 @@ metadata:
    }
    ```
 
-3. Class/record ctor: primary ONLY. No old ctor for field set.
+3. Use primary ctor for class and record with inputs. Handler, provider, service too. Use ctor args as-is when you can. Make field only if needed. Old ctor just to set fields? NO. Old ctor okay only for setup or checks that primary ctor cannot show clear.
    ```csharp
    // BAD
    public class Foo
@@ -46,24 +46,25 @@ metadata:
        {
            _x = x;
        }
+
+       public int GetValue() => _x;
    }
 
    // GOOD
    public class Foo(int x)
    {
-       private readonly int _x = x;
+       public int GetValue() => x;
    }
    ```
 
 4. ONE class per file. No class pile. File name match class name.
    Exception: a handler/provider/Partie's domain context record goes in its owner's file, directly after the namespace and before the owner type.
+
    Exception: child DTOs belong in their owning command/query/result file. Keep DTOs specific to each operation, even when their fields match.
 
-5. Route policy class name MUST end `RoutePolicy`.
+   Exception: Small "owned" record DTOs that "belong" to core of main logic, declare at top, especially if record only is used in that file
 
-   CQRS names: `<DomainSlice><Search|Create|Update|Delete><Version><Cmd|Query|Result|Handler>`.
-   Group each operation under its versioned folder, e.g. `Orders/CreateV1`. Shared domain types stay in `Orders`.
-   Commands without response data return `Unit`; creation can return an ID. One Search operation supports ID filters; no separate Get-by-ID operation.
+   Not Exception: Queries, Commands, Results, anything part of types public api that outsiders need
 
 6. Func sigs with 3+ params multilined
 
@@ -83,7 +84,7 @@ var result = aFunc(
 
 8. Keep nesting at three levels or less. Prefer guard clauses, invert conditions so the short branch is nested, and extract the outer operation when a block still grows. A fourth level is acceptable only for one short line.
 
-9. Put a blank line between declarations. Put each generic constraint on its own line.
+9. One blank line between chunks in a method. Keep small setup vars as one chunk. Each big build or calc gets own chunk: `anchor`, blank line, `recursive`, blank line, `categories`, blank line, `query`. Gap before side effect or final return too. New step after a long chain? Add gap. No gap inside one fluent chain. No gap after each short, linked line. Blank line between members. Each generic constraint gets own line.
 
 10. Use expression bodies only when the whole declaration fits clearly on one short line. Use a block body for multiline declarations.
 

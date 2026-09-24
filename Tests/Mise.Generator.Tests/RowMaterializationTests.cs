@@ -8,11 +8,11 @@ namespace Brigade.Net.Mise.Generator.Tests;
 public sealed class RowMaterializationTests
 {
     [Theory]
-    [InlineData("SqlServer", "SqlServerRow")]
-    [InlineData("PostgreSQL", "PostgreSqlRow")]
-    [InlineData("SQLite", "SqliteRow")]
-    [InlineData("MySQL", "MySqlRow")]
-    [InlineData("MariaDb", "MariaDbRow")]
+    [InlineData("SqlServer", "Mise")]
+    [InlineData("PostgreSQL", "Mise")]
+    [InlineData("SQLite", "Mise")]
+    [InlineData("MySQL", "Mise")]
+    [InlineData("MariaDb", "Mise")]
     public void NullableValueRowsCompileAndReadForEachEngine(string engine, string rowAttribute)
     {
         var source = $$"""
@@ -25,8 +25,8 @@ public sealed class RowMaterializationTests
             [{{rowAttribute}}]
             internal partial class Row
             {
-                [MiseColumn("id")] public required int Id { get; init; }
-                [MiseColumn("count")] public int? Count { get; init; }
+                [Column("id")] public required int Id { get; init; }
+                [Column("count")] public int? Count { get; init; }
             }
 
             public static class Runner
@@ -53,7 +53,7 @@ public sealed class RowMaterializationTests
                         TReader<Row>.Read(reader, ordinals);
                         return false;
                     }
-                    catch (MiseMappingException error)
+                    catch (MappingException error)
                     {
                         return first.Id == 3 && first.Count == 7
                             && second.Id == 4 && second.Count is null
@@ -77,7 +77,7 @@ public sealed class RowMaterializationTests
                         TReader<Row>.Bind(missingReader);
                         return false;
                     }
-                    catch (MiseInvalidMappingException error)
+                    catch (InvalidMappingException error)
                     {
                         if (error.ResultType != typeof(Row))
                         {
@@ -95,7 +95,7 @@ public sealed class RowMaterializationTests
                         TReader<Row>.Bind(duplicateReader);
                         return false;
                     }
-                    catch (MiseInvalidMappingException error)
+                    catch (InvalidMappingException error)
                     {
                         if (error.ResultType != typeof(Row))
                         {
@@ -133,14 +133,14 @@ public sealed class RowMaterializationTests
                         TReader<Row>.Bind(caseReader);
                         return false;
                     }
-                    catch (MiseInvalidMappingException)
+                    catch (InvalidMappingException)
                     {
                         return true;
                     }
                 }
             }
 
-            internal static class TReader<T> where T : IMiseRow<T>
+            internal static class TReader<T> where T : IRow<T>
             {
                 public static int[] Bind(System.Data.Common.DbDataReader reader) => T.BindOrdinals(reader);
                 public static T Read(System.Data.Common.DbDataReader reader, int[] ordinals) => T.Materialize(reader, ordinals);
@@ -158,13 +158,13 @@ public sealed class RowMaterializationTests
         var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
             .Split(Path.PathSeparator)
             .Select(path => MetadataReference.CreateFromFile(path))
-            .Append(MetadataReference.CreateFromFile(typeof(IMiseRow<>).Assembly.Location))
+            .Append(MetadataReference.CreateFromFile(typeof(IRow<>).Assembly.Location))
             .Append(MetadataReference.CreateFromFile(typeof(OrdinalTrackingReader).Assembly.Location))
-            .Append(MetadataReference.CreateFromFile(typeof(Brigade.Net.Mise.SqlServer.SqlServerRowAttribute).Assembly.Location))
-            .Append(MetadataReference.CreateFromFile(typeof(Brigade.Net.Mise.PostgreSQL.PostgreSqlRowAttribute).Assembly.Location))
-            .Append(MetadataReference.CreateFromFile(typeof(Brigade.Net.Mise.SQLite.SqliteRowAttribute).Assembly.Location))
-            .Append(MetadataReference.CreateFromFile(typeof(Brigade.Net.Mise.MySQL.MySqlRowAttribute).Assembly.Location))
-            .Append(MetadataReference.CreateFromFile(typeof(Brigade.Net.Mise.MariaDb.MariaDbRowAttribute).Assembly.Location));
+            .Append(MetadataReference.CreateFromFile(typeof(Brigade.Net.Mise.SqlServer.MiseAttribute).Assembly.Location))
+            .Append(MetadataReference.CreateFromFile(typeof(Brigade.Net.Mise.PostgreSQL.MiseAttribute).Assembly.Location))
+            .Append(MetadataReference.CreateFromFile(typeof(Brigade.Net.Mise.SQLite.MiseAttribute).Assembly.Location))
+            .Append(MetadataReference.CreateFromFile(typeof(Brigade.Net.Mise.MySQL.MiseAttribute).Assembly.Location))
+            .Append(MetadataReference.CreateFromFile(typeof(Brigade.Net.Mise.MariaDb.MiseAttribute).Assembly.Location));
         var compilation = CSharpCompilation.Create(
             "MiseRowExecution_" + Guid.NewGuid().ToString("N"),
             trees,

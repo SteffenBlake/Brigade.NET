@@ -4,16 +4,16 @@ using Brigade.Net.Mise.MySQL;
 namespace Brigade.Net.Example.Domain.Shipments;
 
 [MySqlTable("shipments")]
-[MiseAlias("Row")]
-public partial class ShipmentTblMySql
+[Alias("Row")]
+public static partial class ShipmentTblMySql
 {
-    [MiseColumn("id")]
-    public int Id { get; set; }
+    [Column("id")]
+    private static int Id { get; }
 
-    [MiseColumn("order_id")]
-    public int OrderId { get; set; }
+    [Column("purchase_id")]
+    private static int PurchaseId { get; }
 
-    [MiseColumn("delivered_at")]
-    public string? DeliveredAt { get; set; }
+    [Column("delivered_at")]
+    private static string? DeliveredAt { get; }
 
 }

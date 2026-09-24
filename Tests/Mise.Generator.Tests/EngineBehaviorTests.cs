@@ -15,19 +15,19 @@ public sealed class EngineBehaviorTests
 
     public static TheoryData<Type, string> RuntimeRowAttributes => new()
     {
-        { typeof(Brigade.Net.Mise.SqlServer.SqlServerRowAttribute), "SqlServerRowAttribute" },
-        { typeof(Brigade.Net.Mise.PostgreSQL.PostgreSqlRowAttribute), "PostgreSqlRowAttribute" },
-        { typeof(Brigade.Net.Mise.SQLite.SqliteRowAttribute), "SqliteRowAttribute" },
-        { typeof(Brigade.Net.Mise.MySQL.MySqlRowAttribute), "MySqlRowAttribute" },
-        { typeof(Brigade.Net.Mise.MariaDb.MariaDbRowAttribute), "MariaDbRowAttribute" }
+        { typeof(Brigade.Net.Mise.SqlServer.MiseAttribute), "MiseAttribute" },
+        { typeof(Brigade.Net.Mise.PostgreSQL.MiseAttribute), "MiseAttribute" },
+        { typeof(Brigade.Net.Mise.SQLite.MiseAttribute), "MiseAttribute" },
+        { typeof(Brigade.Net.Mise.MySQL.MiseAttribute), "MiseAttribute" },
+        { typeof(Brigade.Net.Mise.MariaDb.MiseAttribute), "MiseAttribute" }
     };
 
     public static TheoryData<Type> RuntimeQualifierAttributes => new()
     {
-        { typeof(Brigade.Net.Mise.SqlServer.MiseSchemaAttribute) },
-        { typeof(Brigade.Net.Mise.PostgreSQL.MiseSchemaAttribute) },
-        { typeof(Brigade.Net.Mise.MySQL.MiseDatabaseAttribute) },
-        { typeof(Brigade.Net.Mise.MariaDb.MiseDatabaseAttribute) }
+        { typeof(Brigade.Net.Mise.SqlServer.SchemaAttribute) },
+        { typeof(Brigade.Net.Mise.PostgreSQL.SchemaAttribute) },
+        { typeof(Brigade.Net.Mise.MySQL.DatabaseAttribute) },
+        { typeof(Brigade.Net.Mise.MariaDb.DatabaseAttribute) }
     };
 
     public static TheoryData<string, string> IsolationCases => new()
@@ -44,13 +44,13 @@ public sealed class EngineBehaviorTests
         {
             "SqlServer",
             "Brigade.Net.Mise.SqlServer.SqlServerTable",
-            "[Brigade.Net.Mise.SqlServer.MiseSchema(\"audit\")]",
+            "[Brigade.Net.Mise.SqlServer.Schema(\"audit\")]",
             "[audit].[people]"
         },
         {
             "PostgreSQL",
             "Brigade.Net.Mise.PostgreSQL.PostgreSqlTable",
-            "[Brigade.Net.Mise.PostgreSQL.MiseSchema(\"audit\")]",
+            "[Brigade.Net.Mise.PostgreSQL.Schema(\"audit\")]",
             "\"audit\".\"people\""
         },
         {
@@ -62,13 +62,13 @@ public sealed class EngineBehaviorTests
         {
             "MySQL",
             "Brigade.Net.Mise.MySQL.MySqlTable",
-            "[Brigade.Net.Mise.MySQL.MiseDatabase(\"audit\")]",
+            "[Brigade.Net.Mise.MySQL.Database(\"audit\")]",
             "`audit`.`people`"
         },
         {
             "MariaDb",
             "Brigade.Net.Mise.MariaDb.MariaDbTable",
-            "[Brigade.Net.Mise.MariaDb.MiseDatabase(\"audit\")]",
+            "[Brigade.Net.Mise.MariaDb.Database(\"audit\")]",
             "`audit`.`people`"
         }
     };
@@ -102,7 +102,7 @@ public sealed class EngineBehaviorTests
         var source = $$"""
             using Brigade.Net.Mise.{{engine}};
             [{{tableAttribute}}("people")]
-            partial class Person;
+            static partial class Person;
             """;
 
         var result = GeneratorTestHost.Run(source, engine);
@@ -113,15 +113,14 @@ public sealed class EngineBehaviorTests
     }
 
     [Theory]
-    [InlineData("SqlServer", "SqlServerTable", "SqlServerRow", "]", "[select]]雪]", "[order]")]
-    [InlineData("PostgreSQL", "PostgreSqlTable", "PostgreSqlRow", "\"", "\"select\"\"雪\"", "\"order\"")]
-    [InlineData("SQLite", "SqliteTable", "SqliteRow", "\"", "\"select\"\"雪\"", "\"order\"")]
-    [InlineData("MySQL", "MySqlTable", "MySqlRow", "`", "`select``雪`", "`order`")]
-    [InlineData("MariaDb", "MariaDbTable", "MariaDbRow", "`", "`select``雪`", "`order`")]
+    [InlineData("SqlServer", "SqlServerTable", "]", "[select]]雪]", "[order]")]
+    [InlineData("PostgreSQL", "PostgreSqlTable", "\"", "\"select\"\"雪\"", "\"order\"")]
+    [InlineData("SQLite", "SqliteTable", "\"", "\"select\"\"雪\"", "\"order\"")]
+    [InlineData("MySQL", "MySqlTable", "`", "`select``雪`", "`order`")]
+    [InlineData("MariaDb", "MariaDbTable", "`", "`select``雪`", "`order`")]
     public void EachEngineBuildsAttributeUsableConstantsAndAliasedRelationships(
         string engine,
         string tableAttribute,
-        string rowAttribute,
         string quoteCharacter,
         string quotedTable,
         string quotedAlias
@@ -134,16 +133,14 @@ public sealed class EngineBehaviorTests
             using Brigade.Net.Mise.{{engine}};
 
             [{{tableAttribute}}("to")]
-            partial class Target { [MiseColumn("key")] public int Key { get; set; } }
+            static partial class Target { [Column("key")] private static int Key { get; } }
 
             [{{tableAttribute}}("{{tableName.Replace("\"", "\\\"")}}")]
-            [{{rowAttribute}}]
-            [MiseAlias("order"), MiseAlias("other")]
-            [MiseRelationship("Lookup", typeof(Target), "from", "key")]
-            partial class Source { [MiseColumn("from")] public int Key { get; set; } }
+            [Alias("order"), Alias("other")]
+            static partial class Source { [Column("from"), Relationship(Target.KeyCol)] private static int Key { get; } }
 
-            [ConstProbe(Source.Tbl.Table, Source.Tbl.Key, Source.Tbl.order.Table,
-                Source.Tbl.order.Key, Source.Tbl.order.Lookup, Source.Tbl.other.Lookup)]
+            [ConstProbe(Source.Table, Source.KeyCol, Source.order.Table,
+                Source.order.KeyCol, Source.order.KeyJoin, Source.other.KeyJoin)]
             partial class Probe;
 
             [AttributeUsage(AttributeTargets.Class)]
@@ -166,24 +163,40 @@ public sealed class EngineBehaviorTests
     }
 
     [Theory]
-    [InlineData("[MiseColumn(\"table\")] public int Table { get; set; }")]
-    [InlineData("[MiseColumn(\"id\")] public int Id { get; set; }", "[MiseAlias(\"Id\")]")]
-    [InlineData("[MiseColumn(\"id\")] public int Id { get; set; }", "[MiseAlias(\"Table\")]")]
-    [InlineData("[MiseColumn(\"id\")] public int Id { get; set; }", "[MiseAlias(\"a-b\"), MiseAlias(\"a_002Db\")]")]
-    [InlineData("public class Tbl;", "")]
+    [InlineData("[Column(\"table\")] public static int Table { get; }")]
+    [InlineData("public class Table;", "")]
     public void GeneratedTableMemberCollisionsAreDiagnosed(string member, string attribute = "")
     {
         var source = $$"""
             using Brigade.Net.Mise;
             [Brigade.Net.Mise.SqlServer.SqlServerTable("people")]
             {{attribute}}
-            partial class Person { {{member}} }
+            static partial class Person { {{member}} }
             """;
 
         var result = GeneratorTestHost.Run(source);
 
         Assert.Contains(result.Run.Diagnostics, diagnostic => diagnostic.Id == "MISE016");
         Assert.Empty(result.Run.Results.Single().GeneratedSources);
+    }
+
+    [Theory]
+    [InlineData("IdCol", "[Column(\"id\")] public static int Id { get; }")]
+    [InlineData("Table", "[Column(\"id\")] public static int Id { get; }")]
+    [InlineData("a_002Db", "[Column(\"id\")] public static int Id { get; }")]
+    public void AliasCollisionsUseCompilerDiagnostic(string alias, string member)
+    {
+        var source = $$"""
+            using Brigade.Net.Mise;
+            [Brigade.Net.Mise.SqlServer.SqlServerTable("people")]
+            [Alias("{{alias}}")]{{(alias == "a_002Db" ? "[Alias(\"a-b\")]" : "")}}
+            static partial class Person { {{member}} }
+            """;
+
+        var result = GeneratorTestHost.Run(source);
+
+        Assert.Empty(result.Run.Diagnostics);
+        Assert.Contains(result.CompilationDiagnostics, diagnostic => diagnostic.Id == "CS0102");
     }
 
     [Theory]
@@ -199,10 +212,10 @@ public sealed class EngineBehaviorTests
             using Brigade.Net.Mise;
             [{{tableAttribute}}("people")]
             {{qualifierAttribute}}
-            [MiseAlias("p")]
-            partial class Person
+            [Alias("p")]
+            static partial class Person
             {
-                [MiseColumn("id")] public int Id { get; set; }
+                [Column("id")] private static int Id { get; }
             }
             """;
 
@@ -229,7 +242,7 @@ public sealed class EngineBehaviorTests
         var source = $$"""
             [{{activeAttribute}}("people")]
             [{{otherAttribute}}("people")]
-            partial class Bad;
+            static partial class Bad;
             """;
 
         var otherEngine = EngineForAttribute(otherAttribute);
@@ -257,13 +270,13 @@ public sealed class EngineBehaviorTests
     {
         _ = qualifierAttribute;
         _ = expectedTable;
-        var rowAttribute = tableAttribute.Replace("Table", "Row", StringComparison.Ordinal);
+        var rowAttribute = tableAttribute[..tableAttribute.LastIndexOf('.')]+ ".Mise";
         var source = $$"""
             using Brigade.Net.Mise;
             [{{rowAttribute}}]
             partial class Person
             {
-                [MiseColumn("id")] public required int Id { get; init; }
+                [Column("id")] public required int Id { get; init; }
             }
             """;
 
@@ -289,7 +302,7 @@ public sealed class EngineBehaviorTests
         };
         Assert.Single(result.Run.Results[engineIndex].GeneratedSources);
         Assert.Contains(
-            "IMiseRow<Person>",
+            "IRow<Person>",
             result.Run.Results.SelectMany(generator => generator.GeneratedSources).Single().SourceText.ToString()
         );
         Assert.Equal(1, result.Run.Results.Count(generator => generator.GeneratedSources.Length == 1));
@@ -303,8 +316,8 @@ public sealed class EngineBehaviorTests
         string otherAttribute
     )
     {
-        var activeRow = activeAttribute.Replace("Table", "Row", StringComparison.Ordinal);
-        var otherRow = otherAttribute.Replace("Table", "Row", StringComparison.Ordinal);
+        var activeRow = activeAttribute[..activeAttribute.LastIndexOf('.')] + ".Mise";
+        var otherRow = otherAttribute[..otherAttribute.LastIndexOf('.')] + ".Mise";
         var source = $$"""
             [{{activeRow}}]
             [{{otherRow}}]
@@ -333,11 +346,11 @@ public sealed class EngineBehaviorTests
             "MySQL" => "Brigade.Net.Mise.MySQL.MySqlTable",
             _ => "Brigade.Net.Mise.MariaDb.MariaDbTable"
         };
-        var otherRowAttribute = otherTableAttribute.Replace("Table", "Row", StringComparison.Ordinal);
+        var otherRowAttribute = otherTableAttribute[..otherTableAttribute.LastIndexOf('.')] + ".Mise";
         var source = $$"""
             [{{tableAttribute}}("people")]
             [{{otherRowAttribute}}]
-            partial class Bad;
+            static partial class Bad;
             """;
 
         var result = GeneratorTestHost.RunWithEngines(source, tableEngine, EngineForAttribute(otherTableAttribute));
@@ -354,9 +367,9 @@ public sealed class EngineBehaviorTests
         const string source = """
             using Brigade.Net.Mise;
             [Brigade.Net.Mise.SqlServer.SqlServerTable("people")]
-            partial class SqlPerson { [MiseColumn("id")] public int Id { get; set; } }
+            static partial class SqlPerson { [Column("id")] private static int Id { get; } }
             [Brigade.Net.Mise.PostgreSQL.PostgreSqlTable("people")]
-            partial class PgPerson { [MiseColumn("id")] public int Id { get; set; } }
+            static partial class PgPerson { [Column("id")] private static int Id { get; } }
             """;
 
         var result = GeneratorTestHost.CompileWithEngines(source, "SqlServer", "PostgreSQL");
@@ -379,7 +392,7 @@ public sealed class EngineBehaviorTests
     {
         var source = $$"""
             [{{otherTableAttribute}}("people")]
-            partial class Person;
+            static partial class Person;
             """;
 
         var result = GeneratorTestHost.Run(source, engineName);

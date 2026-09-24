@@ -1,3 +1,4 @@
+using System.Globalization;
 using Brigade.Net.Core.Results;
 using Brigade.Net.Example.Domain.Orders;
 using Brigade.Net.Partie;
@@ -52,7 +53,7 @@ public sealed class TraceOrderRequestPartie<TRequest, TResult> :
         finally
         {
             scope.Events.Add("after");
-            context.Response.Headers["X-Order-Lookups"] = scope.OrderLookups.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            context.Response.Headers["X-Order-Lookups"] = scope.OrderLookups.ToString(CultureInfo.InvariantCulture);
             context.Response.Headers["X-Order-Flow"] = string.Join(";", scope.Events);
         }
     }

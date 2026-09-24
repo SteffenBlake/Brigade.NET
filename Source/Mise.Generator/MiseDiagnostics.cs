@@ -7,7 +7,7 @@ public static class MiseDiagnostics
     private const string Category = "Mise";
 
     public static readonly DiagnosticDescriptor InvalidIdentifier = Error("MISE001", "Invalid database identifier", "{0} must not be null, empty, or whitespace");
-    public static readonly DiagnosticDescriptor MissingColumn = Error("MISE002", "Mapped property has no column", "Mapped property '{0}' must have MiseColumnAttribute");
+    public static readonly DiagnosticDescriptor MissingColumn = Error("MISE002", "Mapped property has no column", "Mapped property '{0}' must have ColumnAttribute");
     public static readonly DiagnosticDescriptor DuplicateIdentifier = Error("MISE003", "Duplicate database identifier", "{0} identifier '{1}' is duplicated");
     public static readonly DiagnosticDescriptor InvalidKey = Error("MISE004", "Invalid primary key", "Primary-key position for '{0}' must be non-negative and unique");
     public static readonly DiagnosticDescriptor ContradictoryMetadata = Error("MISE005", "Contradictory mapping metadata", "Mapped property '{0}' cannot be both database-generated and computed");
@@ -23,6 +23,7 @@ public static class MiseDiagnostics
     public static readonly DiagnosticDescriptor MismatchedEngineRow = Error("MISE015", "Table and row engine mismatch", "Mapped target '{0}' must use table and row attributes from the same database engine");
     public static readonly DiagnosticDescriptor GeneratedMemberCollision = Error("MISE016", "Generated member name collision", "Generated member name '{0}' collides within Tbl");
     public static readonly DiagnosticDescriptor UnsupportedJoin = Error("MISE017", "Unsupported database join", "{0} does not support {1}");
+    public static readonly DiagnosticDescriptor StaticTableRequired = Error("MISE018", "Table must be static", "Table target '{0}' must be a static partial class");
 
     private static DiagnosticDescriptor Error(string id, string title, string message)
     {

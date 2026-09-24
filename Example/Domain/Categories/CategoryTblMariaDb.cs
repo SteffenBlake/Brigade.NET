@@ -4,16 +4,16 @@ using Brigade.Net.Mise.MariaDb;
 namespace Brigade.Net.Example.Domain.Categories;
 
 [MariaDbTable("categories")]
-[MiseAlias("Row")]
-public partial class CategoryTblMariaDb
+[Alias("Row")]
+public static partial class CategoryTblMariaDb
 {
-    [MiseColumn("id")]
-    public int Id { get; set; }
+    [Column("id")]
+    private static int Id { get; }
 
-    [MiseColumn("parent_id")]
-    public int? ParentId { get; set; }
+    [Column("parent_id")]
+    private static int? ParentId { get; }
 
-    [MiseColumn("label")]
-    public string Label { get; set; } = string.Empty;
+    [Column("label")]
+    private static string Label => string.Empty;
 
 }

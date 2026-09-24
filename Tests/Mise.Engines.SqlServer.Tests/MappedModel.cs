@@ -1,4 +1,4 @@
 namespace Mise.PackageFixture;
 
 [Brigade.Net.Mise.SqlServer.SqlServerTable("mapped")]
-internal partial class MappedModel;
+internal static partial class MappedModel;

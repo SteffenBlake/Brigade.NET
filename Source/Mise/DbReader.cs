@@ -14,9 +14,9 @@ namespace Brigade.Net.Mise;
 /// </remarks>
 /// <param name="config">Configuration for an owned connection.</param>
 /// <param name="connection">An existing caller-owned connection.</param>
-public class DbReader(IMiseConfig? config = null, DbConnection? connection = null) : IAsyncDisposable
+public class DbReader(IDbConfig? config = null, DbConnection? connection = null) : IAsyncDisposable
 {
-    private readonly IMiseConfig? _config = Validate(config, connection);
+    private readonly IDbConfig? _config = Validate(config, connection);
     private DbConnection? _connection = connection;
     private int _active;
     private bool _disposed;
@@ -26,7 +26,7 @@ public class DbReader(IMiseConfig? config = null, DbConnection? connection = nul
         IQueryBuilder query,
         CancellationToken cancellationToken = default
     )
-        where T : IMiseRow<T>
+        where T : IRow<T>
     {
         Enter();
         try
@@ -53,7 +53,7 @@ public class DbReader(IMiseConfig? config = null, DbConnection? connection = nul
         IQueryBuilder query,
         [EnumeratorCancellation] CancellationToken cancellationToken = default
     )
-        where T : IMiseRow<T>
+        where T : IRow<T>
     {
         Enter();
         try
@@ -78,7 +78,7 @@ public class DbReader(IMiseConfig? config = null, DbConnection? connection = nul
         IQueryBuilder query,
         CancellationToken cancellationToken = default
     )
-        where T : IMiseRow<T>
+        where T : IRow<T>
     {
         Enter();
         try
@@ -189,7 +189,7 @@ public class DbReader(IMiseConfig? config = null, DbConnection? connection = nul
                 var parameter = _config is null
                     ? command.CreateParameter()
                     : _config.ProviderFactory.CreateParameter()
-                        ?? throw new MiseInvalidMappingException(GetType(), "provider returned no parameter");
+                        ?? throw new InvalidMappingException(GetType(), "provider returned no parameter");
                 parameter.ParameterName = specification.Name;
                 parameter.Value = specification.Value ?? DBNull.Value;
                 if (specification.DbType is DbType dbType)
@@ -237,7 +237,7 @@ public class DbReader(IMiseConfig? config = null, DbConnection? connection = nul
         if (_connection is null)
         {
             _connection = _config!.ProviderFactory.CreateConnection()
-                ?? throw new MiseInvalidMappingException(GetType(), "provider returned no connection");
+                ?? throw new InvalidMappingException(GetType(), "provider returned no connection");
             _connection.ConnectionString = _config.ConnectionString;
         }
         if (_connection.State == ConnectionState.Closed)
@@ -247,7 +247,7 @@ public class DbReader(IMiseConfig? config = null, DbConnection? connection = nul
         return _connection;
     }
 
-    private static IMiseConfig? Validate(IMiseConfig? config, DbConnection? connection)
+    private static IDbConfig? Validate(IDbConfig? config, DbConnection? connection)
     {
         if ((config is null) == (connection is null))
         {

@@ -3,7 +3,7 @@ using Brigade.Net.Mise;
 
 namespace Brigade.Net.Mise.Tests;
 
-internal sealed record TestRow(int Id, string? Name) : IMiseRow<TestRow>
+internal sealed record TestRow(int Id, string? Name) : IRow<TestRow>
 {
     public static int BindCount { get; set; }
 

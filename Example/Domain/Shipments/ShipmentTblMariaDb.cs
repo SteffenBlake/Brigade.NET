@@ -4,16 +4,16 @@ using Brigade.Net.Mise.MariaDb;
 namespace Brigade.Net.Example.Domain.Shipments;
 
 [MariaDbTable("shipments")]
-[MiseAlias("Row")]
-public partial class ShipmentTblMariaDb
+[Alias("Row")]
+public static partial class ShipmentTblMariaDb
 {
-    [MiseColumn("id")]
-    public int Id { get; set; }
+    [Column("id")]
+    private static int Id { get; }
 
-    [MiseColumn("order_id")]
-    public int OrderId { get; set; }
+    [Column("purchase_id")]
+    private static int PurchaseId { get; }
 
-    [MiseColumn("delivered_at")]
-    public string? DeliveredAt { get; set; }
+    [Column("delivered_at")]
+    private static string? DeliveredAt { get; }
 
 }

@@ -10,10 +10,10 @@ public sealed class MiseEngineGenerator : IIncrementalGenerator
     private static readonly MiseEngineOptions Engine = new(
         "SqlServer",
         "Brigade.Net.Mise.SqlServer.SqlServerTableAttribute",
-        "Brigade.Net.Mise.SqlServer.SqlServerRowAttribute",
+        "Brigade.Net.Mise.SqlServer.MiseAttribute",
         StringComparer.OrdinalIgnoreCase,
         identifier => "[" + identifier.Replace("]", "]]") + "]",
-        "Brigade.Net.Mise.SqlServer.MiseSchemaAttribute",
+        "Brigade.Net.Mise.SqlServer.SchemaAttribute",
         ordinalNamesIgnoreCase: true
     );
 

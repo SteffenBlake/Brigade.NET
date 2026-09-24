@@ -76,12 +76,12 @@ public sealed class QueryApiDialectTests
     [InlineData("MariaDB", false)]
     public void FullJoinUsesCapability(string engine, bool supported)
     {
-        const string relationship = "orders ON orders.user_id = users.id";
+        const string relationship = "purchases ON purchases.user_id = users.id";
         var query = new QueryBuilder(GetDialect(engine)).Select($"users.id").From($"users").FullJoin($"{relationship:raw}");
 
         if (supported)
         {
-            Assert.Contains(" FULL JOIN orders ON orders.user_id = users.id", query.Compile().Text);
+            Assert.Contains(" FULL JOIN purchases ON purchases.user_id = users.id", query.Compile().Text);
         }
         else
         {
@@ -97,7 +97,7 @@ public sealed class QueryApiDialectTests
     [InlineData("MariaDB")]
     public void OneRelationshipConstantWorksForEverySupportedJoin(string engine)
     {
-        const string relationship = "orders ON orders.user_id = users.id";
+        const string relationship = "purchases ON purchases.user_id = users.id";
         var dialect = GetDialect(engine);
         var kinds = new[] { "INNER JOIN", "LEFT JOIN", "RIGHT JOIN", "FULL JOIN" };
         foreach (var kind in kinds)
@@ -127,7 +127,7 @@ public sealed class QueryApiDialectTests
     public void JoinRuntimeValueUsesParameterInSqlOrder(string engine)
     {
         var kind = "x' OR 1=1 --";
-        FormattableString join = $"orders ON orders.user_id = users.id AND orders.kind = {kind}";
+        FormattableString join = $"purchases ON purchases.user_id = users.id AND purchases.kind = {kind}";
         var query = new QueryBuilder(GetDialect(engine))
             .Where($"users.id = {9}")
             .InnerJoin(join)
@@ -137,7 +137,7 @@ public sealed class QueryApiDialectTests
         var sql = query.Compile();
 
         Assert.Equal(
-            "SELECT @p0 AS marker FROM users INNER JOIN orders ON orders.user_id = users.id AND orders.kind = @p1 WHERE users.id = @p2",
+            "SELECT @p0 AS marker FROM users INNER JOIN purchases ON purchases.user_id = users.id AND purchases.kind = @p1 WHERE users.id = @p2",
             sql.Text
         );
         Assert.Equal([7, kind, 9], sql.Parameters.Select(parameter => parameter.Value).ToArray());
@@ -306,7 +306,7 @@ public sealed class QueryApiDialectTests
     [Fact]
     public void ParameterTypeHintsAndProcedureParametersSurviveCompilation()
     {
-        var typed = new MiseParameter("ignored", null, DbType.Int32);
+        var typed = new SqlParameterSpec("ignored", null, DbType.Int32);
         var query = new QueryBuilder().Select($"{typed}").Compile();
         var procedure = new CommandBuilder().Procedure("save_person")
             .ProcedureParameter("@id", null, DbType.Int32).Compile();
@@ -316,7 +316,7 @@ public sealed class QueryApiDialectTests
         Assert.Null(query.Parameters[0].Value);
         Assert.Equal(DbType.Int32, query.Parameters[0].DbType);
         Assert.Equal(CommandType.StoredProcedure, procedure.CommandType);
-        Assert.Equal(new MiseParameter("@id", null, DbType.Int32), procedure.Parameters[0]);
+        Assert.Equal(new SqlParameterSpec("@id", null, DbType.Int32), procedure.Parameters[0]);
     }
 
     [Fact]
@@ -347,7 +347,7 @@ public sealed class QueryApiDialectTests
     public void PermutedFluentCallsCompileTheSameSql()
     {
         const string table = "users";
-        const string relationship = "orders ON orders.user_id = users.id";
+        const string relationship = "purchases ON purchases.user_id = users.id";
         var first = new QueryBuilder().From($"{table:raw}").Where($"id > {1}")
             .Select($"{2} AS rank").InnerJoin($"{relationship:raw}").Select($"name")
             .GroupBy($"name").OrderBy($"name");
@@ -362,12 +362,12 @@ public sealed class QueryApiDialectTests
     [Fact]
     public void CrossJoinAndAliasRelationshipKeepExpectedSql()
     {
-        const string relationship = "orders ON orders.user_id = u.id";
+        const string relationship = "purchases ON purchases.user_id = u.id";
         const string other = "teams";
         var query = new QueryBuilder().Select($"u.id").From($"users AS u")
             .LeftJoin($"{relationship:raw}").CrossJoin($"{other:raw}");
 
-        Assert.Equal("SELECT u.id FROM users AS u LEFT JOIN orders ON orders.user_id = u.id CROSS JOIN teams", query.Compile().Text);
+        Assert.Equal("SELECT u.id FROM users AS u LEFT JOIN purchases ON purchases.user_id = u.id CROSS JOIN teams", query.Compile().Text);
         Assert.Throws<ArgumentException>(() => new QueryBuilder().Select($"1").From($"users").CrossJoin($"{relationship:raw}").Compile());
         Assert.Throws<ArgumentException>(() => new QueryBuilder().Select($"1").From($"users").InnerJoin($"{other:raw}").Compile());
         Assert.Throws<ArgumentException>(() => new QueryBuilder().Select($"1").From($"users").InnerJoin($"   ").Compile());
@@ -421,6 +421,53 @@ public sealed class QueryApiDialectTests
         Assert.Equal("INSERT INTO people VALUES (@p0) RETURNING \"id\"", sqlite.Text);
         Assert.Equal("INSERT INTO people VALUES (@p0) RETURNING `id`", mariaDb.Text);
         Assert.Equal("SELECT LAST_INSERT_ID()", MySqlQueryBuilder.LastInsertId().Compile().Text);
+    }
+
+    [Theory]
+    [InlineData("MySQL")]
+    [InlineData("MariaDB")]
+    public void LimitWithoutOffsetUsesOnlyLimit(string engine)
+    {
+        var query = new QueryBuilder(GetDialect(engine)).Select($"1").Limit(3);
+        Assert.EndsWith(" LIMIT 3", query.Compile().Text);
+    }
+
+    [Fact]
+    public void EngineReturningRejectsUnsupportedWriteKinds()
+    {
+        Assert.Throws<InvalidOperationException>(() => new MariaDbCommandBuilder()
+            .Returning("id").Update($"people").Set($"name = {"updated"}").Compile());
+        Assert.Throws<InvalidOperationException>(() => new SqlServerCommandBuilder()
+            .OutputInserted("id").DeleteFrom($"people").Compile());
+        Assert.Throws<InvalidOperationException>(() => new PostgreSqlCommandBuilder()
+            .Returning("id").Sql($"TRUNCATE TABLE people").Compile());
+    }
+
+    [Fact]
+    public void EngineReturningAcceptsItsSupportedWriteKindsAndRejectsDuplicates()
+    {
+        var mariaDb = new MariaDbCommandBuilder().Returning("id");
+        Assert.EndsWith(" RETURNING `id`", mariaDb.DeleteFrom($"people").Compile().Text);
+        Assert.Throws<InvalidOperationException>(() => mariaDb.Returning("name"));
+        Assert.Throws<InvalidOperationException>(() => new MariaDbCommandBuilder().Returning());
+
+        var postgreSql = new PostgreSqlCommandBuilder().Returning("id")
+            .Update($"people").Set($"name = {"updated"}").Compile();
+        Assert.EndsWith(" RETURNING \"id\"", postgreSql.Text);
+        Assert.EndsWith(" RETURNING \"id\"", new PostgreSqlCommandBuilder()
+            .Returning("id").DeleteFrom($"people").Compile().Text);
+        Assert.DoesNotContain("RETURNING", new PostgreSqlCommandBuilder()
+            .DeleteFrom($"people").Compile().Text);
+
+        var sqlServer = new SqlServerCommandBuilder().OutputInserted("id")
+            .Update($"people").Set($"name = {"updated"}").Compile();
+        Assert.Contains("OUTPUT INSERTED.[id]", sqlServer.Text);
+    }
+
+    [Fact]
+    public void SqlServerQueryWithoutRecursionHintHasNoTrailingOption()
+    {
+        Assert.Equal("SELECT 1", new SqlServerQueryBuilder().Select($"1").Compile().Text);
     }
 
     [Fact]

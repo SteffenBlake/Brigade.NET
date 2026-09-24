@@ -17,9 +17,9 @@ public sealed class AccountUpdateMariaDbV1Handler : ICommandHandler<AccountUpdat
         CancellationToken ct)
     {
         var sql = new MariaDbCommandBuilder()
-            .Update($"{AccountTblMariaDb.Tbl.Table:raw}")
+            .Update($"{AccountTblMariaDb.Table:raw}")
             .Set($"note = {command.Note}")
-            .Where($"{AccountTblMariaDb.Tbl.Id:raw} = {command.Id}");
+            .Where($"{AccountTblMariaDb.IdCol:raw} = {command.Id}");
         return ctx.Writer.ExecuteAsync(sql, ct);
     }
 }

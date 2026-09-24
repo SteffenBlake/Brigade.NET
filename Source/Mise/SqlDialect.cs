@@ -1,3 +1,4 @@
+using System.Text;
 namespace Brigade.Net.Mise;
 
 /// <summary>Defines engine SQL syntax used while compiling Mise builders.</summary>
@@ -23,7 +24,7 @@ public abstract class SqlDialect
 
     /// <summary>Appends paging syntax after ORDER BY.</summary>
     public virtual void AppendPaging(
-        System.Text.StringBuilder text,
+        StringBuilder text,
         int? limit,
         int? offset
     )

@@ -10,10 +10,10 @@ public sealed class MiseEngineGenerator : IIncrementalGenerator
     private static readonly MiseEngineOptions Engine = new(
         "PostgreSQL",
         "Brigade.Net.Mise.PostgreSQL.PostgreSqlTableAttribute",
-        "Brigade.Net.Mise.PostgreSQL.PostgreSqlRowAttribute",
+        "Brigade.Net.Mise.PostgreSQL.MiseAttribute",
         StringComparer.Ordinal,
         identifier => "\"" + identifier.Replace("\"", "\"\"") + "\"",
-        "Brigade.Net.Mise.PostgreSQL.MiseSchemaAttribute"
+        "Brigade.Net.Mise.PostgreSQL.SchemaAttribute"
     );
 
     public void Initialize(IncrementalGeneratorInitializationContext context)

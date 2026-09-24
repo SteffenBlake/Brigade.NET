@@ -1,3 +1,4 @@
+using System.Globalization;
 namespace Brigade.Net.Mise.SqlServer;
 
 /// <summary>A SQL Server read builder with engine-specific query hints.</summary>
@@ -18,6 +19,6 @@ public sealed class SqlServerQueryBuilder() : QueryBuilder(new SqlServerDialect(
 
     /// <inheritdoc />
     protected override string? TrailingSql() => _maxRecursion is int count
-        ? "OPTION (MAXRECURSION " + count.ToString(System.Globalization.CultureInfo.InvariantCulture) + ")"
+        ? "OPTION (MAXRECURSION " + count.ToString(CultureInfo.InvariantCulture) + ")"
         : null;
 }

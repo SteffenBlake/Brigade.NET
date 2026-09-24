@@ -17,9 +17,9 @@ public sealed class AccountUpdateMySqlV1Handler : ICommandHandler<AccountUpdateM
         CancellationToken ct)
     {
         var sql = new MySqlCommandBuilder()
-            .Update($"{AccountTblMySql.Tbl.Table:raw}")
+            .Update($"{AccountTblMySql.Table:raw}")
             .Set($"note = {command.Note}")
-            .Where($"{AccountTblMySql.Tbl.Id:raw} = {command.Id}");
+            .Where($"{AccountTblMySql.IdCol:raw} = {command.Id}");
         return ctx.Writer.ExecuteAsync(sql, ct);
     }
 }

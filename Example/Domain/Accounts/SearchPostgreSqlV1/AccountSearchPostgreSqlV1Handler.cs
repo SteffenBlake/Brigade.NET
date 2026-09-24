@@ -2,37 +2,37 @@ using Brigade.Net.Core.Results;
 using Brigade.Net.Mise;
 using Brigade.Net.Mise.PostgreSQL;
 using Brigade.Net.Partie;
-using Brigade.Net.Example.Domain.Orders;
+using Brigade.Net.Example.Domain.Purchases;
 using Brigade.Net.Example.Domain.Shipments;
 
 namespace Brigade.Net.Example.Domain.Accounts.SearchPostgreSqlV1;
 
 public sealed record AccountSearchPostgreSqlV1Context([Provide] DbReader Reader);
 
-public sealed class AccountSearchPostgreSqlV1Handler : IQueryHandler<AccountSearchPostgreSqlV1Query, IReadOnlyList<AccountTblPostgreSql>, AccountSearchPostgreSqlV1Context>
+public sealed class AccountSearchPostgreSqlV1Handler : IQueryHandler<Unit, IReadOnlyList<AccountSearchPostgreSqlV1Result>, AccountSearchPostgreSqlV1Context>
 {
-    public static Task<Result<IReadOnlyList<AccountTblPostgreSql>>> RunAsync(
+    public static Task<Result<IReadOnlyList<AccountSearchPostgreSqlV1Result>>> RunAsync(
         AccountSearchPostgreSqlV1Context ctx,
-        AccountSearchPostgreSqlV1Query request,
+        Unit request,
         CancellationToken ct)
     {
         var query = new PostgreSqlQueryBuilder()
-            .Select($"{AccountTblPostgreSql.Tbl.BuyerAlias.Id:raw}")
-            .Select($"{AccountTblPostgreSql.Tbl.BuyerAlias.Name:raw}")
-            .Select($"{AccountTblPostgreSql.Tbl.BuyerAlias.Note:raw}")
-            .Select($"{AccountTblPostgreSql.Tbl.BuyerAlias.ParentId:raw}")
-            .Select($"{AccountTblPostgreSql.Tbl.BuyerAlias.Group:raw}")
-            .From($"{OrderTblPostgreSql.Tbl.OrderAlias.Table:raw}")
-            .RightJoin($"{AccountTblPostgreSql.Tbl.BuyerAlias.Table:raw} ON {AccountTblPostgreSql.Tbl.BuyerAlias.Id:raw} = {OrderTblPostgreSql.Tbl.OrderAlias.BuyerId:raw}")
-            .LeftJoin($"{AccountTblPostgreSql.Tbl.SellerAlias.Table:raw} ON {AccountTblPostgreSql.Tbl.SellerAlias.Id:raw} = {OrderTblPostgreSql.Tbl.OrderAlias.SellerId:raw}")
-            .FullJoin($"{ShipmentTblPostgreSql.Tbl.Table:raw} ON {ShipmentTblPostgreSql.Tbl.OrderId:raw} = {OrderTblPostgreSql.Tbl.OrderAlias.Id:raw}")
-            .Where($"{AccountTblPostgreSql.Tbl.BuyerAlias.Id:raw} IS NOT NULL")
-            .GroupBy($"{AccountTblPostgreSql.Tbl.BuyerAlias.Id:raw}")
-            .GroupBy($"{AccountTblPostgreSql.Tbl.BuyerAlias.Name:raw}")
-            .GroupBy($"{AccountTblPostgreSql.Tbl.BuyerAlias.Note:raw}")
-            .GroupBy($"{AccountTblPostgreSql.Tbl.BuyerAlias.ParentId:raw}")
-            .GroupBy($"{AccountTblPostgreSql.Tbl.BuyerAlias.Group:raw}")
-            .OrderBy($"{AccountTblPostgreSql.Tbl.BuyerAlias.Id:raw}");
-        return ctx.Reader.ListAsync<AccountTblPostgreSql>(query, ct);
+            .Select($"{AccountTblPostgreSql.Buyer.IdCol:raw}")
+            .Select($"{AccountTblPostgreSql.Buyer.NameCol:raw}")
+            .Select($"{AccountTblPostgreSql.Buyer.NoteCol:raw}")
+            .Select($"{AccountTblPostgreSql.Buyer.ParentIdCol:raw}")
+            .Select($"{AccountTblPostgreSql.Buyer.GroupCol:raw}")
+            .From($"{PurchaseTblPostgreSql.Purchase.Table:raw}")
+            .RightJoin($"{AccountTblPostgreSql.Buyer.Table:raw} ON {AccountTblPostgreSql.Buyer.IdCol:raw} = {PurchaseTblPostgreSql.Purchase.BuyerIdCol:raw}")
+            .LeftJoin($"{AccountTblPostgreSql.Seller.Table:raw} ON {AccountTblPostgreSql.Seller.IdCol:raw} = {PurchaseTblPostgreSql.Purchase.SellerIdCol:raw}")
+            .FullJoin($"{ShipmentTblPostgreSql.Table:raw} ON {ShipmentTblPostgreSql.PurchaseIdCol:raw} = {PurchaseTblPostgreSql.Purchase.IdCol:raw}")
+            .Where($"{AccountTblPostgreSql.Buyer.IdCol:raw} IS NOT NULL")
+            .GroupBy($"{AccountTblPostgreSql.Buyer.IdCol:raw}")
+            .GroupBy($"{AccountTblPostgreSql.Buyer.NameCol:raw}")
+            .GroupBy($"{AccountTblPostgreSql.Buyer.NoteCol:raw}")
+            .GroupBy($"{AccountTblPostgreSql.Buyer.ParentIdCol:raw}")
+            .GroupBy($"{AccountTblPostgreSql.Buyer.GroupCol:raw}")
+            .OrderBy($"{AccountTblPostgreSql.Buyer.IdCol:raw}");
+        return ctx.Reader.ListAsync<AccountSearchPostgreSqlV1Result>(query, ct);
     }
 }

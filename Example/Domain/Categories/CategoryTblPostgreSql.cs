@@ -4,16 +4,16 @@ using Brigade.Net.Mise.PostgreSQL;
 namespace Brigade.Net.Example.Domain.Categories;
 
 [PostgreSqlTable("categories")]
-[MiseAlias("Row")]
-public partial class CategoryTblPostgreSql
+[Alias("Row")]
+public static partial class CategoryTblPostgreSql
 {
-    [MiseColumn("id")]
-    public int Id { get; set; }
+    [Column("id")]
+    private static int Id { get; }
 
-    [MiseColumn("parent_id")]
-    public int? ParentId { get; set; }
+    [Column("parent_id")]
+    private static int? ParentId { get; }
 
-    [MiseColumn("label")]
-    public string Label { get; set; } = string.Empty;
+    [Column("label")]
+    private static string Label => string.Empty;
 
 }

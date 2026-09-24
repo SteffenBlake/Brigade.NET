@@ -25,13 +25,13 @@ public sealed class MiseRouteTests
             [BrigadeGroup("/items")]
             public static partial class Routes
             {
-                [MiseConfigProvider("Sqlite")]
-                [MiseReaderProvider]
+                [DbConfigProvider("Sqlite")]
+                [DbReaderProvider]
                 [ReadHandlerRoute.Get("/sqlite")]
                 static partial void Sqlite();
 
-                [MiseConfigProvider("PostgreSql")]
-                [MiseReaderProvider]
+                [DbConfigProvider("PostgreSql")]
+                [DbReaderProvider]
                 [ReadHandlerRoute.Get("/postgres")]
                 static partial void PostgreSql();
             }
@@ -40,7 +40,7 @@ public sealed class MiseRouteTests
         );
         Assert.Contains("Sqlite", generated);
         Assert.Contains("PostgreSql", generated);
-        Assert.Contains("MiseReaderProvider", generated);
+        Assert.Contains("DbReaderProvider", generated);
     }
 
     [Fact]
@@ -66,15 +66,15 @@ public sealed class MiseRouteTests
                 [BrigadeGroup("/writes")]
                 private static partial class Writes
                 {
-                    [MiseConfigProvider("Sqlite")]
-                    [MiseTransactionProvider]
-                    [MiseWriterProvider]
+                    [DbConfigProvider("Sqlite")]
+                    [DbWriterTxnProvider]
+                    [DbWriterProvider]
                     [WriteHandlerRoute.Post("/sqlite")]
                     static partial void Sqlite();
 
-                    [MiseConfigProvider("PostgreSql")]
-                    [MiseTransactionProvider]
-                    [MiseWriterProvider]
+                    [DbConfigProvider("PostgreSql")]
+                    [DbWriterTxnProvider]
+                    [DbWriterProvider]
                     [WriteHandlerRoute.Post("/postgres")]
                     static partial void PostgreSql();
                 }
@@ -82,13 +82,13 @@ public sealed class MiseRouteTests
             """,
             MiseReferences()
         );
-        Assert.Contains("MiseTransactionProvider", generated);
-        Assert.Contains("MiseWriterProvider", generated);
+        Assert.Contains("DbWriterTxnProvider", generated);
+        Assert.Contains("DbWriterProvider", generated);
     }
 
     private static MetadataReference[] MiseReferences() =>
     [
         MetadataReference.CreateFromFile(typeof(DbReader).Assembly.Location),
-        MetadataReference.CreateFromFile(typeof(MiseReaderProvider<,>).Assembly.Location)
+        MetadataReference.CreateFromFile(typeof(DbReaderProvider<,>).Assembly.Location)
     ];
 }

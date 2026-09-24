@@ -39,7 +39,7 @@ public sealed class PackageFixtureTests
                 "MariaDb" => "MariaDbTable",
                 _ => throw new ArgumentOutOfRangeException(nameof(projectSuffix))
             };
-            var rowAttribute = tableAttribute.Replace("Table", "Row", StringComparison.Ordinal);
+            const string rowAttribute = "Mise";
 
             File.WriteAllText(Path.Combine(fixtureRoot, "Fixture.csproj"), $$"""
                 <Project Sdk="Microsoft.NET.Sdk">
@@ -64,15 +64,21 @@ public sealed class PackageFixtureTests
                 namespace Mise.PackageFixture;
 
                 [{{tableAttribute}}("mapped")]
-                [{{rowAttribute}}]
-                internal partial class MappedModel
+                internal static partial class MappedModel
                 {
-                    [MiseColumn("id")] public required int Id { get; init; }
+                    [Column("id")] private static int Id { get; }
+                }
+
+                [{{rowAttribute}}]
+                internal sealed partial record MappedResult
+                {
+                    [Column("id")] public required int Id { get; init; }
                 }
 
                 internal static class Program
                 {
-                    private static int Main() => MappedModel.Tbl.Table.Length > 0 ? 0 : 1;
+                    private static int Main() => MappedModel.Table.Length > 0
+                        && typeof(IRow<MappedResult>).IsAssignableFrom(typeof(MappedResult)) ? 0 : 1;
                 }
                 """);
 
@@ -122,29 +128,29 @@ public sealed class PackageFixtureTests
                 namespace Mise.PackageFixture;
 
                 [Brigade.Net.Mise.SqlServer.SqlServerTable("sql_people")]
-                internal partial class SqlPerson;
+                internal static partial class SqlPerson;
 
                 [Brigade.Net.Mise.PostgreSQL.PostgreSqlTable("pg_people")]
-                internal partial class PgPerson;
+                internal static partial class PgPerson;
 
-                [Brigade.Net.Mise.SqlServer.SqlServerRow]
+                [Brigade.Net.Mise.SqlServer.Mise]
                 internal partial class SqlResult
                 {
-                    [Brigade.Net.Mise.MiseColumn("id")] public required int Id { get; init; }
+                    [Brigade.Net.Mise.Column("id")] public required int Id { get; init; }
                 }
 
-                [Brigade.Net.Mise.PostgreSQL.PostgreSqlRow]
+                [Brigade.Net.Mise.PostgreSQL.Mise]
                 internal partial class PgResult
                 {
-                    [Brigade.Net.Mise.MiseColumn("id")] public required int Id { get; init; }
+                    [Brigade.Net.Mise.Column("id")] public required int Id { get; init; }
                 }
 
                 internal static class Program
                 {
                     private static int Main()
                     {
-                        return SqlPerson.Tbl.Table == "[sql_people]"
-                            && PgPerson.Tbl.Table == "\"pg_people\"" ? 0 : 1;
+                        return SqlPerson.Table == "[sql_people]"
+                            && PgPerson.Table == "\"pg_people\"" ? 0 : 1;
                     }
                 }
                 """);

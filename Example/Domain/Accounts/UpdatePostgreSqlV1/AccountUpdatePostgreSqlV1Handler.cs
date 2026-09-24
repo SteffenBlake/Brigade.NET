@@ -17,9 +17,9 @@ public sealed class AccountUpdatePostgreSqlV1Handler : ICommandHandler<AccountUp
         CancellationToken ct)
     {
         var sql = new PostgreSqlCommandBuilder()
-            .Update($"{AccountTblPostgreSql.Tbl.Table:raw}")
+            .Update($"{AccountTblPostgreSql.Table:raw}")
             .Set($"note = {command.Note}")
-            .Where($"{AccountTblPostgreSql.Tbl.Id:raw} = {command.Id}");
+            .Where($"{AccountTblPostgreSql.IdCol:raw} = {command.Id}");
         return ctx.Writer.ExecuteAsync(sql, ct);
     }
 }

@@ -21,7 +21,7 @@ public sealed class RoutePolicyTests(AppHostFixture host)
     [InlineData("d", "Authorization", "X-Fake")]
     public async Task ProtectedEndpoint_RequiresItsOwnHeader(string endpoint, string header, string wrongHeader)
     {
-        var path = "/api/v1/orders/policy-test/" + endpoint;
+        var path = "/api/v1/policy-test/" + endpoint;
         using var missing = await host.WebClient.GetAsync(path);
         Assert.Equal(HttpStatusCode.Unauthorized, missing.StatusCode);
 

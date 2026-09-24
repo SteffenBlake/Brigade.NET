@@ -10,10 +10,10 @@ public sealed class MiseEngineGenerator : IIncrementalGenerator
     private static readonly MiseEngineOptions Engine = new(
         "MySQL",
         "Brigade.Net.Mise.MySQL.MySqlTableAttribute",
-        "Brigade.Net.Mise.MySQL.MySqlRowAttribute",
+        "Brigade.Net.Mise.MySQL.MiseAttribute",
         StringComparer.OrdinalIgnoreCase,
         identifier => "`" + identifier.Replace("`", "``") + "`",
-        "Brigade.Net.Mise.MySQL.MiseDatabaseAttribute",
+        "Brigade.Net.Mise.MySQL.DatabaseAttribute",
         ordinalNamesIgnoreCase: true
     );
 

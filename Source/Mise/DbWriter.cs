@@ -16,26 +16,26 @@ namespace Brigade.Net.Mise;
 /// <param name="connection">An existing caller-owned connection.</param>
 /// <param name="transaction">An existing transaction whose ownership transfers to the returned adapter.</param>
 public class DbWriter(
-    IMiseConfig? config = null,
+    IDbConfig? config = null,
     DbConnection? connection = null,
     DbTransaction? transaction = null
 ) : DbReader(config, ResolveConnection(config, connection, transaction))
 {
-    private MiseTxnAdapter? _adapter;
+    private DbTxnAdapter? _adapter;
 
     internal void BeginTransactionOperation() => Enter();
 
     internal void EndTransactionOperation() => Exit();
 
     /// <summary>Gets one lazy transaction adapter for this writer. A UnitOfWork owns and disposes it.</summary>
-    public ITxn Transaction => _adapter ??= new MiseTxnAdapter(this, transaction);
+    public ITxn Transaction => _adapter ??= new DbTxnAdapter(this, transaction);
 
     /// <summary>Disposes the writer after its transaction adapter has been disposed by its owner.</summary>
     public override async ValueTask DisposeAsync()
     {
         if (_adapter is null && transaction is not null)
         {
-            _adapter = new MiseTxnAdapter(this, transaction);
+            _adapter = new DbTxnAdapter(this, transaction);
             await _adapter.DisposeAsync();
         }
 
@@ -53,7 +53,7 @@ public class DbWriter(
         Enter();
         try
         {
-            var adapter = _adapter ??= new MiseTxnAdapter(this, transaction);
+            var adapter = _adapter ??= new DbTxnAdapter(this, transaction);
             var activeConnection = await GetConnectionAsync(cancellationToken);
             await adapter.EnsureStartedAsync(activeConnection, cancellationToken);
             return adapter;
@@ -106,7 +106,7 @@ public class DbWriter(
         ICommandBuilder commandBuilder,
         CancellationToken cancellationToken = default
     )
-        where T : IMiseRow<T>
+        where T : IRow<T>
     {
         Enter();
         try
@@ -133,7 +133,7 @@ public class DbWriter(
         ICommandBuilder commandBuilder,
         CancellationToken cancellationToken = default
     )
-        where T : IMiseRow<T>
+        where T : IRow<T>
     {
         Enter();
         try
@@ -166,7 +166,7 @@ public class DbWriter(
     {
         if (_adapter is not null || transaction is not null)
         {
-            await ((_adapter ??= new MiseTxnAdapter(this, transaction))
+            await ((_adapter ??= new DbTxnAdapter(this, transaction))
                 .EnsureStartedAsync(connection, cancellationToken));
         }
     }
@@ -181,7 +181,7 @@ public class DbWriter(
     }
 
     private static DbConnection? ResolveConnection(
-        IMiseConfig? config,
+        IDbConfig? config,
         DbConnection? connection,
         DbTransaction? transaction
     )

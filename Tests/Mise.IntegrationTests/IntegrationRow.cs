@@ -3,7 +3,7 @@ using Brigade.Net.Mise;
 
 namespace Brigade.Net.Mise.IntegrationTests;
 
-internal sealed record IntegrationRow(int Id, string? Name) : IMiseRow<IntegrationRow>
+internal sealed record IntegrationRow(int Id, string? Name) : IRow<IntegrationRow>
 {
     public static int[] BindOrdinals(DbDataReader reader)
     {

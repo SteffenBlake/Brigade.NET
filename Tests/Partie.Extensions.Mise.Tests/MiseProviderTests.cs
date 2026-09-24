@@ -16,8 +16,8 @@ public sealed class MiseProviderTests
         var path = NewPath();
         try
         {
-            var context = new MiseReaderProviderContext(Config(path));
-            var unused = await MiseReaderProvider<Unit, Unit>.OnQueryAsync(
+            var context = new DbReaderProviderContext([Config(path)]);
+            var unused = await DbReaderProvider<Unit, Unit>.OnQueryAsync(
                 context,
                 Unit.Default,
                 _ => ValueTask.FromResult<Result<Unit>>(Unit.Default),
@@ -26,7 +26,7 @@ public sealed class MiseProviderTests
             Assert.True(unused.IsSuccess(out _));
             Assert.False(File.Exists(path));
 
-            var failed = await MiseReaderProvider<Unit, Unit>.OnQueryAsync(
+            var failed = await DbReaderProvider<Unit, Unit>.OnQueryAsync(
                 context,
                 Unit.Default,
                 async reader =>
@@ -63,8 +63,8 @@ public sealed class MiseProviderTests
                 await create.ExecuteNonQueryAsync();
             }
 
-            var transactionContext = new MiseTransactionProviderContext(Config(path));
-            var outcome = await MiseTransactionProvider<Unit, Unit>.OnCommandAsync(
+            var transactionContext = new DbWriterTxnProviderContext([Config(path)]);
+            var outcome = await DbWriterTxnProvider<Unit, Unit>.OnCommandAsync(
                 transactionContext,
                 Unit.Default,
                 async transaction =>
@@ -72,8 +72,8 @@ public sealed class MiseProviderTests
                     var work = new UnitOfWork([transaction]);
                     try
                     {
-                        var result = await MiseWriterProvider<Unit, Unit>.OnCommandAsync(
-                            new MiseWriterProviderContext(transaction),
+                        var result = await DbWriterProvider<Unit, Unit>.OnCommandAsync(
+                            new DbWriterProviderContext(transaction),
                             Unit.Default,
                             async writer =>
                             {
@@ -123,8 +123,8 @@ public sealed class MiseProviderTests
         var path = NewPath();
         try
         {
-            var outcome = await MiseTransactionProvider<Unit, Unit>.OnCommandAsync(
-                new MiseTransactionProviderContext(Config(path)),
+            var outcome = await DbWriterTxnProvider<Unit, Unit>.OnCommandAsync(
+                new DbWriterTxnProviderContext([Config(path)]),
                 Unit.Default,
                 async transaction =>
                 {
@@ -153,8 +153,8 @@ public sealed class MiseProviderTests
         var services = new ServiceCollection()
             .AddKeyedSingleton<System.Data.Common.DbProviderFactory>("Sqlite", SqliteFactory.Instance)
             .BuildServiceProvider();
-        var context = new MiseConfigProviderContext(settings, services, "Sqlite");
-        var result = await MiseConfigProvider<Unit, Unit>.OnQueryAsync(
+        var context = new DbConfigProviderContext(settings, services, "Sqlite");
+        var result = await DbConfigProvider<Unit, Unit>.OnQueryAsync(
             context,
             Unit.Default,
             config =>
@@ -174,15 +174,15 @@ public sealed class MiseProviderTests
     public async Task ReaderDisposesConnectionAfterThrowOrCancellation(bool canceled)
     {
         var connection = new FakeDbConnection { ScalarValue = 3L };
-        var config = new MiseRouteConfig("fake", new FakeDbProviderFactory(connection));
+        var config = new DbRouteConfig("fake", new FakeDbProviderFactory(connection));
         Exception expected = canceled
             ? new OperationCanceledException("canceled")
             : new InvalidOperationException("failed");
         var calls = 0;
 
         var actual = await Record.ExceptionAsync(() =>
-            MiseReaderProvider<Unit, Unit>.OnQueryAsync(
-                new MiseReaderProviderContext(config),
+            DbReaderProvider<Unit, Unit>.OnQueryAsync(
+                new DbReaderProviderContext([config]),
                 Unit.Default,
                 async reader =>
                 {
@@ -221,11 +221,11 @@ public sealed class MiseProviderTests
             .BuildServiceProvider();
 
         var names = new[] { "Sqlite", "PostgreSql" };
-        var configs = new List<IMiseConfig>();
+        var configs = new List<IDbConfig>();
         foreach (var name in names)
         {
-            await MiseConfigProvider<Unit, Unit>.OnQueryAsync(
-                new MiseConfigProviderContext(settings, services, name),
+            await DbConfigProvider<Unit, Unit>.OnQueryAsync(
+                new DbConfigProviderContext(settings, services, name),
                 Unit.Default,
                 config =>
                 {
@@ -241,7 +241,68 @@ public sealed class MiseProviderTests
         Assert.Same(second, configs[1].ProviderFactory);
     }
 
-    private static MiseRouteConfig Config(string path) =>
+    [Fact]
+    public async Task MissingDatabaseConfigurationFailsWhenReaderOrWriterIsRequested()
+    {
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            DbReaderProvider<Unit, Unit>.OnQueryAsync(
+                new DbReaderProviderContext([]), Unit.Default,
+                _ => ValueTask.FromResult<Result<Unit>>(Unit.Default), default).AsTask());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            DbWriterTxnProvider<Unit, Unit>.OnCommandAsync(
+                new DbWriterTxnProviderContext([]), Unit.Default,
+                transaction => DbWriterProvider<Unit, Unit>.OnCommandAsync(
+                    new DbWriterProviderContext(transaction), Unit.Default,
+                    _ => ValueTask.FromResult<Result<Unit>>(Unit.Default), default), default).AsTask());
+    }
+
+    [Fact]
+    public async Task WriterProviderRejectsUnrelatedTransaction()
+    {
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            DbWriterProvider<Unit, Unit>.OnCommandAsync(
+                new DbWriterProviderContext(new BasicTxn()), Unit.Default,
+                _ => ValueTask.FromResult<Result<Unit>>(Unit.Default), default).AsTask());
+    }
+
+    [Fact]
+    public async Task CommandConfigProviderUsesNamedConnectionString()
+    {
+        var settings = new ConfigurationBuilder().AddInMemoryCollection(
+            new Dictionary<string, string?> { ["ConnectionStrings:Sqlite"] = "Data Source=command.db" }
+        ).Build();
+        using var services = new ServiceCollection()
+            .AddKeyedSingleton<System.Data.Common.DbProviderFactory>("Sqlite", SqliteFactory.Instance)
+            .BuildServiceProvider();
+        var result = await DbConfigProvider<Unit, Unit>.OnCommandAsync(
+            new DbConfigProviderContext(settings, services, "Sqlite"), Unit.Default,
+            config =>
+            {
+                Assert.Equal("Data Source=command.db", config.ConnectionString);
+                return ValueTask.FromResult<Result<Unit>>(Unit.Default);
+            }, default);
+        Assert.True(result.IsSuccess(out _));
+    }
+
+    [Fact]
+    public void ConfigProviderRejectsMissingConnectionString()
+    {
+        using var services = new ServiceCollection().BuildServiceProvider();
+        var context = new DbConfigProviderContext(new ConfigurationBuilder().Build(), services, "Missing");
+        Assert.Throws<InvalidOperationException>(() => context.CreateConfig());
+    }
+
+    [Fact]
+    public async Task TransactionDisposalIsIdempotent()
+    {
+        var transaction = new DbWriterTxn(null);
+        await transaction.DisposeAsync();
+        await transaction.DisposeAsync();
+        Assert.Throws<ObjectDisposedException>(() => transaction.Writer);
+    }
+
+    private static DbRouteConfig Config(string path) =>
         new($"Data Source={path}", SqliteFactory.Instance);
 
     private static string NewPath() => Path.Combine(Path.GetTempPath(), $"mise-{Guid.NewGuid():N}.db");

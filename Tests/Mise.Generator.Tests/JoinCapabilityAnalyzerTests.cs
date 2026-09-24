@@ -54,7 +54,7 @@ public sealed class JoinCapabilityAnalyzerTests
             using Brigade.Net.Mise.PostgreSQL;
             class Example
             {
-                void Run(string value) => new PostgreSqlQueryBuilder().InnerJoin($"orders ON orders.kind = {value}");
+                void Run(string value) => new PostgreSqlQueryBuilder().InnerJoin($"purchases ON purchases.kind = {value}");
             }
             """;
 
@@ -68,7 +68,7 @@ public sealed class JoinCapabilityAnalyzerTests
             using Brigade.Net.Mise.PostgreSQL;
             class Example
             {
-                private const string Relationship = "orders ON orders.id = users.id";
+                private const string Relationship = "purchases ON purchases.id = users.id";
                 void Run() => new PostgreSqlQueryBuilder().InnerJoin($"{Relationship:raw}");
             }
             """;
@@ -159,19 +159,32 @@ public sealed class JoinCapabilityAnalyzerTests
     }
 
     [Fact]
+    public async Task UnknownBaseBuilderDialectHasNoEngineCapabilityDiagnostic()
+    {
+        const string source = """
+            using Brigade.Net.Mise;
+            class Example
+            {
+                void Run() => new QueryBuilder(null!).FullJoin($"t ON 1 = 1");
+            }
+            """;
+
+        Assert.Empty(await GeneratorTestHost.AnalyzeJoinAsync(source));
+    }
+
+    [Fact]
     public async Task GeneratedRelationshipConstantIsAccepted()
     {
         const string source = """
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
             [SqlServerTable("targets")]
-            partial class Target { [MiseColumn("id")] public int Id { get; set; } }
+            static partial class Target { [Column("id")] private static int Id { get; } }
             [SqlServerTable("sources")]
-            [MiseRelationship("Owner", typeof(Target), "target_id", "id")]
-            partial class Source { [MiseColumn("target_id")] public int TargetId { get; set; } }
+            static partial class Source { [Column("target_id"), Relationship(Target.IdCol)] private static int TargetId { get; } }
             class Example
             {
-                void Run() => new SqlServerQueryBuilder().InnerJoin($"{Source.Tbl.Owner:raw}");
+                void Run() => new SqlServerQueryBuilder().InnerJoin($"{Source.TargetIdJoin:raw}");
             }
             """;
 

@@ -1,26 +1,26 @@
 --liquibase formatted sql
 --changeset brigade:sqlserver-schema
 CREATE TABLE accounts (id INT PRIMARY KEY, name NVARCHAR(100) NOT NULL, note NVARCHAR(100) NULL);
-CREATE TABLE orders (id INT PRIMARY KEY, buyer_id INT NOT NULL, seller_id INT NOT NULL, [order] NVARCHAR(100) NOT NULL, amount INT NOT NULL);
-CREATE TABLE order_tags (order_id INT NOT NULL, tag NVARCHAR(40) NOT NULL, PRIMARY KEY (order_id, tag));
+CREATE TABLE purchases (id INT PRIMARY KEY, buyer_id INT NOT NULL, seller_id INT NOT NULL, [purchase] NVARCHAR(100) NOT NULL, amount INT NOT NULL);
+CREATE TABLE purchase_tags (purchase_id INT NOT NULL, tag NVARCHAR(40) NOT NULL, PRIMARY KEY (purchase_id, tag));
 --changeset brigade:sqlserver-seed
 INSERT INTO accounts (id, name, note) VALUES (1, 'O''Reilly', NULL), (2, 'Ada', 'lead'), (3, 'Bob', NULL);
-INSERT INTO orders (id, buyer_id, seller_id, [order], amount) VALUES (10, 1, 2, 'alpha', 20), (11, 2, 1, 'beta', 30), (12, 3, 2, 'gamma', 40);
-INSERT INTO order_tags (order_id, tag) VALUES (10, 'new'), (10, 'safe'), (11, 'safe'), (12, 'old');
+INSERT INTO purchases (id, buyer_id, seller_id, [purchase], amount) VALUES (10, 1, 2, 'alpha', 20), (11, 2, 1, 'beta', 30), (12, 3, 2, 'gamma', 40);
+INSERT INTO purchase_tags (purchase_id, tag) VALUES (10, 'new'), (10, 'safe'), (11, 'safe'), (12, 'old');
 --changeset brigade:sqlserver-complex
 ALTER TABLE accounts ADD parent_id INT NULL;
 ALTER TABLE accounts ADD [group] NVARCHAR(40) NULL;
-ALTER TABLE orders ADD category_id INT NOT NULL DEFAULT 101;
-ALTER TABLE orders ADD status NVARCHAR(20) NOT NULL DEFAULT 'open';
+ALTER TABLE purchases ADD category_id INT NOT NULL DEFAULT 101;
+ALTER TABLE purchases ADD status NVARCHAR(20) NOT NULL DEFAULT 'open';
 CREATE TABLE categories (id INT PRIMARY KEY, parent_id INT NULL, label NVARCHAR(100) NOT NULL);
-CREATE TABLE shipments (id INT PRIMARY KEY, order_id INT NOT NULL, delivered_at NVARCHAR(30) NULL);
+CREATE TABLE shipments (id INT PRIMARY KEY, purchase_id INT NOT NULL, delivered_at NVARCHAR(30) NULL);
 UPDATE accounts SET [group] = 'core' WHERE id IN (1, 2);
 UPDATE accounts SET [group] = 'edge' WHERE id = 3;
 UPDATE accounts SET parent_id = 1 WHERE id IN (2, 3);
-UPDATE orders SET category_id = 102 WHERE id = 11;
-UPDATE orders SET category_id = 103, status = 'closed' WHERE id = 12;
-INSERT INTO accounts (id, name, note, parent_id, [group]) VALUES (4, 'Eve', NULL, 2, 'ops'), (5, 'NoOrders', NULL, NULL, 'idle');
+UPDATE purchases SET category_id = 102 WHERE id = 11;
+UPDATE purchases SET category_id = 103, status = 'closed' WHERE id = 12;
+INSERT INTO accounts (id, name, note, parent_id, [group]) VALUES (4, 'Eve', NULL, 2, 'ops'), (5, 'NoPurchases', NULL, NULL, 'idle');
 INSERT INTO categories (id, parent_id, label) VALUES (100, NULL, 'root'), (101, 100, 'child'), (102, 101, 'grandchild'), (103, 100, 'sibling');
-INSERT INTO orders (id, buyer_id, seller_id, [order], amount, category_id, status) VALUES (13, 4, 3, 'delta', 50, 102, 'open'), (14, 2, 4, 'O''Reilly''s deal', 60, 101, 'open');
-INSERT INTO order_tags (order_id, tag) VALUES (13, 'safe'), (14, 'safe'), (14, 'quote');
-INSERT INTO shipments (id, order_id, delivered_at) VALUES (1000, 10, NULL), (1001, 11, '2026-09-24');
+INSERT INTO purchases (id, buyer_id, seller_id, [purchase], amount, category_id, status) VALUES (13, 4, 3, 'delta', 50, 102, 'open'), (14, 2, 4, 'O''Reilly''s deal', 60, 101, 'open');
+INSERT INTO purchase_tags (purchase_id, tag) VALUES (13, 'safe'), (14, 'safe'), (14, 'quote');
+INSERT INTO shipments (id, purchase_id, delivered_at) VALUES (1000, 10, NULL), (1001, 11, '2026-09-24');

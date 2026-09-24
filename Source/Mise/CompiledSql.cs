@@ -10,7 +10,7 @@ namespace Brigade.Net.Mise;
 /// <param name="behavior">Supported reader behavior flags.</param>
 public sealed class CompiledSql(
     string text,
-    IEnumerable<MiseParameter>? parameters = null,
+    IEnumerable<SqlParameterSpec>? parameters = null,
     CommandType commandType = CommandType.Text,
     int? timeout = null,
     CommandBehavior behavior = CommandBehavior.Default
@@ -20,7 +20,7 @@ public sealed class CompiledSql(
     public string Text { get; } = text;
 
     /// <summary>Gets an immutable copy of parameters in binding order.</summary>
-    public IReadOnlyList<MiseParameter> Parameters { get; } = Array.AsReadOnly((parameters ?? []).ToArray());
+    public IReadOnlyList<SqlParameterSpec> Parameters { get; } = Array.AsReadOnly((parameters ?? []).ToArray());
 
     /// <summary>Gets the ADO.NET command type.</summary>
     public CommandType CommandType { get; } = commandType;
