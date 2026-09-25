@@ -9,12 +9,14 @@ namespace Brigade.Net.Example.Domain.Accounts.SearchMySqlV1;
 
 public sealed record AccountSearchMySqlV1Context([Provide] DbReader Reader);
 
-public sealed class AccountSearchMySqlV1Handler : IQueryHandler<Unit, IReadOnlyList<AccountSearchMySqlV1Result>, AccountSearchMySqlV1Context>
+public sealed class AccountSearchMySqlV1Handler
+    : IQueryHandler<Unit, IReadOnlyList<AccountSearchMySqlV1Result>, AccountSearchMySqlV1Context>
 {
     public static Task<Result<IReadOnlyList<AccountSearchMySqlV1Result>>> RunAsync(
         AccountSearchMySqlV1Context ctx,
         Unit request,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         var query = new MySqlQueryBuilder()
             .Select($"{AccountTblMySql.Buyer.IdCol:raw}")
@@ -23,9 +25,15 @@ public sealed class AccountSearchMySqlV1Handler : IQueryHandler<Unit, IReadOnlyL
             .Select($"{AccountTblMySql.Buyer.ParentIdCol:raw}")
             .Select($"{AccountTblMySql.Buyer.GroupCol:raw}")
             .From($"{PurchaseTblMySql.Purchase.Table:raw}")
-            .RightJoin($"{AccountTblMySql.Buyer.Table:raw} ON {AccountTblMySql.Buyer.IdCol:raw} = {PurchaseTblMySql.Purchase.BuyerIdCol:raw}")
-            .LeftJoin($"{AccountTblMySql.Seller.Table:raw} ON {AccountTblMySql.Seller.IdCol:raw} = {PurchaseTblMySql.Purchase.SellerIdCol:raw}")
-            .LeftJoin($"{ShipmentTblMySql.Table:raw} ON {ShipmentTblMySql.PurchaseIdCol:raw} = {PurchaseTblMySql.Purchase.IdCol:raw}")
+            .RightJoin(
+                $"{PurchaseTblMySql.Purchase.BuyerIdJoinBuyer:raw}"
+            )
+            .LeftJoin(
+                $"{PurchaseTblMySql.Purchase.SellerIdJoinSeller:raw}"
+            )
+            .LeftJoin(
+                $"{ShipmentTblMySql.PurchaseIdJoinReversePurchase:raw}"
+            )
             .Where($"{AccountTblMySql.Buyer.IdCol:raw} IS NOT NULL")
             .GroupBy($"{AccountTblMySql.Buyer.IdCol:raw}")
             .GroupBy($"{AccountTblMySql.Buyer.NameCol:raw}")
@@ -33,6 +41,7 @@ public sealed class AccountSearchMySqlV1Handler : IQueryHandler<Unit, IReadOnlyL
             .GroupBy($"{AccountTblMySql.Buyer.ParentIdCol:raw}")
             .GroupBy($"{AccountTblMySql.Buyer.GroupCol:raw}")
             .OrderBy($"{AccountTblMySql.Buyer.IdCol:raw}");
+
         return ctx.Reader.ListAsync<AccountSearchMySqlV1Result>(query, ct);
     }
 }

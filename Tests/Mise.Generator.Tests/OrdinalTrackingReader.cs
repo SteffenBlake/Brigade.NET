@@ -4,7 +4,10 @@ using System.Data.Common;
 
 namespace Brigade.Net.Mise.Generator.Tests;
 
-public sealed class OrdinalTrackingReader(DbDataReader inner, string[]? projectedNames = null) : DbDataReader
+public sealed class OrdinalTrackingReader(
+    DbDataReader inner,
+    string[]? projectedNames = null
+) : DbDataReader
 {
     public int NameLookupCount { get; private set; }
 
@@ -30,14 +33,26 @@ public sealed class OrdinalTrackingReader(DbDataReader inner, string[]? projecte
 
     public override byte GetByte(int ordinal) => inner.GetByte(ordinal);
 
-    public override long GetBytes(int ordinal, long dataOffset, byte[]? buffer, int bufferOffset, int length)
+    public override long GetBytes(
+        int ordinal,
+        long dataOffset,
+        byte[]? buffer,
+        int bufferOffset,
+        int length
+    )
     {
         return inner.GetBytes(ordinal, dataOffset, buffer, bufferOffset, length);
     }
 
     public override char GetChar(int ordinal) => inner.GetChar(ordinal);
 
-    public override long GetChars(int ordinal, long dataOffset, char[]? buffer, int bufferOffset, int length)
+    public override long GetChars(
+        int ordinal,
+        long dataOffset,
+        char[]? buffer,
+        int bufferOffset,
+        int length
+    )
     {
         return inner.GetChars(ordinal, dataOffset, buffer, bufferOffset, length);
     }

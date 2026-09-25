@@ -38,8 +38,14 @@ internal sealed class ContractPipelinePlanner(
         ImmutableDictionary<string, string> parameters
     )
     {
-        var contracts = handler.AllInterfaces.Where(type => Is(type, "IQueryHandler`3") || Is(type, "ICommandHandler`3")).ToArray();
-        if (handler.TypeKind != TypeKind.Class || handler.IsStatic || handler.IsAbstract || handler.IsUnboundGenericType || contracts.Length != 1)
+        var contracts = handler.AllInterfaces
+            .Where(type => Is(type, "IQueryHandler`3") || Is(type, "ICommandHandler`3"))
+            .ToArray();
+        if (handler.TypeKind != TypeKind.Class
+            || handler.IsStatic
+            || handler.IsAbstract
+            || handler.IsUnboundGenericType
+            || contracts.Length != 1)
         {
             Error(
                 handler,
@@ -50,13 +56,9 @@ internal sealed class ContractPipelinePlanner(
 
         var contract = contracts[0];
         isCommand = Is(contract, "ICommandHandler`3");
-        if ((operation.Equals("GET", StringComparison.OrdinalIgnoreCase) && isCommand) || (new[]
-        {
-            "POST",
-            "PUT",
-            "PATCH",
-            "DELETE"
-        }.Contains(operation.ToUpperInvariant()) && !isCommand))
+        if ((operation.Equals("GET", StringComparison.OrdinalIgnoreCase) && isCommand)
+            || (new[] { "POST", "PUT", "PATCH", "DELETE" }
+                .Contains(operation.ToUpperInvariant()) && !isCommand))
         {
             Error(handler, "GET requires IQueryHandler; POST/PUT/PATCH/DELETE require ICommandHandler.");
         }
@@ -119,7 +121,8 @@ internal sealed class ContractPipelinePlanner(
             }
 
             var definition = registration.Type.IsUnboundGenericType
-                ? registration.Type.OriginalDefinition : registration.Type;
+                ? registration.Type.OriginalDefinition
+                : registration.Type;
             var stepContract = StepContract(definition);
             var partie = stepContract is null ? null : Match(definition, stepContract);
             if (partie is not null)
@@ -128,9 +131,16 @@ internal sealed class ContractPipelinePlanner(
             }
         }
 
-        var uow = isCommand ? Resolve(compilation.GetTypeByMetadataName("Brigade.Net.Core.Transactions.UnitOfWork")!, handler) : "";
+        var uow = isCommand
+            ? Resolve(
+                compilation.GetTypeByMetadataName("Brigade.Net.Core.Transactions.UnitOfWork")!,
+                handler
+            )
+            : "";
         var context = Context(contract.TypeArguments[2], handler, parameters);
-        var returnType = "global::System.Threading.Tasks.ValueTask<global::Brigade.Net.Core.Results.Result<" + TypeName(resultType) + ">>";
+        var returnType = "global::System.Threading.Tasks.ValueTask<global::Brigade.Net.Core.Results.Result<"
+            + TypeName(resultType)
+            + ">>";
         var invoke = "global::Brigade.Net.Partie.RouteDispatch." + (isCommand ? "Command" : "Query") + "<" + string.Join(
             ", ",
             new[] { TypeName(handler), TypeName(request), TypeName(resultType), TypeName(contract.TypeArguments[2]) }
@@ -147,7 +157,14 @@ internal sealed class ContractPipelinePlanner(
             body = "return global::Brigade.Net.Partie.RouteDispatch." + dispatch + "<" + step.TypeName + ", " + step.ProvidedType + ", " + step.ContextType + ", " + TypeName(requestType) + ", " + TypeName(resultType) + ">(" + step.Context + ", value0, " + next + ", value1);\n" + returnType + " " + next + "(" + step.ProvidedType + " " + step.ValueName + ") {\n" + body + "\n}";
         }
 
-        return failed ? null : new ContractPipeline(TypeName(resultType), requestModel, inputs.ToImmutableArray(), body);
+        return failed
+            ? null
+            : new ContractPipeline(
+                TypeName(resultType),
+                requestModel,
+                inputs.ToImmutableArray(),
+                body
+            );
     }
 
     private RequestEmission? ReadRequest(INamedTypeSymbol request)
@@ -163,9 +180,14 @@ internal sealed class ContractPipelinePlanner(
             );
         }
 
-        if (request.TypeKind != TypeKind.Class || request.IsRecord || request.IsAbstract || request.IsStatic || !request.InstanceConstructors.Any(
-            ctor => ctor.Parameters.Length == 0 && compilation.IsSymbolAccessibleWithin(ctor, compilation.Assembly)
-        ))
+        if (request.TypeKind != TypeKind.Class
+            || request.IsRecord
+            || request.IsAbstract
+            || request.IsStatic
+            || !request.InstanceConstructors.Any(ctor =>
+                ctor.Parameters.Length == 0
+                && compilation.IsSymbolAccessibleWithin(ctor, compilation.Assembly)
+            ))
         {
             Error(
                 request,
@@ -180,12 +202,20 @@ internal sealed class ContractPipelinePlanner(
         {
             foreach (var property in type.GetMembers().OfType<IPropertySymbol>())
             {
-                if (property.IsStatic || property.IsIndexer || property.DeclaredAccessibility != Accessibility.Public || !seen.Add(property.Name))
+                if (property.IsStatic
+                    || property.IsIndexer
+                    || property.DeclaredAccessibility != Accessibility.Public
+                    || !seen.Add(property.Name))
                 {
                     continue;
                 }
 
-                if (property.GetMethod?.DeclaredAccessibility != Accessibility.Public || property.SetMethod is null || !compilation.IsSymbolAccessibleWithin(property.SetMethod, compilation.Assembly))
+                if (property.GetMethod?.DeclaredAccessibility != Accessibility.Public
+                    || property.SetMethod is null
+                    || !compilation.IsSymbolAccessibleWithin(
+                        property.SetMethod,
+                        compilation.Assembly
+                    ))
                 {
                     Error(
                         property,
@@ -247,15 +277,22 @@ internal sealed class ContractPipelinePlanner(
             }
         }
 
-        var ns = request.ContainingNamespace.IsGlobalNamespace ? "" : request.ContainingNamespace.ToDisplayString() + ".";
+        var ns = request.ContainingNamespace.IsGlobalNamespace
+            ? ""
+            : request.ContainingNamespace.ToDisplayString() + ".";
         var dtoName = request.Name + "Dto";
         if (request.IsGenericType || request.ContainingType is not null)
         {
             dtoName += "_" + string.Concat(System.Text.Encoding.UTF8.GetBytes(TypeName(request))
                 .Select(value => value.ToString("x2")));
         }
-        return new RequestEmission(TypeName(request), Metadata(request), properties.ToImmutable(),
-            "global::" + ns + dtoName, (ns.Length == 0 ? "" : ns.TrimEnd('.') + "/") + dtoName + ".g.cs");
+        return new RequestEmission(
+            TypeName(request),
+            Metadata(request),
+            properties.ToImmutable(),
+            "global::" + ns + dtoName,
+            (ns.Length == 0 ? "" : ns.TrimEnd('.') + "/") + dtoName + ".g.cs"
+        );
     }
 
     private string Context(
@@ -276,9 +313,13 @@ internal sealed class ContractPipelinePlanner(
             return "default!";
         }
 
-        var constructors = named.InstanceConstructors.Where(
-            ctor => compilation.IsSymbolAccessibleWithin(ctor, compilation.Assembly) && !(named.IsRecord && ctor.Parameters.Length == 1 && SymbolEqualityComparer.Default.Equals(ctor.Parameters[0].Type, named))
-        ).ToArray();
+        var constructors = named.InstanceConstructors
+            .Where(ctor =>
+                compilation.IsSymbolAccessibleWithin(ctor, compilation.Assembly)
+                && !(named.IsRecord && ctor.Parameters.Length == 1
+                    && SymbolEqualityComparer.Default.Equals(ctor.Parameters[0].Type, named))
+            )
+            .ToArray();
         if (constructors.Length != 1)
         {
             Error(owner, "TContext must have exactly one accessible constructor.");
@@ -288,9 +329,14 @@ internal sealed class ContractPipelinePlanner(
         var arguments = new List<string>();
         foreach (var parameter in constructors[0].Parameters)
         {
-            var attrs = parameter.GetAttributes().Where(
-                attr => attr.AttributeClass?.ToDisplayString() is "Brigade.Net.Partie.ProvideAttribute" or "Brigade.Net.Partie.DecorateAttribute" or "Brigade.Net.Partie.InjectAttribute" or "Brigade.Net.Partie.ParameterAttribute"
-            ).ToArray();
+            var attrs = parameter.GetAttributes()
+                .Where(attr => attr.AttributeClass?.ToDisplayString() is
+                    "Brigade.Net.Partie.ProvideAttribute"
+                    or "Brigade.Net.Partie.DecorateAttribute"
+                    or "Brigade.Net.Partie.InjectAttribute"
+                    or "Brigade.Net.Partie.ParameterAttribute"
+                )
+                .ToArray();
             if (attrs.Length != 1 || parameter.RefKind != RefKind.None)
             {
                 Error(
@@ -313,7 +359,11 @@ internal sealed class ContractPipelinePlanner(
                 }
                 else
                 {
-                    Error(parameter, "Required Parameter '" + parameter.Name + "' must be supplied by the registration attribute.");
+                    Error(
+                        parameter,
+                        "Required Parameter '" + parameter.Name
+                            + "' must be supplied by the registration attribute."
+                    );
                     arguments.Add("default!");
                 }
             }
@@ -368,10 +418,11 @@ internal sealed class ContractPipelinePlanner(
         resolutionDepth++;
         try
         {
-            var isList = requested is INamedTypeSymbol list && SymbolEqualityComparer.Default.Equals(
-                list.OriginalDefinition,
-                compilation.GetTypeByMetadataName("System.Collections.Generic.IEnumerable`1")
-            );
+            var isList = requested is INamedTypeSymbol list
+                && SymbolEqualityComparer.Default.Equals(
+                    list.OriginalDefinition,
+                    compilation.GetTypeByMetadataName("System.Collections.Generic.IEnumerable`1")
+                );
             var element = isList ? ((INamedTypeSymbol)requested).TypeArguments[0] : requested;
             var matches = Matches(element, includeDownstream).ToArray();
             var existing = EarlierValues(element);
@@ -379,7 +430,8 @@ internal sealed class ContractPipelinePlanner(
             {
                 var latestValue = existing.LastOrDefault();
                 var latestProvider = matches.LastOrDefault();
-                if (latestValue is not null && (latestProvider.Type is null || latestValue.Position >= latestProvider.Position))
+                if (latestValue is not null
+                    && (latestProvider.Type is null || latestValue.Position >= latestProvider.Position))
                 {
                     return latestValue.Name;
                 }
@@ -405,7 +457,9 @@ internal sealed class ContractPipelinePlanner(
             existing = includeDownstream ? VisibleValues(element) : EarlierValues(element);
             if (isList)
             {
-                return "new " + TypeName(element) + "[] { " + string.Join(", ", existing.Select(value => value.Name)) + " }";
+                return "new " + TypeName(element) + "[] { "
+                    + string.Join(", ", existing.Select(value => value.Name))
+                    + " }";
             }
 
             if (existing.Length > 0)
@@ -414,7 +468,9 @@ internal sealed class ContractPipelinePlanner(
             }
 
             // Bound request values remain available to steps, as in the original pipeline.
-            var properties = RequestProperties().Where(property => SymbolEqualityComparer.Default.Equals(property.Type, requested)).ToArray();
+            var properties = RequestProperties()
+                .Where(property => SymbolEqualityComparer.Default.Equals(property.Type, requested))
+                .ToArray();
             if (properties.Length == 1)
             {
                 return "value0.@" + properties[0].Name;
@@ -422,7 +478,10 @@ internal sealed class ContractPipelinePlanner(
 
             Error(
                 owner,
-                properties.Length > 1 ? "Several request properties have this type; provide the whole query/command instead." : "No earlier Provider or Partie provides '" + TypeName(requested) + "'. Register sources before their consumers."
+                properties.Length > 1
+                    ? "Several request properties have this type; provide the whole query/command instead."
+                    : "No earlier Provider or Partie provides '" + TypeName(requested)
+                        + "'. Register sources before their consumers."
             );
             return "default!";
         }
@@ -453,7 +512,10 @@ internal sealed class ContractPipelinePlanner(
         {
             foreach (var property in type.GetMembers().OfType<IPropertySymbol>())
             {
-                if (!property.IsStatic && !property.IsIndexer && property.DeclaredAccessibility == Accessibility.Public && names.Add(property.Name))
+                if (!property.IsStatic
+                    && !property.IsIndexer
+                    && property.DeclaredAccessibility == Accessibility.Public
+                    && names.Add(property.Name))
                 {
                     yield return property;
                 }
@@ -620,10 +682,13 @@ internal sealed class ContractPipelinePlanner(
         }
     }
 
-    private bool Is(INamedTypeSymbol type, string metadataName) => SymbolEqualityComparer.Default.Equals(
-        type.OriginalDefinition,
-        compilation.GetTypeByMetadataName("Brigade.Net.Partie." + metadataName)
-    );
+    private bool Is(INamedTypeSymbol type, string metadataName)
+    {
+        return SymbolEqualityComparer.Default.Equals(
+            type.OriginalDefinition,
+            compilation.GetTypeByMetadataName("Brigade.Net.Partie." + metadataName)
+        );
+    }
 
     private INamedTypeSymbol? Match(
         INamedTypeSymbol type,
@@ -642,8 +707,20 @@ internal sealed class ContractPipelinePlanner(
         var closed = Close(type, bindings);
         return validator.ValidateType(closed) is null ? closed : null;
     }
-    private bool IsUnit(ITypeSymbol type) => SymbolEqualityComparer.Default.Equals(type, compilation.GetTypeByMetadataName("Brigade.Net.Core.Results.Unit"));
-    private static bool IsBinding(AttributeData attr) => attr.AttributeClass?.ContainingNamespace.ToDisplayString() == "Brigade.Net.Partie" && attr.AttributeClass.Name is "FromPathAttribute" or "FromParamsAttribute" or "FromMetadataAttribute" or "FromPayloadAttribute";
+    private bool IsUnit(ITypeSymbol type)
+    {
+        return SymbolEqualityComparer.Default.Equals(
+            type,
+            compilation.GetTypeByMetadataName("Brigade.Net.Core.Results.Unit")
+        );
+    }
+
+    private static bool IsBinding(AttributeData attr)
+    {
+        return attr.AttributeClass?.ContainingNamespace.ToDisplayString() == "Brigade.Net.Partie"
+            && attr.AttributeClass.Name is "FromPathAttribute" or "FromParamsAttribute"
+                or "FromMetadataAttribute" or "FromPayloadAttribute";
+    }
     private void Error(
         ISymbol owner,
         string message,
@@ -654,8 +731,31 @@ internal sealed class ContractPipelinePlanner(
         report(owner, message, id);
     }
 
-    private static IEnumerable<ITypeParameterSymbol> OpenParameters(INamedTypeSymbol type) => (type.ContainingType is null ? Enumerable.Empty<ITypeParameterSymbol>() : OpenParameters(type.ContainingType)).Concat(type.TypeArguments.OfType<ITypeParameterSymbol>());
-    private static bool Contains(ITypeSymbol type, ITypeParameterSymbol parameter) => SymbolEqualityComparer.Default.Equals(type, parameter) || (type is IArrayTypeSymbol array && Contains(array.ElementType, parameter)) || (type is INamedTypeSymbol named && ((named.ContainingType is not null && Contains(named.ContainingType, parameter)) || named.TypeArguments.Any(argument => Contains(argument, parameter))));
+    private static IEnumerable<ITypeParameterSymbol> OpenParameters(INamedTypeSymbol type)
+    {
+        var containingParameters = type.ContainingType is null
+            ? Enumerable.Empty<ITypeParameterSymbol>()
+            : OpenParameters(type.ContainingType);
+
+        return containingParameters.Concat(type.TypeArguments.OfType<ITypeParameterSymbol>());
+    }
+
+    private static bool Contains(ITypeSymbol type, ITypeParameterSymbol parameter)
+    {
+        if (SymbolEqualityComparer.Default.Equals(type, parameter))
+        {
+            return true;
+        }
+
+        if (type is IArrayTypeSymbol array && Contains(array.ElementType, parameter))
+        {
+            return true;
+        }
+
+        return type is INamedTypeSymbol named
+            && ((named.ContainingType is not null && Contains(named.ContainingType, parameter))
+                || named.TypeArguments.Any(argument => Contains(argument, parameter)));
+    }
     private static bool Unify(
         ITypeSymbol pattern,
         ITypeSymbol requested,
@@ -678,9 +778,12 @@ internal sealed class ContractPipelinePlanner(
             return left.Rank == right.Rank && Unify(left.ElementType, right.ElementType, bindings);
         }
 
-        if (pattern is INamedTypeSymbol a && requested is INamedTypeSymbol b && SymbolEqualityComparer.Default.Equals(a.OriginalDefinition, b.OriginalDefinition))
+        if (pattern is INamedTypeSymbol a
+            && requested is INamedTypeSymbol b
+            && SymbolEqualityComparer.Default.Equals(a.OriginalDefinition, b.OriginalDefinition))
         {
-            if (a.ContainingType is not null && (b.ContainingType is null || !Unify(a.ContainingType, b.ContainingType, bindings)))
+            if (a.ContainingType is not null
+                && (b.ContainingType is null || !Unify(a.ContainingType, b.ContainingType, bindings)))
             {
                 return false;
             }
@@ -699,12 +802,25 @@ internal sealed class ContractPipelinePlanner(
         return SymbolEqualityComparer.Default.Equals(pattern, requested);
     }
 
-    private static INamedTypeSymbol Close(INamedTypeSymbol type, Dictionary<ITypeParameterSymbol, ITypeSymbol> bindings)
+    private static INamedTypeSymbol Close(
+        INamedTypeSymbol type,
+        Dictionary<ITypeParameterSymbol, ITypeSymbol> bindings
+    )
     {
-        var definition = type.ContainingType is null ? type.OriginalDefinition : Close(type.ContainingType, bindings).GetTypeMembers(type.Name, type.Arity).Single();
-        return type.Arity == 0 ? definition : definition.Construct(
-            type.TypeArguments.Select(
-                argument => argument is ITypeParameterSymbol parameter ? bindings[parameter] : argument
+        var definition = type.ContainingType is null
+            ? type.OriginalDefinition
+            : Close(type.ContainingType, bindings)
+                .GetTypeMembers(type.Name, type.Arity)
+                .Single();
+
+        if (type.Arity == 0)
+        {
+            return definition;
+        }
+
+        return definition.Construct(
+            type.TypeArguments.Select(argument =>
+                argument is ITypeParameterSymbol parameter ? bindings[parameter] : argument
             ).ToArray()
         );
     }

@@ -26,12 +26,15 @@ public sealed class AspNetCorePartieGenerator : IIncrementalGenerator
     private static string EmitRoute(RouteEmission route)
     {
         var parameters = route.Inputs.Select(
-            input => input.Source == "Request" ? "[global::Microsoft.AspNetCore.Http.AsParameters] " + DtoType(route) + " " + input.MemberName : Binding(input) + input.TypeName + " " + input.MemberName
+            input => input.Source == "Request"
+                ? "[global::Microsoft.AspNetCore.Http.AsParameters] " + DtoType(route) + " " + input.MemberName
+                : Binding(input) + input.TypeName + " " + input.MemberName
         );
         var arguments = string.Join(
             ", ",
             route.Inputs.Select(
-                input => input.Source == "Request" ? "new " + route.Request!.TypeName + " { " + string.Join(
+                input => input.Source == "Request"
+                    ? "new " + route.Request!.TypeName + " { " + string.Join(
                     ", ",
                     route.Request.Properties.Select(
                         property => "@" + property.Name + " = " + input.MemberName + ".@" + property.Name
@@ -39,7 +42,15 @@ public sealed class AspNetCorePartieGenerator : IIncrementalGenerator
                 ) + " }" : input.MemberName
             )
         );
-        var baseRoute = "global::Microsoft.AspNetCore.Builder.RoutingEndpointConventionBuilderExtensions.WithName(" + "global::Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapMethods(" + route.Groups.Last().Key + ", " + Literal(HttpPath(route.LocalPath)) + ", new[] { " + Literal(route.Operation.ToUpperInvariant()) + " }, " + "static (" + string.Join(", ", parameters) + ") => " + route.DescriptorExpression + ".ExecuteAsync(new " + route.InputTypeName + "(" + arguments + "))), " + Literal(route.Name) + ")";
+        var baseRoute = "global::Microsoft.AspNetCore.Builder.RoutingEndpointConventionBuilderExtensions.WithName("
+            + "global::Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapMethods("
+            + route.Groups.Last().Key + ", "
+            + Literal(HttpPath(route.LocalPath)) + ", new[] { "
+            + Literal(route.Operation.ToUpperInvariant()) + " }, "
+            + "static (" + string.Join(", ", parameters) + ") => "
+            + route.DescriptorExpression + ".ExecuteAsync(new "
+            + route.InputTypeName + "(" + arguments + "))), "
+            + Literal(route.Name) + ")";
         if (route.PolicyFunctions.Length == 0 && route.Policies.Length == 0)
         {
             return baseRoute + ";\n";
@@ -62,7 +73,8 @@ public sealed class AspNetCorePartieGenerator : IIncrementalGenerator
                 typeArguments += ">";
             }
 
-            code += policy.PolicyTypeName + "." + policy.MethodName + typeArguments
+            code += policy.PolicyTypeName
+                + "." + policy.MethodName + typeArguments
                 + "(__routeBuilder);\n";
         }
 
@@ -76,13 +88,17 @@ public sealed class AspNetCorePartieGenerator : IIncrementalGenerator
 
     private static string HttpPath(System.Collections.Generic.IEnumerable<string> path)
     {
-        var joined = string.Join("/", path.Select(part => part.Trim('/')).Where(part => part.Length != 0));
+        var joined = string.Join(
+            "/",
+            path.Select(part => part.Trim('/')).Where(part => part.Length != 0)
+        );
         return joined.Length == 0 ? "" : "/" + joined;
     }
 
     private static string EmitGroup(RouteGroupEmission group) => "var " + group.Key
         + " = global::Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapGroup("
-        + (group.ParentKey ?? "app") + ", " + Literal(HttpPath(group.Path)) + ");\n";
+        + (group.ParentKey ?? "app")
+        + ", " + Literal(HttpPath(group.Path)) + ");\n";
 
     private static string DtoType(RouteEmission route) => route.Request!.DtoTypeName;
     private static GeneratedDeclaration EmitTypes(RouteEmission route)
@@ -113,7 +129,14 @@ public sealed class AspNetCorePartieGenerator : IIncrementalGenerator
         return "[global::Microsoft.AspNetCore.Mvc.FromServices] ";
     }
 
-    private static bool IsFrameworkValue(string typeName) => typeName.TrimEnd('?') is "global::Microsoft.AspNetCore.Http.HttpContext" or "global::Microsoft.AspNetCore.Http.HttpRequest" or "global::Microsoft.AspNetCore.Http.HttpResponse" or "global::System.Security.Claims.ClaimsPrincipal" or "global::System.Threading.CancellationToken";
+    private static bool IsFrameworkValue(string typeName)
+    {
+        return typeName.TrimEnd('?') is "global::Microsoft.AspNetCore.Http.HttpContext"
+            or "global::Microsoft.AspNetCore.Http.HttpRequest"
+            or "global::Microsoft.AspNetCore.Http.HttpResponse"
+            or "global::System.Security.Claims.ClaimsPrincipal"
+            or "global::System.Threading.CancellationToken";
+    }
     private static string Literal(string value) => SymbolDisplay.FormatLiteral(value, true);
     private static string EmitAdapter(string registrations) => """
         // <auto-generated />

@@ -16,6 +16,7 @@ public static partial class PurchaseTblSqlite
     private static int BuyerId { get; }
 
     [Column("seller_id")]
+    [Relationship(AccountTblSqlite.IdCol)]
     private static int SellerId { get; }
 
     [Column("purchase")]

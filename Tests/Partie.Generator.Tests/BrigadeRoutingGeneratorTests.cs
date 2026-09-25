@@ -18,7 +18,14 @@ public class BrigadeRoutingGeneratorTests
         using Brigade.Net.Core.Transactions;
         using Brigade.Net.Partie;
         """;
-    private static readonly MetadataReference[] References = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator).Where(path => !Path.GetFileName(path).StartsWith("Microsoft.AspNetCore.", StringComparison.Ordinal)).Concat([typeof(IPartieEngine).Assembly.Location, typeof(Result<>).Assembly.Location]).Distinct().Select(path => MetadataReference.CreateFromFile(path)).ToArray();
+    private static readonly MetadataReference[] References = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
+        .Split(Path.PathSeparator)
+        .Where(path => !Path.GetFileName(path).StartsWith("Microsoft.AspNetCore.", StringComparison.Ordinal))
+        .Concat([typeof(IPartieEngine).Assembly.Location, typeof(Result<>).Assembly.Location])
+        .Distinct()
+        .Select(path => MetadataReference.CreateFromFile(path))
+        .ToArray();
+
     [Fact]
     public async Task Generator_ProducesInvokableEngineRouteWithoutAspNetReferences()
     {
@@ -56,7 +63,9 @@ public class BrigadeRoutingGeneratorTests
                 public static Task<Result<string>> RunAsync(Context ctx, Request query, CancellationToken ct)
                 {
                     Log.Text += "handler;";
-                    return Task.FromResult<Result<string>>(string.Join(",", ctx.Values) + ":" + ReferenceEquals(query, ctx.Request));
+                    return Task.FromResult<Result<string>>(
+                        string.Join(",", ctx.Values) + ":" + ReferenceEquals(query, ctx.Request)
+                    );
                 }
             }
             [BrigadeGroup("admin"), Provider(typeof(First))]
@@ -171,16 +180,24 @@ public class BrigadeRoutingGeneratorTests
             {
                 public static object? Seen;
                 public static CancellationToken SeenToken;
-                public static ValueTask<Result<TResult>> OnQueryAsync(Unit ctx, TRequest query, Next<Unit, TResult> next, CancellationToken ct)
-
+                    public static ValueTask<Result<TResult>> OnQueryAsync(
+                        Unit ctx,
+                        TRequest query,
+                        Next<Unit, TResult> next,
+                        CancellationToken ct
+                    )
                 {
                     Log.Text += "query:" + typeof(TRequest).Name;
                     Seen = query;
                     SeenToken = ct;
                     return next(Unit.Default);
                 }
-                public static ValueTask<Result<TResult>> OnCommandAsync(Unit ctx, TRequest command, Next<Unit, TResult> next, CancellationToken ct)
-
+                    public static ValueTask<Result<TResult>> OnCommandAsync(
+                        Unit ctx,
+                        TRequest command,
+                        Next<Unit, TResult> next,
+                        CancellationToken ct
+                    )
                 {
                     Log.Text += "command:" + typeof(TRequest).Name;
                     Seen = command;
@@ -188,10 +205,24 @@ public class BrigadeRoutingGeneratorTests
                     return next(Unit.Default);
                 }
             }
-            public class Handler : {{(command ? "ICommandHandler" : "IQueryHandler")}}<Request, string, Context>
+            public class Handler : {{(command ? "ICommandHandler" : "IQueryHandler")}}<
+                Request,
+                string,
+                Context
+            >
             {
                 public static Task<Result<string>> RunAsync({{(command ? "UnitOfWork uow," : "")}} Context ctx, Request request, CancellationToken ct)
-                    => Task.FromResult<Result<string>>(ctx.RequestEvidence.Operation + ":" + ReferenceEquals(request, ctx.RequestEvidence.Request) + ":" + ReferenceEquals(request, Probe<Request, string>.Seen) + ":" + (ct == ctx.RequestEvidence.Token && ct == Probe<Request, string>.SeenToken && ct.IsCancellationRequested));
+                    => Task.FromResult<Result<string>>(
+                        ctx.RequestEvidence.Operation
+                            + ":"
+                            + ReferenceEquals(request, ctx.RequestEvidence.Request)
+                            + ":"
+                            + ReferenceEquals(request, Probe<Request, string>.Seen)
+                            + ":"
+                            + (ct == ctx.RequestEvidence.Token
+                                && ct == Probe<Request, string>.SeenToken
+                                && ct.IsCancellationRequested)
+                    );
             }
             [BrigadeGroup(""), Provider(typeof(RequestEvidenceProvider<,>))]
             public static partial class Routes
@@ -271,9 +302,17 @@ public class BrigadeRoutingGeneratorTests
             + "\n} }";
         var emissions = new List<RouteEmission>();
         GeneratorDriver driver = CSharpGeneratorDriver.Create(new CapturingGenerator(emissions.Add));
-        driver = driver.RunGeneratorsAndUpdateCompilation(Compile(source + Harness.Replace(
-            "return text;", "return string.Join(\";\", route.Path) + \":\" + text;"
-        )), out var output, out _);
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            Compile(
+                source
+                    + Harness.Replace(
+                        "return text;",
+                        "return string.Join(\";\", route.Path) + \":\" + text;"
+                    )
+            ),
+            out var output,
+            out _
+        );
         Assert.Empty(driver.GetRunResult().Diagnostics);
         AssertNoErrors(output);
         var route = Assert.Single(emissions);
@@ -366,8 +405,10 @@ public class BrigadeRoutingGeneratorTests
         driver = driver.RunGeneratorsAndUpdateCompilation(Compile(source), out var output, out _);
         Assert.Empty(driver.GetRunResult().Diagnostics);
         AssertNoErrors(output);
-        Assert.Equal(new[] { "Routes.Go(FirstBuilder)", "Routes.Go(SecondBuilder)" },
-            emissions.Select(route => route.Name));
+        Assert.Equal(
+            new[] { "Routes.Go(FirstBuilder)", "Routes.Go(SecondBuilder)" },
+            emissions.Select(route => route.Name)
+        );
         Assert.DoesNotContain("Microsoft.AspNetCore", AllSource(driver.GetRunResult()));
     }
 
@@ -398,9 +439,16 @@ public class BrigadeRoutingGeneratorTests
         routes = routes.AddSyntaxTrees(parent);
         GeneratorDriver driver = CSharpGeneratorDriver.Create(new BrigadeRoutingGenerator());
         driver = driver.RunGenerators(routes);
-        driver = driver.RunGeneratorsAndUpdateCompilation(routes.ReplaceSyntaxTree(parent,
-            CSharpSyntaxTree.ParseText("[Brigade.Net.Partie.BrigadeGroup(\"new\")] public partial class Outer { }")
-        ), out var output, out _);
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            routes.ReplaceSyntaxTree(
+                parent,
+                CSharpSyntaxTree.ParseText(
+                    "[Brigade.Net.Partie.BrigadeGroup(\"new\")] public partial class Outer { }"
+                )
+            ),
+            out var output,
+            out _
+        );
         AssertNoErrors(output);
         Assert.Empty(driver.GetRunResult().Diagnostics);
         Assert.Contains("new string[] { \"new\", \"items\", \"\" }", AllSource(driver.GetRunResult()));
@@ -412,20 +460,29 @@ public class BrigadeRoutingGeneratorTests
     [InlineData("[FromPath, FromParams] public string Value { get; set; }")]
     [InlineData("[FromMetadata] public string Value { get; set; }")]
     [InlineData("[FromParams] public string Value { get; }")]
-    public void Generator_RejectsInvalidRequestProperties(string properties) => Invalid(Source(properties), "BRG001");
+    public void Generator_RejectsInvalidRequestProperties(string properties) =>
+        Invalid(Source(properties), "BRG001");
+
     [Theory]
     [InlineData("record")]
     [InlineData("struct")]
     [InlineData("abstract class")]
-    public void Generator_RejectsUnsupportedRequestTypes(string kind) => Invalid(Source("").Replace("sealed class Request", kind + " Request"), "BRG001");
+    public void Generator_RejectsUnsupportedRequestTypes(string kind) =>
+        Invalid(Source("").Replace("sealed class Request", kind + " Request"), "BRG001");
+
     [Theory]
     [InlineData("string value")]
     [InlineData("[Provide, Inject] string value")]
     [InlineData("[Provide] string value")]
-    public void Generator_RejectsMissingOrAmbiguousContextSources(string parameter) => Invalid(
-        Source("").Replace("public sealed class Context { }", "public sealed record Context(" + parameter + ");"),
-        "BRG001"
-    );
+    public void Generator_RejectsMissingOrAmbiguousContextSources(string parameter) =>
+        Invalid(
+            Source("").Replace(
+                "public sealed class Context { }",
+                "public sealed record Context(" + parameter + ");"
+            ),
+            "BRG001"
+        );
+
     [Fact]
     public void Generator_InjectDoesNotUseProvidedValue()
     {
@@ -447,7 +504,9 @@ public class BrigadeRoutingGeneratorTests
     [InlineData("PUT")]
     [InlineData("PATCH")]
     [InlineData("DELETE")]
-    public void Generator_RequiresCommandForWriteVerb(string operation) => Invalid(Source("", operation), "BRG001");
+    public void Generator_RequiresCommandForWriteVerb(string operation) =>
+        Invalid(Source("", operation), "BRG001");
+
     [Theory]
     [InlineData("[BrigadeGroup(\"\")] class Routes { }")]
     [InlineData("[BrigadeGroup(\"\")] partial class Routes<T> { }")]
@@ -580,7 +639,11 @@ public class BrigadeRoutingGeneratorTests
         Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Id == "CS8785");
     }
 
-    private static string AllSource(GeneratorDriverRunResult result) => string.Join("\n", result.Results.Single().GeneratedSources.Select(source => source.SourceText.ToString()));
+    private static string AllSource(GeneratorDriverRunResult result) => string.Join(
+        "\n",
+        result.Results.Single().GeneratedSources.Select(source => source.SourceText.ToString())
+    );
+
     private static void AssertNoErrors(Compilation compilation) => Assert.Empty(
         compilation.GetDiagnostics().Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
     );

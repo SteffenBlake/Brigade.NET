@@ -4,7 +4,10 @@ using System.Data.Common;
 
 namespace Brigade.Net.Mise.Tests;
 
-internal sealed class CountingDbDataReader(DbDataReader inner, Action<string>? recordEvent = null) : DbDataReader
+internal sealed class CountingDbDataReader(
+    DbDataReader inner,
+    Action<string>? recordEvent = null
+) : DbDataReader
 {
     public int DisposeCount { get; private set; }
 
@@ -28,14 +31,26 @@ internal sealed class CountingDbDataReader(DbDataReader inner, Action<string>? r
 
     public override byte GetByte(int ordinal) => inner.GetByte(ordinal);
 
-    public override long GetBytes(int ordinal, long dataOffset, byte[]? buffer, int bufferOffset, int length)
+    public override long GetBytes(
+        int ordinal,
+        long dataOffset,
+        byte[]? buffer,
+        int bufferOffset,
+        int length
+    )
     {
         return inner.GetBytes(ordinal, dataOffset, buffer, bufferOffset, length);
     }
 
     public override char GetChar(int ordinal) => inner.GetChar(ordinal);
 
-    public override long GetChars(int ordinal, long dataOffset, char[]? buffer, int bufferOffset, int length)
+    public override long GetChars(
+        int ordinal,
+        long dataOffset,
+        char[]? buffer,
+        int bufferOffset,
+        int length
+    )
     {
         return inner.GetChars(ordinal, dataOffset, buffer, bufferOffset, length);
     }

@@ -11,8 +11,8 @@ public sealed class MappingException(
     string columnName,
     int ordinal
 ) : DatabaseException(
-    $"Cannot map database NULL to non-nullable member '{resultType.FullName}.{memberName}' " +
-    $"from column '{columnName}' at ordinal {ordinal}."
+    $"Cannot map database NULL to non-nullable member '{resultType.FullName}.{memberName}' "
+        + $"from column '{columnName}' at ordinal {ordinal}."
 )
 {
     /// <summary>Gets the result type being materialized.</summary>

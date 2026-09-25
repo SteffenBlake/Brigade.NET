@@ -1,4 +1,5 @@
 using System.Globalization;
+
 namespace Brigade.Net.Mise.SqlServer;
 
 /// <summary>A SQL Server read builder with engine-specific query hints.</summary>
@@ -13,6 +14,7 @@ public sealed class SqlServerQueryBuilder() : QueryBuilder(new SqlServerDialect(
         {
             throw new ArgumentOutOfRangeException(nameof(count));
         }
+
         _maxRecursion = count;
         return this;
     }

@@ -39,8 +39,10 @@ public sealed class EnumerableValidationTests
 
         Assert.True(model.TryValidate(out var errors));
         Assert.Empty(errors);
-        Assert.All(EnumerableValidationModel.Metadata.Properties,
-            property => Assert.True(property.IsNestedValidatable));
+        Assert.All(
+            EnumerableValidationModel.Metadata.Properties,
+            property => Assert.True(property.IsNestedValidatable)
+        );
     }
 
     private static IEnumerable<GeneratedChildModel> Enumerate(GeneratedChildModel child)

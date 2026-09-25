@@ -28,7 +28,9 @@ public class TransactionsTests
         var child = new TrackingTxn { CommitException = expected };
         var work = new UnitOfWork([child]);
 
-        var actual = await Assert.ThrowsAsync<InvalidOperationException>(() => work.CommitAsync(source.Token));
+        var actual = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => work.CommitAsync(source.Token)
+        );
         await work.DisposeAsync();
 
         Assert.Same(expected, actual);

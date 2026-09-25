@@ -4,9 +4,6 @@ using Microsoft.Extensions.Hosting;
 
 namespace Brigade.Net.Example.IntegrationTests;
 
-[CollectionDefinition("AppHost")]
-public sealed class AppHostCollection : ICollectionFixture<AppHostFixture>;
-
 public sealed class AppHostFixture : IAsyncLifetime
 {
     private DistributedApplication? application;
@@ -19,7 +16,8 @@ public sealed class AppHostFixture : IAsyncLifetime
     public async Task InitializeAsync()
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
-        builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.Brigade_Net_Example_AppHost>(
+        builder = await DistributedApplicationTestingBuilder
+            .CreateAsync<Projects.Brigade_Net_Example_AppHost>(
             args: ["--Mise:UseVolumes=false"],
             cancellationToken: timeout.Token
         );
@@ -27,8 +25,14 @@ public sealed class AppHostFixture : IAsyncLifetime
         {
             application = await builder.BuildAsync(timeout.Token);
             await application.StartAsync(timeout.Token);
-            await application.ResourceNotifications.WaitForResourceHealthyAsync("WebApp", timeout.Token);
-            SqliteConnectionString = await application.GetConnectionStringAsync(ServiceNames.Sqlite, timeout.Token)
+            await application.ResourceNotifications.WaitForResourceHealthyAsync(
+                "WebApp",
+                timeout.Token
+            );
+            SqliteConnectionString = await application.GetConnectionStringAsync(
+                ServiceNames.Sqlite,
+                timeout.Token
+            )
                 ?? throw new InvalidOperationException("SQLite connection string is unavailable.");
             WebClient = application.CreateHttpClient("WebApp", "http");
             WebClient.Timeout = TimeSpan.FromSeconds(30);

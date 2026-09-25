@@ -50,7 +50,10 @@ public sealed class OrderValidationTests(AppHostFixture host)
             }
         };
 
-        using var response = await host.WebClient.PostAsJsonAsync("/api/v1/orders/validate", payload);
+        using var response = await host.WebClient.PostAsJsonAsync(
+            "/api/v1/orders/validate",
+            payload
+        );
         var error = await Read(response, HttpStatusCode.BadRequest);
         var details = error.GetProperty("errorDetails").EnumerateArray().ToArray();
 
@@ -91,7 +94,10 @@ public sealed class OrderValidationTests(AppHostFixture host)
         var payload = ValidPayload();
         payload["address"] = null;
 
-        using var response = await host.WebClient.PostAsJsonAsync("/api/v1/orders/validate", payload);
+        using var response = await host.WebClient.PostAsJsonAsync(
+            "/api/v1/orders/validate",
+            payload
+        );
         var error = await Read(response, HttpStatusCode.BadRequest);
         var detail = Assert.Single(error.GetProperty("errorDetails").EnumerateArray());
 
@@ -117,7 +123,10 @@ public sealed class OrderValidationTests(AppHostFixture host)
             new { postalCode = (string?)null }
         };
 
-        using var response = await host.WebClient.PostAsJsonAsync("/api/v1/orders/validate", payload);
+        using var response = await host.WebClient.PostAsJsonAsync(
+            "/api/v1/orders/validate",
+            payload
+        );
         var error = await Read(response, HttpStatusCode.BadRequest);
         var details = error.GetProperty("errorDetails").EnumerateArray().ToArray();
 
@@ -146,7 +155,10 @@ public sealed class OrderValidationTests(AppHostFixture host)
         var detail = Assert.Single(error.GetProperty("errorDetails").EnumerateArray());
 
         Assert.Equal("/Body", detail.GetProperty("pointer").GetString());
-        Assert.Equal("The validation payload is required.", detail.GetProperty("detail").GetString());
+        Assert.Equal(
+            "The validation payload is required.",
+            detail.GetProperty("detail").GetString()
+        );
         Assert.False(error.TryGetProperty("accepted", out _));
     }
 
@@ -193,13 +205,17 @@ public sealed class OrderValidationTests(AppHostFixture host)
     {
         Assert.Equal(
             expected.Order(StringComparer.Ordinal),
-            details.Select(detail => detail.GetProperty("pointer").GetString()).Order(StringComparer.Ordinal)
+            details.Select(detail => detail.GetProperty("pointer").GetString())
+                .Order(StringComparer.Ordinal)
         );
     }
 
     private static void AssertDetail(JsonElement[] details, string pointer, string message)
     {
-        var detail = Assert.Single(details, item => item.GetProperty("pointer").GetString() == pointer);
+        var detail = Assert.Single(
+            details,
+            item => item.GetProperty("pointer").GetString() == pointer
+        );
         Assert.Equal(message, detail.GetProperty("detail").GetString());
     }
 }

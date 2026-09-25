@@ -64,6 +64,8 @@ public sealed class ResultCaseTests(AppHostFixture host)
 
     private Task<HttpResponseMessage> Get(string resultCase)
     {
-        return host.WebClient.GetAsync("/api/v1/result-cases?case=" + Uri.EscapeDataString(resultCase));
+        return host.WebClient.GetAsync(
+            "/api/v1/result-cases?case=" + Uri.EscapeDataString(resultCase)
+        );
     }
 }

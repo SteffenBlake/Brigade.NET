@@ -6,7 +6,8 @@ using Microsoft.AspNetCore.Http;
 namespace Brigade.Net.Partie.Engines.AspNetCore.Tests.Fixtures.Items.SearchV1;
 
 public sealed record ItemSearchV1Context([Inject] Counts Counts);
-public sealed class ItemSearchV1Handler : IQueryHandler<ItemSearchV1Query, string, ItemSearchV1Context>
+public sealed class ItemSearchV1Handler
+    : IQueryHandler<ItemSearchV1Query, string, ItemSearchV1Context>
 {
     public static Task<Result<string>> RunAsync(
         ItemSearchV1Context ctx,

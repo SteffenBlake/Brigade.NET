@@ -11,7 +11,10 @@ public class RouteTests
         var metadata = new List<PartieInput> { input };
         var path = new List<string> { "admin", "items", "list" };
         var route = new PartieRoute<int, string>(
-            "Count", path, "run", metadata,
+            "Count",
+            path,
+            "run",
+            metadata,
             static count => ValueTask.FromResult<Result<string>>(count.ToString())
         );
         metadata.Clear();
@@ -19,7 +22,11 @@ public class RouteTests
 
         var result = await route.ExecuteAsync(42);
 
-        result.Map(value => { Assert.Equal("42", value); return value; });
+        result.Map(value =>
+        {
+            Assert.Equal("42", value);
+            return value;
+        });
         Assert.Equal("Count", route.Name);
         Assert.Equal(["admin", "items", "list"], route.Path);
         Assert.Throws<NotSupportedException>(() => ((IList<string>)route.Path).Clear());
@@ -39,7 +46,12 @@ public class RouteTests
 
         var result = await next(17);
         var observed = false;
-        result.Map(value => { Assert.Equal("17", value); observed = true; return value; });
+        result.Map(value =>
+        {
+            Assert.Equal("17", value);
+            observed = true;
+            return value;
+        });
 
         Assert.True(observed);
     }
@@ -63,6 +75,9 @@ public class RouteTests
         Assert.Equal("mode", new FromQueryAttribute("mode").Name);
         Assert.Null(new FromRouteAttribute().Name);
         Assert.Null(new FromQueryAttribute().Name);
-        Assert.DoesNotContain(typeof(IPartieEngine).Assembly.GetReferencedAssemblies(), reference => reference.Name!.StartsWith("Microsoft.AspNetCore"));
+        Assert.DoesNotContain(
+            typeof(IPartieEngine).Assembly.GetReferencedAssemblies(),
+            reference => reference.Name!.StartsWith("Microsoft.AspNetCore")
+        );
     }
 }

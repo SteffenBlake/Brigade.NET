@@ -1,5 +1,6 @@
-using System.Text;
 using System.Globalization;
+using System.Text;
+
 namespace Brigade.Net.Mise.SQLite;
 
 /// <summary>SQLite syntax for Mise builders. RIGHT and FULL JOIN require SQLite 3.39 or later.</summary>

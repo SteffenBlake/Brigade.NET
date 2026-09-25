@@ -8,7 +8,8 @@ public sealed record ItemUpdateV1Context(
     [Inject] Counts Counts,
     [Provide] ContextValue Value
 );
-public sealed class ItemUpdateV1Handler : ICommandHandler<ItemUpdateV1Cmd, Unit, ItemUpdateV1Context>
+public sealed class ItemUpdateV1Handler
+    : ICommandHandler<ItemUpdateV1Cmd, Unit, ItemUpdateV1Context>
 {
     public static Task<Result<Unit>> RunAsync(
         UnitOfWork uow,
@@ -18,7 +19,14 @@ public sealed class ItemUpdateV1Handler : ICommandHandler<ItemUpdateV1Cmd, Unit,
     )
     {
         ctx.Counts.HandlerRuns++;
-        ctx.Counts.Observed.Enqueue((cmd.Id, cmd.Mode + ":" + cmd.Body.Text, ctx.Service.Id, ctx.Value.Cancellation == ct));
+        ctx.Counts.Observed.Enqueue(
+            (
+                cmd.Id,
+                cmd.Mode + ":" + cmd.Body.Text,
+                ctx.Service.Id,
+                ctx.Value.Cancellation == ct
+            )
+        );
         return Task.FromResult<Result<Unit>>(Unit.Default);
     }
 }

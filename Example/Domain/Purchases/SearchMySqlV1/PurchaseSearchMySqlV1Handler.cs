@@ -11,27 +11,37 @@ namespace Brigade.Net.Example.Domain.Purchases.SearchMySqlV1;
 
 public sealed record PurchaseSearchMySqlV1Context([Provide] DbReader Reader);
 
-public sealed class PurchaseSearchMySqlV1Handler : IQueryHandler<Unit, IReadOnlyList<PurchaseSearchMySqlV1Result>, PurchaseSearchMySqlV1Context>
+public sealed class PurchaseSearchMySqlV1Handler
+    : IQueryHandler<Unit, IReadOnlyList<PurchaseSearchMySqlV1Result>, PurchaseSearchMySqlV1Context>
 {
     public static Task<Result<IReadOnlyList<PurchaseSearchMySqlV1Result>>> RunAsync(
         PurchaseSearchMySqlV1Context ctx,
         Unit request,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         var rootId = 100;
         var minAmount = 10;
+
         var tag = "safe";
+
         var quotedName = "O'Reilly";
+
         var excludedGroup = "idle";
+
         var deliveredAfter = "2026-01-01";
+
+
         var anchor = new MySqlQueryBuilder()
             .Select($"{CategoryTblMySql.IdCol:raw}")
             .From($"{CategoryTblMySql.Table:raw}")
             .Where($"{CategoryTblMySql.IdCol:raw} = {rootId}");
+
         var recursive = new MySqlQueryBuilder()
             .Select($"{CategoryTblMySql.IdCol:raw}")
             .From($"{CategoryTblMySql.Table:raw}")
-            .InnerJoin($"{TreeTblMySql.Table:raw} ON {CategoryTblMySql.ParentIdCol:raw} = {TreeTblMySql.IdCol:raw}");
+            .InnerJoin($"{CategoryTblMySql.ParentIdJoin:raw}");
+
         var categories = new MySqlQueryBuilder()
             .Select($"{TreeTblMySql.IdCol:raw}")
             .From($"{TreeTblMySql.Table:raw}")
@@ -39,11 +49,13 @@ public sealed class PurchaseSearchMySqlV1Handler : IQueryHandler<Unit, IReadOnly
                 .Select($"{CategoryTblMySql.IdCol:raw}")
                 .From($"{CategoryTblMySql.Table:raw}")
                 .Where($"{CategoryTblMySql.IdCol:raw} = {rootId}"));
+
         var taggedPurchase = new MySqlQueryBuilder()
             .Select($"1")
             .From($"{PurchaseTagTblMySql.Table:raw}")
             .Where($"{PurchaseTagTblMySql.PurchaseIdCol:raw} = {PurchaseTblMySql.Purchase.IdCol:raw}")
             .Where($"{PurchaseTagTblMySql.TagCol:raw} = {tag}");
+
         var query = new MySqlQueryBuilder()
             .WithRecursive(TreeTblMySql.Name, anchor, recursive)
             .Select($"{PurchaseTblMySql.Purchase.IdCol:raw}")
@@ -55,11 +67,19 @@ public sealed class PurchaseSearchMySqlV1Handler : IQueryHandler<Unit, IReadOnly
             .Select($"{PurchaseTblMySql.Purchase.StatusCol:raw}")
             .From($"{PurchaseTblMySql.Purchase.Table:raw}")
             .InnerJoin($"{PurchaseTblMySql.Purchase.BuyerIdJoin:raw}")
-            .InnerJoin($"{AccountTblMySql.Buyer.Table:raw} ON {AccountTblMySql.Buyer.IdCol:raw} = {PurchaseTblMySql.Purchase.BuyerIdCol:raw}")
-            .LeftJoin($"{AccountTblMySql.Seller.Table:raw} ON {AccountTblMySql.Seller.IdCol:raw} = {PurchaseTblMySql.Purchase.SellerIdCol:raw}")
+            .InnerJoin(
+                $"{PurchaseTblMySql.Purchase.BuyerIdJoinBuyer:raw}"
+            )
+            .LeftJoin(
+                $"{PurchaseTblMySql.Purchase.SellerIdJoinSeller:raw}"
+            )
             .CrossJoin(new MySqlQueryBuilder().Select($"{42} AS marker"), "marker")
-            .LeftJoin($"{ShipmentTblMySql.Table:raw} ON {ShipmentTblMySql.PurchaseIdCol:raw} = {PurchaseTblMySql.Purchase.IdCol:raw}")
-            .InnerJoin($"{PurchaseTagTblMySql.Table:raw} ON {PurchaseTagTblMySql.PurchaseIdCol:raw} = {PurchaseTblMySql.Purchase.IdCol:raw} AND {PurchaseTagTblMySql.TagCol:raw} = {tag}")
+            .LeftJoin(
+                $"{ShipmentTblMySql.PurchaseIdJoinReversePurchase:raw}"
+            )
+            .InnerJoin(
+                $"{PurchaseTagTblMySql.PurchaseIdJoinReversePurchase:raw} AND {PurchaseTagTblMySql.TagCol:raw} = {tag}"
+            )
             .WhereIn($"{PurchaseTblMySql.Purchase.CategoryIdCol:raw}", categories)
             .WhereExists(taggedPurchase)
             .Where($"({AccountTblMySql.Buyer.NameCol:raw} = {quotedName} OR {AccountTblMySql.Buyer.GroupCol:raw} <> {excludedGroup})")
@@ -78,6 +98,7 @@ public sealed class PurchaseSearchMySqlV1Handler : IQueryHandler<Unit, IReadOnly
             .OrderBy($"{PurchaseTblMySql.Purchase.IdCol:raw} DESC")
             .Offset(1)
             .Limit(3);
+
         return ctx.Reader.ListAsync<PurchaseSearchMySqlV1Result>(query, ct);
     }
 }

@@ -29,7 +29,8 @@ public static class ResultExtensions
         Func<Conflict, TOut>? conflict = null,
         Func<Forbidden, TOut>? forbidden = null,
         Func<GatewayError, TOut>? gatewayError = null,
-        Func<TimeoutResult, TOut>? timeout = null)
+        Func<TimeoutResult, TOut>? timeout = null
+    )
     {
         if (result.IsError(out var e))
         {
@@ -85,7 +86,8 @@ public static class ResultExtensions
         Func<Conflict, Task<TOut>>? conflict = null,
         Func<Forbidden, Task<TOut>>? forbidden = null,
         Func<GatewayError, Task<TOut>>? gatewayError = null,
-        Func<TimeoutResult, Task<TOut>>? timeout = null)
+        Func<TimeoutResult, Task<TOut>>? timeout = null
+    )
     {
         if (result.IsError(out var e))
         {
@@ -128,7 +130,11 @@ public static class ResultExtensions
     /// <param name="result">The result to map.</param>
     /// <param name="success">Invoked with the success value to produce the mapped value.</param>
     /// <param name="failure">Invoked with any failure case to recover it into a success value.</param>
-    public static Result<TOut> Map<T, TOut>(this Result<T> result, Func<T, TOut> success, Func<FailureBase, TOut> failure)
+    public static Result<TOut> Map<T, TOut>(
+        this Result<T> result,
+        Func<T, TOut> success,
+        Func<FailureBase, TOut> failure
+    )
     {
         return result.Map(
             success,
@@ -148,7 +154,11 @@ public static class ResultExtensions
     /// <param name="result">The result to map.</param>
     /// <param name="success">Invoked with the success value to produce the mapped value.</param>
     /// <param name="failure">Invoked with any failure case to recover it into a success value.</param>
-    public static Task<Result<TOut>> MapAsync<T, TOut>(this Result<T> result, Func<T, Task<TOut>> success, Func<FailureBase, Task<TOut>> failure)
+    public static Task<Result<TOut>> MapAsync<T, TOut>(
+        this Result<T> result,
+        Func<T, Task<TOut>> success,
+        Func<FailureBase, Task<TOut>> failure
+    )
     {
         return result.MapAsync(
             success,
@@ -180,7 +190,10 @@ public static class ResultExtensions
     /// <typeparam name="TOut">The type of the mapped success value.</typeparam>
     /// <param name="result">The result to map.</param>
     /// <param name="mapper">Invoked with the success value to produce the mapped result.</param>
-    public static async Task<Result<TOut>> FlatMapAsync<T, TOut>(this Result<T> result, Func<T, Task<Result<TOut>>> mapper)
+    public static async Task<Result<TOut>> FlatMapAsync<T, TOut>(
+        this Result<T> result,
+        Func<T, Task<Result<TOut>>> mapper
+    )
     {
         var mapped = await result.MapAsync(mapper);
 
@@ -209,9 +222,12 @@ public static class ResultExtensions
         Func<Conflict, Result<TOut>>? conflict = null,
         Func<Forbidden, Result<TOut>>? forbidden = null,
         Func<GatewayError, Result<TOut>>? gatewayError = null,
-        Func<TimeoutResult, Result<TOut>>? timeout = null)
+        Func<TimeoutResult, Result<TOut>>? timeout = null
+    )
     {
-        return result.Map(success, error, notFound, conflict, forbidden, gatewayError, timeout).Flatten();
+        return result
+            .Map(success, error, notFound, conflict, forbidden, gatewayError, timeout)
+            .Flatten();
     }
 
     /// <summary>
@@ -235,7 +251,8 @@ public static class ResultExtensions
         Func<Conflict, Task<Result<TOut>>>? conflict = null,
         Func<Forbidden, Task<Result<TOut>>>? forbidden = null,
         Func<GatewayError, Task<Result<TOut>>>? gatewayError = null,
-        Func<TimeoutResult, Task<Result<TOut>>>? timeout = null)
+        Func<TimeoutResult, Task<Result<TOut>>>? timeout = null
+    )
     {
         var mapped = await result.MapAsync(success, error, notFound, conflict, forbidden, gatewayError, timeout);
 
@@ -250,7 +267,11 @@ public static class ResultExtensions
     /// <param name="result">The result to map.</param>
     /// <param name="success">Invoked with the success value to produce the mapped result.</param>
     /// <param name="failure">Invoked with any failure case to recover it into a mapped result.</param>
-    public static Result<TOut> FlatMap<T, TOut>(this Result<T> result, Func<T, Result<TOut>> success, Func<FailureBase, Result<TOut>> failure)
+    public static Result<TOut> FlatMap<T, TOut>(
+        this Result<T> result,
+        Func<T, Result<TOut>> success,
+        Func<FailureBase, Result<TOut>> failure
+    )
     {
         return result.Map(success, failure).Flatten();
     }
@@ -263,7 +284,11 @@ public static class ResultExtensions
     /// <param name="result">The result to map.</param>
     /// <param name="success">Invoked with the success value to produce the mapped result.</param>
     /// <param name="failure">Invoked with any failure case to recover it into a mapped result.</param>
-    public static async Task<Result<TOut>> FlatMapAsync<T, TOut>(this Result<T> result, Func<T, Task<Result<TOut>>> success, Func<FailureBase, Task<Result<TOut>>> failure)
+    public static async Task<Result<TOut>> FlatMapAsync<T, TOut>(
+        this Result<T> result,
+        Func<T, Task<Result<TOut>>> success,
+        Func<FailureBase, Task<Result<TOut>>> failure
+    )
     {
         var mapped = await result.MapAsync(success, failure);
 

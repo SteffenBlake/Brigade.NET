@@ -6,6 +6,7 @@ public sealed class FromParamsAttribute : Attribute
 {
     /// <summary>The binding name, or null for the property's name.</summary>
     public string? Name { get; set; }
+
     /// <summary>An optional short name; ignored by the ASP.NET engine.</summary>
     public string? ShortName { get; set; }
 }

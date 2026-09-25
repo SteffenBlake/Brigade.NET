@@ -4,17 +4,12 @@ using System.Text;
 
 namespace Brigade.Net.Mise;
 
-internal sealed class SqlRenderContext
+internal sealed class SqlRenderContext(SqlDialect dialect)
 {
     private readonly List<SqlParameterSpec> _parameters = [];
     private readonly HashSet<QueryBuilder> _active = [];
 
-    internal SqlRenderContext(SqlDialect dialect)
-    {
-        Dialect = dialect;
-    }
-
-    internal SqlDialect Dialect { get; }
+    internal SqlDialect Dialect { get; } = dialect;
 
     internal StringBuilder Text { get; } = new();
 

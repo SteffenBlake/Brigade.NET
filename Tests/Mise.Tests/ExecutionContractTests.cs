@@ -56,7 +56,9 @@ public sealed class ExecutionContractTests
         var factory = new FakeDbProviderFactory(connection);
         await using (var writer = new DbWriter(config: new TestConfig("secret", factory)))
         {
-            await using (var work = new Brigade.Net.Core.Transactions.UnitOfWork([writer.Transaction]))
+            await using (var work = new Brigade.Net.Core.Transactions.UnitOfWork(
+                [writer.Transaction]
+            ))
             {
                 await writer.ListAsync<TestRow>(Query());
                 await work.CommitAsync();
@@ -126,7 +128,9 @@ public sealed class ExecutionContractTests
     {
         var connection = new FakeDbConnection();
         await connection.OpenAsync();
-        var providerTransaction = Assert.IsType<FakeDbTransaction>(await connection.BeginTransactionAsync());
+        var providerTransaction = Assert.IsType<FakeDbTransaction>(
+            await connection.BeginTransactionAsync()
+        );
         await using (var writer = new DbWriter(transaction: providerTransaction))
         {
             var adapter = writer.Transaction;
@@ -149,7 +153,9 @@ public sealed class ExecutionContractTests
     {
         var connection = new FakeDbConnection();
         await connection.OpenAsync();
-        var providerTransaction = Assert.IsType<FakeDbTransaction>(await connection.BeginTransactionAsync());
+        var providerTransaction = Assert.IsType<FakeDbTransaction>(
+            await connection.BeginTransactionAsync()
+        );
         var writer = new DbWriter(transaction: providerTransaction);
 
         await writer.DisposeAsync();
@@ -168,7 +174,9 @@ public sealed class ExecutionContractTests
         await writer.ExecuteAsync(Query());
         connection.LastTransaction!.CommitException = expected;
 
-        var actual = await Assert.ThrowsAsync<InvalidOperationException>(() => adapter.CommitAsync());
+        var actual = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => adapter.CommitAsync()
+        );
         Assert.Same(expected, actual);
         await adapter.RollbackAsync();
         await adapter.DisposeAsync();
@@ -187,7 +195,9 @@ public sealed class ExecutionContractTests
         await writer.ExecuteAsync(Query());
         connection.LastTransaction!.RollbackException = expected;
 
-        var actual = await Assert.ThrowsAsync<InvalidOperationException>(() => adapter.RollbackAsync());
+        var actual = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => adapter.RollbackAsync()
+        );
         Assert.Same(expected, actual);
         await adapter.DisposeAsync();
         await adapter.DisposeAsync();
@@ -453,7 +463,9 @@ public sealed class ExecutionContractTests
         var connection = new FakeDbConnection { ExecuteException = expected };
         await using var reader = new DbReader(connection: connection);
 
-        var actual = await Assert.ThrowsAsync<InvalidOperationException>(() => reader.ExistsAsync(Query()));
+        var actual = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => reader.ExistsAsync(Query())
+        );
 
         Assert.Same(expected, actual);
         Assert.True(connection.LastCommand!.IsDisposed);
@@ -467,7 +479,9 @@ public sealed class ExecutionContractTests
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => reader.ExistsAsync(Query(), cancellation.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => reader.ExistsAsync(Query(), cancellation.Token)
+        );
 
         Assert.Null(connection.LastCommand);
     }
@@ -494,7 +508,9 @@ public sealed class ExecutionContractTests
         var operation = reader.ExistsAsync(Query());
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => reader.ExistsAsync(Query()));
-        await Assert.ThrowsAsync<InvalidOperationException>(async () => await reader.DisposeAsync());
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            async () => await reader.DisposeAsync()
+        );
 
         connection.ExecuteGate.SetResult();
         await operation;
@@ -561,7 +577,9 @@ public sealed class ExecutionContractTests
         var factory = new FakeDbProviderFactory(connection) { ReturnNullConnection = true };
         await using var reader = new DbReader(new TestConfig("secret", factory));
 
-        var exception = await Assert.ThrowsAsync<InvalidMappingException>(() => reader.ExistsAsync(Query()));
+        var exception = await Assert.ThrowsAsync<InvalidMappingException>(
+            () => reader.ExistsAsync(Query())
+        );
 
         Assert.DoesNotContain("secret", exception.Message, StringComparison.Ordinal);
     }
@@ -573,7 +591,9 @@ public sealed class ExecutionContractTests
         var factory = new FakeDbProviderFactory(connection) { ReturnNullParameter = true };
         await using var reader = new DbReader(new TestConfig("secret", factory));
 
-        var exception = await Assert.ThrowsAsync<InvalidMappingException>(() => reader.ExistsAsync(QueryWithParameter()));
+        var exception = await Assert.ThrowsAsync<InvalidMappingException>(
+            () => reader.ExistsAsync(QueryWithParameter())
+        );
 
         Assert.DoesNotContain("secret", exception.Message, StringComparison.Ordinal);
         Assert.Equal(1, connection.LastCommand!.DisposeCount);
@@ -586,7 +606,9 @@ public sealed class ExecutionContractTests
         var connection = new FakeDbConnection { CommandDisposeException = expected };
         await using var reader = new DbReader(connection: connection);
 
-        var actual = await Assert.ThrowsAsync<InvalidOperationException>(() => reader.ExistsAsync(Query()));
+        var actual = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => reader.ExistsAsync(Query())
+        );
 
         Assert.Same(expected, actual);
     }

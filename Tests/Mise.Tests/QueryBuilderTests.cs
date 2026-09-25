@@ -1,5 +1,5 @@
-using Brigade.Net.Mise;
 using System.Runtime.CompilerServices;
+using Brigade.Net.Mise;
 
 namespace Brigade.Net.Mise.Tests;
 
@@ -18,8 +18,14 @@ public sealed class QueryBuilderTests
 
         var compiled = query.Compile();
 
-        Assert.Equal("SELECT @p0 AS rank, name FROM users WHERE id = @p1 ORDER BY @p2", compiled.Text);
-        Assert.Equal(["@p0", "@p1", "@p2"], compiled.Parameters.Select(parameter => parameter.Name));
+        Assert.Equal(
+            "SELECT @p0 AS rank, name FROM users WHERE id = @p1 ORDER BY @p2",
+            compiled.Text
+        );
+        Assert.Equal(
+            ["@p0", "@p1", "@p2"],
+            compiled.Parameters.Select(parameter => parameter.Name)
+        );
         Assert.Equal([2, 9, 4], compiled.Parameters.Select(parameter => parameter.Value));
     }
 

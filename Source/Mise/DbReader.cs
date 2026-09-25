@@ -33,13 +33,17 @@ public class DbReader(IDbConfig? config = null, DbConnection? connection = null)
         {
             var compiled = query.Compile();
             await using var command = await CreateCommandAsync(compiled, cancellationToken);
-            await using var reader = await command.ExecuteReaderAsync(compiled.Behavior, cancellationToken);
+            await using var reader = await command.ExecuteReaderAsync(
+                compiled.Behavior,
+                cancellationToken
+            );
             var ordinals = T.BindOrdinals(reader);
             var values = new List<T>();
             while (await reader.ReadAsync(cancellationToken))
             {
                 values.Add(T.Materialize(reader, ordinals));
             }
+
             return values;
         }
         finally
@@ -60,7 +64,10 @@ public class DbReader(IDbConfig? config = null, DbConnection? connection = null)
         {
             var compiled = query.Compile();
             await using var command = await CreateCommandAsync(compiled, cancellationToken);
-            await using var reader = await command.ExecuteReaderAsync(compiled.Behavior, cancellationToken);
+            await using var reader = await command.ExecuteReaderAsync(
+                compiled.Behavior,
+                cancellationToken
+            );
             var ordinals = T.BindOrdinals(reader);
             while (await reader.ReadAsync(cancellationToken))
             {
@@ -85,11 +92,15 @@ public class DbReader(IDbConfig? config = null, DbConnection? connection = null)
         {
             var compiled = query.Compile();
             await using var command = await CreateCommandAsync(compiled, cancellationToken);
-            await using var reader = await command.ExecuteReaderAsync(compiled.Behavior | CommandBehavior.SingleRow, cancellationToken);
+            await using var reader = await command.ExecuteReaderAsync(
+                compiled.Behavior | CommandBehavior.SingleRow,
+                cancellationToken
+            );
             if (!await reader.ReadAsync(cancellationToken))
             {
                 return new NotFound();
             }
+
             var ordinals = T.BindOrdinals(reader);
             return T.Materialize(reader, ordinals);
         }
@@ -129,7 +140,10 @@ public class DbReader(IDbConfig? config = null, DbConnection? connection = null)
         {
             var compiled = query.Compile();
             await using var command = await CreateCommandAsync(compiled, cancellationToken);
-            await using var reader = await command.ExecuteReaderAsync(compiled.Behavior | CommandBehavior.SingleRow, cancellationToken);
+            await using var reader = await command.ExecuteReaderAsync(
+                compiled.Behavior | CommandBehavior.SingleRow,
+                cancellationToken
+            );
             return await reader.ReadAsync(cancellationToken);
         }
         finally
@@ -145,6 +159,7 @@ public class DbReader(IDbConfig? config = null, DbConnection? connection = null)
         {
             return;
         }
+
         if (Volatile.Read(ref _active) != 0)
         {
             throw new InvalidOperationException("Cannot dispose a Mise reader while an operation is active.");
@@ -184,6 +199,7 @@ public class DbReader(IDbConfig? config = null, DbConnection? connection = null)
             {
                 command.CommandTimeout = timeout;
             }
+
             foreach (var specification in built.Parameters)
             {
                 var parameter = _config is null
@@ -196,6 +212,7 @@ public class DbReader(IDbConfig? config = null, DbConnection? connection = null)
                 {
                     parameter.DbType = dbType;
                 }
+
                 command.Parameters.Add(parameter);
             }
             return command;
@@ -240,6 +257,7 @@ public class DbReader(IDbConfig? config = null, DbConnection? connection = null)
                 ?? throw new InvalidMappingException(GetType(), "provider returned no connection");
             _connection.ConnectionString = _config.ConnectionString;
         }
+
         if (_connection.State == ConnectionState.Closed)
         {
             await _connection.OpenAsync(cancellationToken);

@@ -17,7 +17,10 @@ public sealed class OrderedProvidedValuesTests
     {
         var values = await Execute(Source(roles, command));
 
-        Assert.Equal(new[] { "Third", "First,Second", "First", "Second", "A,B,C,D", "First,Second,Third" }, values);
+        Assert.Equal(
+            new[] { "Third", "First,Second", "First", "Second", "A,B,C,D", "First,Second,Third" },
+            values
+        );
     }
 
     [Theory]
@@ -32,7 +35,10 @@ public sealed class OrderedProvidedValuesTests
         Assert.NotEqual(Source(15, command), source);
         var values = await Execute(source);
 
-        Assert.Equal(new[] { "Third", "First,Second", "First", "Second", "A,B,C,D", "First,Second,Third" }, values);
+        Assert.Equal(
+            new[] { "Third", "First,Second", "First", "Second", "A,B,C,D", "First,Second,Third" },
+            values
+        );
     }
 
     private static async Task<string[]> Execute(string source)
@@ -43,7 +49,9 @@ public sealed class OrderedProvidedValuesTests
         var emitted = output.Emit(stream);
         Assert.True(emitted.Success, string.Join("\n", emitted.Diagnostics));
         var assembly = System.Reflection.Assembly.Load(stream.ToArray());
-        return await (Task<string[]>)assembly.GetType("Harness")!.GetMethod("Run")!.Invoke(null, null)!;
+        return await (Task<string[]>)assembly.GetType("Harness")!
+            .GetMethod("Run")!
+            .Invoke(null, null)!;
     }
 
     [Theory]
@@ -64,7 +72,10 @@ public sealed class OrderedProvidedValuesTests
 
         var values = await Execute(source);
 
-        Assert.Equal(new[] { "Third", "First,Second,Third", "First", "Second", "A,B,D,C", "First,Second,Third" }, values);
+        Assert.Equal(
+            new[] { "Third", "First,Second,Third", "First", "Second", "A,B,D,C", "First,Second,Third" },
+            values
+        );
     }
 
     [Theory]
@@ -75,11 +86,16 @@ public sealed class OrderedProvidedValuesTests
     public async Task CRegisteredFirstGetsAnEmptyCollection(int roles)
     {
         var c = "[global::Brigade.Net.Partie." + Role(roles, 2) + "(typeof(C))]";
-        var source = Source(roles, false).Replace(c, "").Replace("[HandlerRoute.Get]", "[HandlerRoute.Get]\n    " + c);
+        var source = Source(roles, false)
+            .Replace(c, "")
+            .Replace("[HandlerRoute.Get]", "[HandlerRoute.Get]\n    " + c);
 
         var values = await Execute(source);
 
-        Assert.Equal(new[] { "Third", "", "First", "Second", "C,A,B,D", "First,Second,Third" }, values);
+        Assert.Equal(
+            new[] { "Third", "", "First", "Second", "C,A,B,D", "First,Second,Third" },
+            values
+        );
     }
 
     [Theory]
@@ -108,15 +124,24 @@ public sealed class OrderedProvidedValuesTests
     public async Task RepeatedProviderUsesEachRegistrationsValueAndParameters(bool command)
     {
         var source = Source(15, command)
-            .Replace("BContext([Decorate] Foo Previous)", "BContext([Decorate] Foo Previous, [Parameter] string Label)")
+            .Replace(
+                "BContext([Decorate] Foo Previous)",
+                "BContext([Decorate] Foo Previous, [Parameter] string Label)"
+            )
             .Replace("Harness.Calls.Add(\"B\")", "Harness.Calls.Add(ctx.Label)")
-            .Replace("ctx.Previous with { Value = \"Second\" }", "ctx.Previous with { Value = ctx.Label }")
+            .Replace(
+                "ctx.Previous with { Value = \"Second\" }",
+                "ctx.Previous with { Value = ctx.Label }"
+            )
             .Replace("[global::Brigade.Net.Partie.Provider(typeof(B))]", "[B(\"Second\")]")
             .Replace("[global::Brigade.Net.Partie.Provider(typeof(D))]", "[B(\"Third\")]");
 
         var values = await Execute(source);
 
-        Assert.Equal(new[] { "Third", "First,Second", "Second", "", "A,Second,C,Third", "First,Second,Third" }, values);
+        Assert.Equal(
+            new[] { "Third", "First,Second", "Second", "", "A,Second,C,Third", "First,Second,Third" },
+            values
+        );
     }
 
     [Fact]
@@ -124,7 +149,10 @@ public sealed class OrderedProvidedValuesTests
     {
         var source = Source(15, false).Replace(
             "[global::Brigade.Net.Partie.Provider(typeof(D))]",
-            string.Join("\n", Enumerable.Repeat("[global::Brigade.Net.Partie.Provider(typeof(B))]", 256))
+            string.Join(
+                "\n",
+                Enumerable.Repeat("[global::Brigade.Net.Partie.Provider(typeof(B))]", 256)
+            )
         );
 
         EngineCompilation.Invalid(source, "BRG004");
@@ -184,7 +212,8 @@ public sealed class OrderedProvidedValuesTests
             )
             {
                 Harness.Calls.Add("C");
-                return next(new FooAggregate(string.Join(",", ctx.Earlier.Select(foo => foo.Value))));
+                var aggregate = string.Join(",", ctx.Earlier.Select(foo => foo.Value));
+                return next(new FooAggregate(aggregate));
             }
         }
 
@@ -270,11 +299,18 @@ public sealed class OrderedProvidedValuesTests
 
             public void Map<TInputs, TResult>(PartieRoute<TInputs, TResult> route)
             {
-                var inputs = (TInputs)Activator.CreateInstance(typeof(TInputs), new Unit(), CancellationToken.None)!;
+                var inputs = (TInputs)Activator.CreateInstance(
+                    typeof(TInputs),
+                    new Unit(),
+                    CancellationToken.None
+                )!;
                 result = Execute(route, inputs);
             }
 
-            private static async Task<string[]> Execute<TInputs, TResult>(PartieRoute<TInputs, TResult> route, TInputs inputs)
+            private static async Task<string[]> Execute<TInputs, TResult>(
+                PartieRoute<TInputs, TResult> route,
+                TInputs inputs
+            )
             {
                 string[] values = [];
                 (await route.ExecuteAsync(inputs)).Map(value =>

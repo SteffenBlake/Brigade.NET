@@ -63,7 +63,10 @@ public class AttributeTests
     [Fact]
     public void MarkerAttributesHaveExpectedTargets()
     {
-        Assert.Equal(AttributeTargets.Class | AttributeTargets.Struct, Usage<ExpoAttribute>().ValidOn);
+        Assert.Equal(
+            AttributeTargets.Class | AttributeTargets.Struct,
+            Usage<ExpoAttribute>().ValidOn
+        );
         Assert.Equal(AttributeTargets.Property, Usage<IsComparableAttribute>().ValidOn);
         Assert.Equal(
             AttributeTargets.Property | AttributeTargets.Method,

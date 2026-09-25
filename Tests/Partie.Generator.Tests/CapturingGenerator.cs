@@ -9,19 +9,20 @@ internal sealed class CapturingGenerator(
     Func<IMethodSymbol, bool>? discoverPolicyFunctions = null
 ) : IIncrementalGenerator
 {
-    public void Initialize(IncrementalGeneratorInitializationContext context) => BrigadeGeneratorCore.Initialize(
-        context,
-        route =>
-    {
-        capture(route);
-        return "";
-    },
-        discoverRoute: discoverRoute,
-        discoverPolicyFunctions: discoverPolicyFunctions,
-        emitGroup: group =>
-        {
-            captureGroup?.Invoke(group);
-            return "";
-        }
-    );
+    public void Initialize(IncrementalGeneratorInitializationContext context) =>
+        BrigadeGeneratorCore.Initialize(
+            context,
+            route =>
+            {
+                capture(route);
+                return "";
+            },
+            discoverRoute: discoverRoute,
+            discoverPolicyFunctions: discoverPolicyFunctions,
+            emitGroup: group =>
+            {
+                captureGroup?.Invoke(group);
+                return "";
+            }
+        );
 }

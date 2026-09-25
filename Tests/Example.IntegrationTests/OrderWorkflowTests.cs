@@ -18,7 +18,10 @@ public sealed class OrderWorkflowTests(AppHostFixture host)
     )
     {
         var customer = "customer-" + Guid.NewGuid();
-        using var placed = await host.WebClient.PostAsJsonAsync("/api/v1/orders", new { customer, sku, quantity });
+        using var placed = await host.WebClient.PostAsJsonAsync(
+            "/api/v1/orders",
+            new { customer, sku, quantity }
+        );
         var order = await Read(placed);
         var id = order.GetProperty("id").GetGuid();
         Assert.NotEqual(Guid.Empty, id);
@@ -38,7 +41,9 @@ public sealed class OrderWorkflowTests(AppHostFixture host)
         Assert.Equal(6, fetchedOrder.EnumerateObject().Count());
         AssertFlow(fetched, "before;load;inspect:1;search;after", 1);
         Assert.NotEqual(Header(placed, "X-Request-Id"), Header(fetched, "X-Request-Id"));
-        using var listed = await host.WebClient.GetAsync("/api/v1/orders?customer=" + Uri.EscapeDataString(customer));
+        using var listed = await host.WebClient.GetAsync(
+            "/api/v1/orders?customer=" + Uri.EscapeDataString(customer)
+        );
         var orders = await Read(listed);
         Assert.Equal(id, Assert.Single(orders.EnumerateArray()).GetProperty("id").GetGuid());
         AssertFlow(listed, "before;load;inspect:1;search;after", 1);
@@ -59,7 +64,10 @@ public sealed class OrderWorkflowTests(AppHostFixture host)
     [Fact]
     public async Task MissingOrder_DeleteReturnsFailureAndUnwinds()
     {
-        using var request = new HttpRequestMessage(HttpMethod.Delete, "/api/v1/orders/" + Guid.NewGuid());
+        using var request = new HttpRequestMessage(
+            HttpMethod.Delete,
+            "/api/v1/orders/" + Guid.NewGuid()
+        );
         using var response = await host.WebClient.SendAsync(request);
         var failure = await Read(response, HttpStatusCode.NotFound);
         Assert.Equal("Order not found.", failure.GetProperty("message").GetString());
@@ -102,15 +110,29 @@ public sealed class OrderWorkflowTests(AppHostFixture host)
     public async Task SearchSupportsOptionalAndCombinedFilters()
     {
         var customer = "filters-" + Guid.NewGuid();
-        using var created = await host.WebClient.PostAsJsonAsync("/api/v1/orders", new { customer, sku = "PEN", quantity = 2 });
+        using var created = await host.WebClient.PostAsJsonAsync(
+            "/api/v1/orders",
+            new { customer, sku = "PEN", quantity = 2 }
+        );
         var id = (await Read(created)).GetProperty("id").GetGuid();
-        using var matching = await host.WebClient.GetAsync("/api/v1/orders?orderId=" + id + "&customer=" + customer);
-        Assert.Equal(id, Assert.Single((await Read(matching)).EnumerateArray()).GetProperty("id").GetGuid());
+        using var matching = await host.WebClient.GetAsync(
+            "/api/v1/orders?orderId=" + id + "&customer=" + customer
+        );
+        Assert.Equal(
+            id,
+            Assert.Single((await Read(matching)).EnumerateArray())
+                .GetProperty("id")
+                .GetGuid()
+        );
         AssertFlow(matching, "before;load;inspect:1;search;after", 1);
-        using var mismatching = await host.WebClient.GetAsync("/api/v1/orders?orderId=" + id + "&customer=other-" + customer);
+        using var mismatching = await host.WebClient.GetAsync(
+            "/api/v1/orders?orderId=" + id + "&customer=other-" + customer
+        );
         Assert.Empty((await Read(mismatching)).EnumerateArray());
         AssertFlow(mismatching, "before;load;inspect:0;search;after", 1);
-        using var missing = await host.WebClient.GetAsync("/api/v1/orders?orderId=" + Guid.NewGuid());
+        using var missing = await host.WebClient.GetAsync(
+            "/api/v1/orders?orderId=" + Guid.NewGuid()
+        );
         Assert.Empty((await Read(missing)).EnumerateArray());
         using var unfiltered = await host.WebClient.GetAsync("/api/v1/orders");
         Assert.Contains(
@@ -127,51 +149,57 @@ public sealed class OrderWorkflowTests(AppHostFixture host)
     {
         var customer = "parallel-" + Guid.NewGuid();
         var requestIds = await Task.WhenAll(
-            Enumerable.Range(1, 12).Select(
-                async quantity =>
-        {
-            using var placed = await host.WebClient.PostAsJsonAsync("/api/v1/orders", new { customer, sku = "PEN", quantity });
-            var order = await Read(placed);
-            var id = order.GetProperty("id").GetGuid();
-            AssertFlow(placed, "before;create;after", 0);
-            using var fetched = await host.WebClient.GetAsync("/api/v1/orders?orderId=" + id);
-            Assert.Equal(
-                        quantity,
-                        Assert.Single((await Read(fetched)).EnumerateArray()).GetProperty("quantity").GetInt32()
-                    );
-            AssertFlow(fetched, "before;load;inspect:1;search;after", 1);
-            return new[]
+            Enumerable.Range(1, 12).Select(async quantity =>
             {
-                Header(placed, "X-Request-Id"),
-                Header(fetched, "X-Request-Id")
-            };
-        }
-            )
+                using var placed = await host.WebClient.PostAsJsonAsync(
+                    "/api/v1/orders",
+                    new { customer, sku = "PEN", quantity }
+                );
+                var order = await Read(placed);
+                var id = order.GetProperty("id").GetGuid();
+                AssertFlow(placed, "before;create;after", 0);
+                using var fetched = await host.WebClient.GetAsync("/api/v1/orders?orderId=" + id);
+                Assert.Equal(
+                    quantity,
+                    Assert.Single((await Read(fetched)).EnumerateArray())
+                        .GetProperty("quantity")
+                        .GetInt32()
+                );
+                AssertFlow(fetched, "before;load;inspect:1;search;after", 1);
+                return new[]
+                {
+                    Header(placed, "X-Request-Id"),
+                    Header(fetched, "X-Request-Id")
+                };
+            })
         );
         Assert.Equal(24, requestIds.SelectMany(values => values).Distinct().Count());
-        using var listed = await host.WebClient.GetAsync("/api/v1/orders?customer=" + Uri.EscapeDataString(customer));
+        using var listed = await host.WebClient.GetAsync(
+            "/api/v1/orders?customer=" + Uri.EscapeDataString(customer)
+        );
         Assert.Equal(12, (await Read(listed)).GetArrayLength());
     }
 
     [Fact]
     public async Task ConcurrentDeletion_AllowsExactlyOneRemoval()
     {
-        using var placed = await host.WebClient.PostAsJsonAsync("/api/v1/orders", new { customer = "cancel-" + Guid.NewGuid(), sku = "PEN", quantity = 1 });
+        using var placed = await host.WebClient.PostAsJsonAsync(
+            "/api/v1/orders",
+            new { customer = "cancel-" + Guid.NewGuid(), sku = "PEN", quantity = 1 }
+        );
         var id = (await Read(placed)).GetProperty("id").GetGuid();
         var results = await Task.WhenAll(
-            Enumerable.Range(0, 8).Select(
-                async attempt =>
-        {
-            using var response = await host.WebClient.DeleteAsync("/api/v1/orders/" + id);
-            AssertFlow(response, "before;delete;after", 0);
-            if (response.StatusCode == HttpStatusCode.NoContent)
+            Enumerable.Range(0, 8).Select(async attempt =>
             {
-                return (JsonElement?)null;
-            }
+                using var response = await host.WebClient.DeleteAsync("/api/v1/orders/" + id);
+                AssertFlow(response, "before;delete;after", 0);
+                if (response.StatusCode == HttpStatusCode.NoContent)
+                {
+                    return (JsonElement?)null;
+                }
 
-            return await Read(response, HttpStatusCode.NotFound);
-        }
-            )
+                return await Read(response, HttpStatusCode.NotFound);
+            })
         );
         Assert.Single(results, result => result is null);
         Assert.Equal(
@@ -188,11 +216,23 @@ public sealed class OrderWorkflowTests(AppHostFixture host)
     public async Task CustomerQuery_IsDecodedAndFiltersOrders()
     {
         var customer = "A & B + \"team\" " + Guid.NewGuid();
-        using var created = await host.WebClient.PostAsJsonAsync("/api/v1/orders", new { customer, sku = "PEN", quantity = 1 });
+        using var created = await host.WebClient.PostAsJsonAsync(
+            "/api/v1/orders",
+            new { customer, sku = "PEN", quantity = 1 }
+        );
         var id = (await Read(created)).GetProperty("id").GetGuid();
-        using var filtered = await host.WebClient.GetAsync("/api/v1/orders?customer=" + Uri.EscapeDataString(customer));
-        Assert.Equal(id, Assert.Single((await Read(filtered)).EnumerateArray()).GetProperty("id").GetGuid());
-        using var otherCustomer = await host.WebClient.GetAsync("/api/v1/orders?customer=" + Guid.NewGuid());
+        using var filtered = await host.WebClient.GetAsync(
+            "/api/v1/orders?customer=" + Uri.EscapeDataString(customer)
+        );
+        Assert.Equal(
+            id,
+            Assert.Single((await Read(filtered)).EnumerateArray())
+                .GetProperty("id")
+                .GetGuid()
+        );
+        using var otherCustomer = await host.WebClient.GetAsync(
+            "/api/v1/orders?customer=" + Guid.NewGuid()
+        );
         Assert.Empty((await Read(otherCustomer)).EnumerateArray());
     }
 
@@ -208,7 +248,10 @@ public sealed class OrderWorkflowTests(AppHostFixture host)
     [Fact]
     public async Task WrongVerb_DoesNotInvokeHandler()
     {
-        using var response = await host.WebClient.PutAsJsonAsync("/api/v1/orders/" + Guid.NewGuid(), new { quantity = 2 });
+        using var response = await host.WebClient.PutAsJsonAsync(
+            "/api/v1/orders/" + Guid.NewGuid(),
+            new { quantity = 2 }
+        );
         Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
         Assert.DoesNotContain("GET", response.Content.Headers.Allow);
         Assert.Contains("DELETE", response.Content.Headers.Allow);
@@ -241,5 +284,8 @@ public sealed class OrderWorkflowTests(AppHostFixture host)
         Assert.Equal("True", Header(response, "X-Cancellation-Matches"));
     }
 
-    private static string Header(HttpResponseMessage response, string name) => Assert.Single(response.Headers.GetValues(name));
+    private static string Header(HttpResponseMessage response, string name)
+    {
+        return Assert.Single(response.Headers.GetValues(name));
+    }
 }

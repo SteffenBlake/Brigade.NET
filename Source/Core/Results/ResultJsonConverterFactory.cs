@@ -18,9 +18,13 @@ public sealed class ResultJsonConverterFactory : JsonConverterFactory
             throw new ArgumentException("Expected a closed Result<T> type.", nameof(typeToConvert));
         }
 
-        return (JsonConverter)Activator.CreateInstance(
-            typeof(ResultJsonConverter<,>).MakeGenericType(FindResultType(typeToConvert)!.GetGenericArguments()[0], typeToConvert)
-        )!;
+        var resultType = FindResultType(typeToConvert)!;
+        var converterType = typeof(ResultJsonConverter<,>).MakeGenericType(
+            resultType.GetGenericArguments()[0],
+            typeToConvert
+        );
+
+        return (JsonConverter)Activator.CreateInstance(converterType)!;
     }
 
     private static Type? FindResultType(Type type)
@@ -36,9 +40,14 @@ public sealed class ResultJsonConverterFactory : JsonConverterFactory
         return null;
     }
 
-    private sealed class ResultJsonConverter<T, TResult> : JsonConverter<TResult> where TResult : Result<T>
+    private sealed class ResultJsonConverter<T, TResult> : JsonConverter<TResult>
+        where TResult : Result<T>
     {
-        public override TResult? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        public override TResult? Read(
+            ref Utf8JsonReader reader,
+            Type typeToConvert,
+            JsonSerializerOptions options
+        )
         {
             throw new NotSupportedException("Result<T> JSON is write-only because unwrapped payloads do not identify the result case.");
         }

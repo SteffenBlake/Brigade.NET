@@ -12,6 +12,7 @@ public sealed class SqliteCommandBuilder() : CommandBuilder(new SqliteDialect())
         {
             throw new InvalidOperationException("RETURNING columns must be set once and cannot be empty.");
         }
+
         var dialect = new SqliteDialect();
         _returning = "RETURNING " + string.Join(", ", columns.Select(dialect.QuoteIdentifier));
         return this;

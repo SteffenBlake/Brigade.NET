@@ -34,7 +34,9 @@ public sealed class IntegrationSuiteTests
                 await using (var container = new PostgreSqlBuilder("postgres:17.6").Build())
                 {
                     await container.StartAsync();
-                    await using var connection = new NpgsqlConnection(container.GetConnectionString());
+                    await using var connection = new NpgsqlConnection(
+                        container.GetConnectionString()
+                    );
                     await RunSuiteAsync(connection, engine);
                 }
                 break;
@@ -52,7 +54,9 @@ public sealed class IntegrationSuiteTests
                 await using (var container = new MySqlBuilder("mysql:8.4.6").Build())
                 {
                     await container.StartAsync();
-                    await using var connection = new MySqlConnection(container.GetConnectionString());
+                    await using var connection = new MySqlConnection(
+                        container.GetConnectionString()
+                    );
                     await RunSuiteAsync(connection, engine);
                 }
                 break;
@@ -60,7 +64,9 @@ public sealed class IntegrationSuiteTests
                 await using (var container = new MariaDbBuilder("mariadb:11.8.3").Build())
                 {
                     await container.StartAsync();
-                    await using var connection = new MySqlConnection(container.GetConnectionString());
+                    await using var connection = new MySqlConnection(
+                        container.GetConnectionString()
+                    );
                     await RunSuiteAsync(connection, engine);
                 }
                 break;
@@ -94,7 +100,9 @@ public sealed class IntegrationSuiteTests
             await using (var work = new UnitOfWork([transaction]))
             {
                 var inserted = await writer.ExecuteAsync(
-                    new CommandBuilder().Sql($"INSERT INTO mise_items (id, name) VALUES ({1}, {dangerous})")
+                    new CommandBuilder().Sql(
+                        $"INSERT INTO mise_items (id, name) VALUES ({1}, {dangerous})"
+                    )
                 );
                 Assert.True(inserted.IsSuccess(out var count));
                 Assert.Equal(1, count);
@@ -107,7 +115,9 @@ public sealed class IntegrationSuiteTests
             var query = new QueryBuilder().Sql($"SELECT id, name FROM mise_items WHERE id = {1}");
             var list = await reader.ListAsync<IntegrationRow>(query);
             var first = await reader.FirstOrNotFoundAsync<IntegrationRow>(query);
-            var scalar = await reader.ScalarAsync<object>(new QueryBuilder().Sql($"SELECT COUNT(*) FROM mise_items"));
+            var scalar = await reader.ScalarAsync<object>(
+                new QueryBuilder().Sql($"SELECT COUNT(*) FROM mise_items")
+            );
             var exists = await reader.ExistsAsync(query);
             var streamed = new List<IntegrationRow>();
             await foreach (var row in reader.StreamAsync<IntegrationRow>(query))
@@ -130,10 +140,13 @@ public sealed class IntegrationSuiteTests
             Assert.True(nullable.IsSuccess(out var nullableRows));
             Assert.Equal([new IntegrationRow(1, null)], nullableRows);
 
-            await using (var stream = reader.StreamAsync<IntegrationRow>(query).GetAsyncEnumerator())
+            await using (var stream = reader.StreamAsync<IntegrationRow>(query)
+                .GetAsyncEnumerator())
             {
                 Assert.True(await stream.MoveNextAsync());
-                await Assert.ThrowsAsync<InvalidOperationException>(() => reader.ExistsAsync(query));
+                await Assert.ThrowsAsync<InvalidOperationException>(
+                    () => reader.ExistsAsync(query)
+                );
             }
 
             using var cancelled = new CancellationTokenSource();
@@ -153,7 +166,9 @@ public sealed class IntegrationSuiteTests
                 "MariaDB" => new CommandBuilder().Sql(
                     $"INSERT INTO mise_items (id, name) VALUES ({3}, {"returned"}) RETURNING id, name"
                 ),
-                "MySQL" => new CommandBuilder().Sql($"SELECT id, name FROM mise_items WHERE id = {1}"),
+                "MySQL" => new CommandBuilder().Sql(
+                    $"SELECT id, name FROM mise_items WHERE id = {1}"
+                ),
                 _ => new CommandBuilder().Sql(
                     $"UPDATE mise_items SET name = {"changed"} WHERE id = {1} RETURNING id, name"
                 )

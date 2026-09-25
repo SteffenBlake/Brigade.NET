@@ -147,11 +147,19 @@ public sealed class MiseProviderTests
     [Fact]
     public async Task ConfigProviderUsesNamedConnectionString()
     {
-        var settings = new ConfigurationBuilder().AddInMemoryCollection(
-            new Dictionary<string, string?> { ["ConnectionStrings:Sqlite"] = "Data Source=example.db" }
-        ).Build();
+        var settings = new ConfigurationBuilder()
+            .AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["ConnectionStrings:Sqlite"] = "Data Source=example.db"
+                }
+            )
+            .Build();
         var services = new ServiceCollection()
-            .AddKeyedSingleton<System.Data.Common.DbProviderFactory>("Sqlite", SqliteFactory.Instance)
+            .AddKeyedSingleton<System.Data.Common.DbProviderFactory>(
+                "Sqlite",
+                SqliteFactory.Instance
+            )
             .BuildServiceProvider();
         var context = new DbConfigProviderContext(settings, services, "Sqlite");
         var result = await DbConfigProvider<Unit, Unit>.OnQueryAsync(
@@ -246,15 +254,26 @@ public sealed class MiseProviderTests
     {
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             DbReaderProvider<Unit, Unit>.OnQueryAsync(
-                new DbReaderProviderContext([]), Unit.Default,
-                _ => ValueTask.FromResult<Result<Unit>>(Unit.Default), default).AsTask());
+                new DbReaderProviderContext([]),
+                Unit.Default,
+                _ => ValueTask.FromResult<Result<Unit>>(Unit.Default),
+                default
+            ).AsTask()
+        );
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             DbWriterTxnProvider<Unit, Unit>.OnCommandAsync(
-                new DbWriterTxnProviderContext([]), Unit.Default,
+                new DbWriterTxnProviderContext([]),
+                Unit.Default,
                 transaction => DbWriterProvider<Unit, Unit>.OnCommandAsync(
-                    new DbWriterProviderContext(transaction), Unit.Default,
-                    _ => ValueTask.FromResult<Result<Unit>>(Unit.Default), default), default).AsTask());
+                    new DbWriterProviderContext(transaction),
+                    Unit.Default,
+                    _ => ValueTask.FromResult<Result<Unit>>(Unit.Default),
+                    default
+                ),
+                default
+            ).AsTask()
+        );
     }
 
     [Fact]
@@ -262,26 +281,41 @@ public sealed class MiseProviderTests
     {
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             DbWriterProvider<Unit, Unit>.OnCommandAsync(
-                new DbWriterProviderContext(new BasicTxn()), Unit.Default,
-                _ => ValueTask.FromResult<Result<Unit>>(Unit.Default), default).AsTask());
+                new DbWriterProviderContext(new BasicTxn()),
+                Unit.Default,
+                _ => ValueTask.FromResult<Result<Unit>>(Unit.Default),
+                default
+            ).AsTask()
+        );
     }
 
     [Fact]
     public async Task CommandConfigProviderUsesNamedConnectionString()
     {
-        var settings = new ConfigurationBuilder().AddInMemoryCollection(
-            new Dictionary<string, string?> { ["ConnectionStrings:Sqlite"] = "Data Source=command.db" }
-        ).Build();
+        var settings = new ConfigurationBuilder()
+            .AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["ConnectionStrings:Sqlite"] = "Data Source=command.db"
+                }
+            )
+            .Build();
         using var services = new ServiceCollection()
-            .AddKeyedSingleton<System.Data.Common.DbProviderFactory>("Sqlite", SqliteFactory.Instance)
+            .AddKeyedSingleton<System.Data.Common.DbProviderFactory>(
+                "Sqlite",
+                SqliteFactory.Instance
+            )
             .BuildServiceProvider();
         var result = await DbConfigProvider<Unit, Unit>.OnCommandAsync(
-            new DbConfigProviderContext(settings, services, "Sqlite"), Unit.Default,
+            new DbConfigProviderContext(settings, services, "Sqlite"),
+            Unit.Default,
             config =>
             {
                 Assert.Equal("Data Source=command.db", config.ConnectionString);
                 return ValueTask.FromResult<Result<Unit>>(Unit.Default);
-            }, default);
+            },
+            default
+        );
         Assert.True(result.IsSuccess(out _));
     }
 
@@ -289,7 +323,11 @@ public sealed class MiseProviderTests
     public void ConfigProviderRejectsMissingConnectionString()
     {
         using var services = new ServiceCollection().BuildServiceProvider();
-        var context = new DbConfigProviderContext(new ConfigurationBuilder().Build(), services, "Missing");
+        var context = new DbConfigProviderContext(
+            new ConfigurationBuilder().Build(),
+            services,
+            "Missing"
+        );
         Assert.Throws<InvalidOperationException>(() => context.CreateConfig());
     }
 
@@ -305,7 +343,10 @@ public sealed class MiseProviderTests
     private static DbRouteConfig Config(string path) =>
         new($"Data Source={path}", SqliteFactory.Instance);
 
-    private static string NewPath() => Path.Combine(Path.GetTempPath(), $"mise-{Guid.NewGuid():N}.db");
+    private static string NewPath() => Path.Combine(
+        Path.GetTempPath(),
+        $"mise-{Guid.NewGuid():N}.db"
+    );
 
     private sealed record SqlText(string Text) : IQueryBuilder, ICommandBuilder
     {

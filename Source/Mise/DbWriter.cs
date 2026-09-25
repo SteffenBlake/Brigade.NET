@@ -1,7 +1,7 @@
 using System.Data;
 using System.Data.Common;
-using Brigade.Net.Core.Transactions;
 using Brigade.Net.Core.Results;
+using Brigade.Net.Core.Transactions;
 
 namespace Brigade.Net.Mise;
 
@@ -113,13 +113,17 @@ public class DbWriter(
         {
             var compiled = commandBuilder.Compile();
             await using var command = await CreateCommandAsync(compiled, cancellationToken);
-            await using var reader = await command.ExecuteReaderAsync(compiled.Behavior, cancellationToken);
+            await using var reader = await command.ExecuteReaderAsync(
+                compiled.Behavior,
+                cancellationToken
+            );
             var ordinals = T.BindOrdinals(reader);
             var rows = new List<T>();
             while (await reader.ReadAsync(cancellationToken))
             {
                 rows.Add(T.Materialize(reader, ordinals));
             }
+
             return rows;
         }
         finally

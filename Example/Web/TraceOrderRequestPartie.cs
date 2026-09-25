@@ -11,7 +11,8 @@ public sealed record TraceOrderContext(
     [Parameter] string RequestIdHeader = "X-Request-Id"
 );
 
-public sealed class TraceOrderRequestPartie<TRequest, TResult> :
+public sealed class TraceOrderRequestPartie<TRequest, TResult>
+    :
     IQueryPartie<Unit, TraceOrderContext, TRequest, TResult>,
     ICommandPartie<Unit, TraceOrderContext, TRequest, TResult>
 {
@@ -44,8 +45,11 @@ public sealed class TraceOrderRequestPartie<TRequest, TResult> :
         var context = ctx.Http;
         var scope = ctx.Scope;
         scope.Events.Add("before");
+
         context.Response.Headers[ctx.RequestIdHeader] = scope.Id.ToString();
-        context.Response.Headers["X-Cancellation-Matches"] = (cancellationToken == context.RequestAborted).ToString();
+        context.Response.Headers["X-Cancellation-Matches"] = (
+            cancellationToken == context.RequestAborted
+        ).ToString();
         try
         {
             return await next(Unit.Default);
@@ -53,7 +57,10 @@ public sealed class TraceOrderRequestPartie<TRequest, TResult> :
         finally
         {
             scope.Events.Add("after");
-            context.Response.Headers["X-Order-Lookups"] = scope.OrderLookups.ToString(CultureInfo.InvariantCulture);
+
+            context.Response.Headers["X-Order-Lookups"] = scope.OrderLookups.ToString(
+                CultureInfo.InvariantCulture
+            );
             context.Response.Headers["X-Order-Flow"] = string.Join(";", scope.Events);
         }
     }

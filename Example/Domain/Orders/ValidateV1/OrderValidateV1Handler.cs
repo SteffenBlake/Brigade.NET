@@ -4,7 +4,8 @@ using Brigade.Net.Partie;
 
 namespace Brigade.Net.Example.Domain.Orders.ValidateV1;
 
-public sealed class OrderValidateV1Handler :
+public sealed class OrderValidateV1Handler
+    :
     ICommandHandler<OrderValidateV1Cmd, OrderValidateV1Result, Unit>
 {
     public static Task<Result<OrderValidateV1Result>> RunAsync(

@@ -2,10 +2,13 @@ namespace Brigade.Net.Example.Domain.Products;
 
 public static class ProductCatalog
 {
-    public static decimal? Price(string sku) => sku switch
+    public static decimal? Price(string sku)
     {
-        "NOTEBOOK" => 12.50m,
-        "PEN" => 2.25m,
-        _ => null
-    };
+        return sku switch
+        {
+            "NOTEBOOK" => 12.50m,
+            "PEN" => 2.25m,
+            _ => null
+        };
+    }
 }

@@ -1,11 +1,18 @@
 namespace Brigade.Net.Partie;
 
-/// <summary>Declares a transport-neutral route and engine-defined operation.</summary>
+/// <summary>
+/// Declares a transport-neutral route and engine-defined operation.
+/// </summary>
 [AttributeUsage(AttributeTargets.Method)]
 public class RouteAttribute(string path, string operation) : Attribute
 {
-    /// <summary>Gets the route's local path component.</summary>
+    /// <summary>
+    /// Gets the route's local path component.
+    /// </summary>
     public string Path { get; } = path;
-    /// <summary>Gets the engine-defined operation.</summary>
+
+    /// <summary>
+    /// Gets the engine-defined operation.
+    /// </summary>
     public string Operation { get; } = operation;
 }

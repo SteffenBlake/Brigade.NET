@@ -8,7 +8,9 @@ namespace Brigade.Net.Core.Results;
 /// <typeparam name="TFailure">The type of the wrapped failure payload.</typeparam>
 /// <param name="value">The wrapped failure payload.</param>
 [System.Text.Json.Serialization.JsonConverter(typeof(ResultJsonConverterFactory))]
-public sealed class Failure<T, TFailure>(TFailure value) : Result<T>
+public sealed class Failure<T, TFailure>(
+    TFailure value
+) : Result<T>
     where TFailure : FailureBase
 {
     /// <summary>
@@ -32,7 +34,10 @@ public sealed class Failure<T, TFailure>(TFailure value) : Result<T>
     public override bool IsForbidden(out Forbidden forbidden) => Value.IsForbidden(out forbidden);
 
     /// <inheritdoc />
-    public override bool IsGatewayError(out GatewayError gatewayError) => Value.IsGatewayError(out gatewayError);
+    public override bool IsGatewayError(out GatewayError gatewayError)
+    {
+        return Value.IsGatewayError(out gatewayError);
+    }
 
     /// <inheritdoc />
     public override bool IsTimeout(out TimeoutResult timeout) => Value.IsTimeout(out timeout);
@@ -41,6 +46,8 @@ public sealed class Failure<T, TFailure>(TFailure value) : Result<T>
     public override Result<T2> Map<T2>(Func<T, T2> mapper) => new Failure<T2, TFailure>(Value);
 
     /// <inheritdoc />
-    public override Task<Result<T2>> MapAsync<T2>(Func<T, Task<T2>> mapper) =>
-        Task.FromResult<Result<T2>>(new Failure<T2, TFailure>(Value));
+    public override Task<Result<T2>> MapAsync<T2>(Func<T, Task<T2>> mapper)
+    {
+        return Task.FromResult<Result<T2>>(new Failure<T2, TFailure>(Value));
+    }
 }

@@ -1,7 +1,9 @@
 namespace Brigade.Net.Expo;
 
 [AttributeUsage(AttributeTargets.Property, Inherited = true)]
-public abstract class StringLengthValidationAttribute(int length, string? message = null) : Attribute
+public abstract class StringLengthValidationAttribute(
+    int length, string? message = null
+) : Attribute
 {
     public int Length { get; } = length;
 

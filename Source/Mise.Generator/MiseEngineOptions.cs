@@ -67,7 +67,9 @@ public sealed class MiseEngineOptions(
             var runtimeName = name == "MySQL" ? "MySQL" : "MariaDb";
             return new MiseEngineOptions(
                 name,
-                "Brigade.Net.Mise." + runtimeName + "." + (name == "MySQL" ? "MySql" : "MariaDb") + "TableAttribute",
+                "Brigade.Net.Mise." + runtimeName + "."
+                    + (name == "MySQL" ? "MySql" : "MariaDb")
+                    + "TableAttribute",
                 "Brigade.Net.Mise." + runtimeName + ".MiseAttribute",
                 StringComparer.OrdinalIgnoreCase,
                 identifier => "`" + identifier.Replace("`", "``") + "`",

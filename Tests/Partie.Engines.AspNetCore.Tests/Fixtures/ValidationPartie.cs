@@ -27,7 +27,10 @@ public sealed class ValidationPartie<TRequest, TResult> :
         return ValidateAsync(command, next);
     }
 
-    private static ValueTask<Result<TResult>> ValidateAsync(TRequest request, Next<Unit, TResult> next)
+    private static ValueTask<Result<TResult>> ValidateAsync(
+        TRequest request,
+        Next<Unit, TResult> next
+    )
     {
         return new ValueTask<Result<TResult>>(
             request.Validate().FlatMapAsync(value => next(value).AsTask())

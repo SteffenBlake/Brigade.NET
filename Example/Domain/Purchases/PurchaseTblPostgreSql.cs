@@ -16,6 +16,7 @@ public static partial class PurchaseTblPostgreSql
     private static int BuyerId { get; }
 
     [Column("seller_id")]
+    [Relationship(AccountTblPostgreSql.IdCol)]
     private static int SellerId { get; }
 
     [Column("purchase")]

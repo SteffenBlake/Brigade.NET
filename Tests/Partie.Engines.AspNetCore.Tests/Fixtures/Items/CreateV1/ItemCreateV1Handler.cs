@@ -8,7 +8,8 @@ public sealed record ItemCreateV1Context(
     [Inject] Counts Counts,
     [Provide] ContextValue Value
 );
-public sealed class ItemCreateV1Handler : ICommandHandler<ItemCreateV1Cmd, ItemCreateV1Result, ItemCreateV1Context>
+public sealed class ItemCreateV1Handler
+    : ICommandHandler<ItemCreateV1Cmd, ItemCreateV1Result, ItemCreateV1Context>
 {
     public static Task<Result<ItemCreateV1Result>> RunAsync(
         UnitOfWork uow,
@@ -18,7 +19,14 @@ public sealed class ItemCreateV1Handler : ICommandHandler<ItemCreateV1Cmd, ItemC
     )
     {
         ctx.Counts.HandlerRuns++;
-        ctx.Counts.Observed.Enqueue((cmd.Id, cmd.Mode + ":" + cmd.Body.Text, ctx.Service.Id, ctx.Value.Cancellation == ct));
+        ctx.Counts.Observed.Enqueue(
+            (
+                cmd.Id,
+                cmd.Mode + ":" + cmd.Body.Text,
+                ctx.Service.Id,
+                ctx.Value.Cancellation == ct
+            )
+        );
         return Task.FromResult<Result<ItemCreateV1Result>>(new ItemCreateV1Result(cmd.Id));
     }
 }

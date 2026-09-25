@@ -19,10 +19,20 @@ internal sealed class RouteCallValidator(Compilation compilation, CancellationTo
         var type = method.ContainingType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         var typeArguments = method.Arity == 0
             ? ""
-            : "<" + string.Join(", ", method.TypeArguments.Select(argument => argument.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat))) + ">";
-        var arguments = string.Join(", ", method.Parameters.Select(parameter =>
-            "default(" + parameter.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) + ")"
-        ));
+            : "<"
+                + string.Join(
+                    ", ",
+                    method.TypeArguments.Select(argument =>
+                        argument.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+                    )
+                )
+                + ">";
+        var arguments = string.Join(
+            ", ",
+            method.Parameters.Select(parameter =>
+                "default(" + parameter.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) + ")"
+            )
+        );
 
         return Validate(type + ".@" + method.Name + typeArguments + "(" + arguments + ");");
     }
@@ -42,12 +52,14 @@ internal sealed class RouteCallValidator(Compilation compilation, CancellationTo
 
         var options = compilation.SyntaxTrees.FirstOrDefault()?.Options as CSharpParseOptions;
         var tree = CSharpSyntaxTree.ParseText(
-            "internal static class " + className + " { private static void Validate() { " + statement + " } }",
+            "internal static class " + className
+                + " { private static void Validate() { " + statement + " } }",
             options,
             cancellationToken: cancellationToken
         );
         var probe = compilation.AddSyntaxTrees(tree);
-        var errors = probe.GetSemanticModel(tree).GetDiagnostics(cancellationToken: cancellationToken)
+        var errors = probe.GetSemanticModel(tree)
+            .GetDiagnostics(cancellationToken: cancellationToken)
             .Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
             .Select(diagnostic => diagnostic.GetMessage())
             .ToArray();

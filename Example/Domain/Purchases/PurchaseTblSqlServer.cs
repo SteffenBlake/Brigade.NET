@@ -16,6 +16,7 @@ public static partial class PurchaseTblSqlServer
     private static int BuyerId { get; }
 
     [Column("seller_id")]
+    [Relationship(AccountTblSqlServer.IdCol)]
     private static int SellerId { get; }
 
     [Column("purchase")]

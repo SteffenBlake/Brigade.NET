@@ -18,37 +18,58 @@ public abstract class Result<T>
     /// <summary>
     /// Wraps a success value in a <see cref="Success{T}" /> result.
     /// </summary>
-    public static implicit operator Result<T>(T value) => new Success<T>(value);
+    public static implicit operator Result<T>(T value)
+    {
+        return new Success<T>(value);;
+    }
 
     /// <summary>
     /// Wraps an <see cref="Results.Error" /> in a <see cref="Failure{T, TFailure}" /> result.
     /// </summary>
-    public static implicit operator Result<T>(Error value) => new Failure<T, Error>(value);
+    public static implicit operator Result<T>(Error value)
+    {
+        return new Failure<T, Error>(value);;
+    }
 
     /// <summary>
     /// Wraps a <see cref="Results.NotFound" /> in a <see cref="Failure{T, TFailure}" /> result.
     /// </summary>
-    public static implicit operator Result<T>(NotFound value) => new Failure<T, NotFound>(value);
+    public static implicit operator Result<T>(NotFound value)
+    {
+        return new Failure<T, NotFound>(value);;
+    }
 
     /// <summary>
     /// Wraps a <see cref="Results.Conflict" /> in a <see cref="Failure{T, TFailure}" /> result.
     /// </summary>
-    public static implicit operator Result<T>(Conflict value) => new Failure<T, Conflict>(value);
+    public static implicit operator Result<T>(Conflict value)
+    {
+        return new Failure<T, Conflict>(value);;
+    }
 
     /// <summary>
     /// Wraps a <see cref="Results.Forbidden" /> in a <see cref="Failure{T, TFailure}" /> result.
     /// </summary>
-    public static implicit operator Result<T>(Forbidden value) => new Failure<T, Forbidden>(value);
+    public static implicit operator Result<T>(Forbidden value)
+    {
+        return new Failure<T, Forbidden>(value);;
+    }
 
     /// <summary>
     /// Wraps a <see cref="Results.GatewayError" /> in a <see cref="Failure{T, TFailure}" /> result.
     /// </summary>
-    public static implicit operator Result<T>(GatewayError value) => new Failure<T, GatewayError>(value);
+    public static implicit operator Result<T>(GatewayError value)
+    {
+        return new Failure<T, GatewayError>(value);;
+    }
 
     /// <summary>
     /// Wraps a <see cref="Results.TimeoutResult" /> in a <see cref="Failure{T, TFailure}" /> result.
     /// </summary>
-    public static implicit operator Result<T>(TimeoutResult value) => new Failure<T, TimeoutResult>(value);
+    public static implicit operator Result<T>(TimeoutResult value)
+    {
+        return new Failure<T, TimeoutResult>(value);;
+    }
 
     /// <summary>
     /// Attempts to read this result as a success.

@@ -19,8 +19,16 @@ public class CoreTransactionsHttpTests
             {
                 var transaction = index;
                 work.AddTxn(
-                    commit: _ => { events.Add("commit:" + transaction); return Task.CompletedTask; },
-                    rollback: _ => { events.Add("rollback:" + transaction); return Task.CompletedTask; }
+                    commit: _ =>
+                    {
+                        events.Add("commit:" + transaction);
+                        return Task.CompletedTask;
+                    },
+                    rollback: _ =>
+                    {
+                        events.Add("rollback:" + transaction);
+                        return Task.CompletedTask;
+                    }
                 );
             }
             if (rollback)
@@ -74,7 +82,11 @@ public class CoreTransactionsHttpTests
         {
             await using var work = new UnitOfWork([])
                 .AddTxn(rollback: _ => throw new InvalidOperationException("first"))
-                .AddTxn(rollback: _ => { rolledBack = true; return Task.CompletedTask; })
+                .AddTxn(rollback: _ =>
+                {
+                    rolledBack = true;
+                    return Task.CompletedTask;
+                })
                 .AddTxn(rollback: _ => throw new InvalidOperationException("last"));
             try
             {
@@ -83,7 +95,9 @@ public class CoreTransactionsHttpTests
             }
             catch (AggregateException exception)
             {
-                return new Success<object?>(exception.InnerExceptions.Select(failure => failure.Message).ToArray());
+                return new Success<object?>(
+                    exception.InnerExceptions.Select(failure => failure.Message).ToArray()
+                );
             }
         });
 
@@ -108,6 +122,9 @@ public class CoreTransactionsHttpTests
             }
         });
 
-        Assert.Contains("UnitOfWork must be committed or rolled back before disposal.", body);
+        Assert.Contains(
+            "UnitOfWork must be committed or rolled back before disposal.",
+            body
+        );
     }
 }

@@ -128,7 +128,10 @@ public class HttpRoutesTests
     public async Task GeneratedRoutes_UseAspNetBadInputHandling(string path, string json)
     {
         await using var app = await Start();
-        using var response = await app.GetTestClient().PostAsync(path, new StringContent(json, Encoding.UTF8, "application/json"));
+        using var response = await app.GetTestClient().PostAsync(
+            path,
+            new StringContent(json, Encoding.UTF8, "application/json")
+        );
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal(0, app.Services.GetRequiredService<Counts>().HandlerRuns);
     }

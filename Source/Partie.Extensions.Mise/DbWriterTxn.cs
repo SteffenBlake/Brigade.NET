@@ -19,6 +19,7 @@ public sealed class DbWriterTxn(IDbConfig? config) : ITxn
             {
                 throw new InvalidOperationException("A database configuration is required for DbWriter.");
             }
+
             var writer = _writer ??= new DbWriter(config: config);
             _ = writer.Transaction;
             return writer;

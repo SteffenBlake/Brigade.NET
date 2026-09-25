@@ -10,5 +10,8 @@ public sealed class TestPolicyHandler : IQueryHandler<Unit, string, Unit>
         Unit ctx,
         Unit query,
         CancellationToken ct
-    ) => Task.FromResult<Result<string>>("success");
+    )
+    {
+        return Task.FromResult<Result<string>>("success");
+    }
 }

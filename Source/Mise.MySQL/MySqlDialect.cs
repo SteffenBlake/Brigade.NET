@@ -1,5 +1,6 @@
-using System.Text;
 using System.Globalization;
+using System.Text;
+
 namespace Brigade.Net.Mise.MySQL;
 
 /// <summary>MySQL syntax for Mise builders.</summary>

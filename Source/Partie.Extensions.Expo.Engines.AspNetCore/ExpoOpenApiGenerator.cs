@@ -470,23 +470,47 @@ public sealed class ExpoOpenApiGenerator : IIncrementalGenerator
             : "propertySchema";
         switch (rule.Kind)
         {
-            case "Required": source.Append("schema.Required ??= new global::System.Collections.Generic.HashSet<string>(); schema.Required.Add(jsonProperty.Name);\n"); break;
-            case "Minimum": source.Append(schema).Append(".Minimum = ").Append(Literal(rule.Value!)).Append(";\n"); break;
-            case "ExclusiveMinimum": source.Append(schema).Append(".ExclusiveMinimum = ").Append(Literal(rule.Value!)).Append(";\n"); break;
-            case "Maximum": source.Append(schema).Append(".Maximum = ").Append(Literal(rule.Value!)).Append(";\n"); break;
-            case "ExclusiveMaximum": source.Append(schema).Append(".ExclusiveMaximum = ").Append(Literal(rule.Value!)).Append(";\n"); break;
-            case "Equal": source.Append(schema).Append(".Const = ").Append(Literal(rule.Value!)).Append(";\n"); break;
+            case "Required":
+                source.Append("schema.Required ??= new global::System.Collections.Generic.HashSet<string>(); schema.Required.Add(jsonProperty.Name);\n");
+                break;
+            case "Minimum":
+                source.Append(schema).Append(".Minimum = ").Append(Literal(rule.Value!)).Append(";\n");
+                break;
+            case "ExclusiveMinimum":
+                source.Append(schema).Append(".ExclusiveMinimum = ").Append(Literal(rule.Value!)).Append(";\n");
+                break;
+            case "Maximum":
+                source.Append(schema).Append(".Maximum = ").Append(Literal(rule.Value!)).Append(";\n");
+                break;
+            case "ExclusiveMaximum":
+                source.Append(schema).Append(".ExclusiveMaximum = ").Append(Literal(rule.Value!)).Append(";\n");
+                break;
+            case "Equal":
+                source.Append(schema).Append(".Const = ").Append(Literal(rule.Value!)).Append(";\n");
+                break;
             case "NotEqual": source.Append(schema).Append(".Not = new global::Microsoft.OpenApi.OpenApiSchema { Const = ").Append(Literal(rule.Value!)).Append(" };\n"); break;
-            case "StringMinimumLength": source.Append(schema).Append(".MinLength = ").Append(rule.Value).Append(";\n"); break;
-            case "StringMaximumLength": source.Append(schema).Append(".MaxLength = ").Append(rule.Value).Append(";\n"); break;
+            case "StringMinimumLength":
+                source.Append(schema).Append(".MinLength = ").Append(rule.Value).Append(";\n");
+                break;
+            case "StringMaximumLength":
+                source.Append(schema).Append(".MaxLength = ").Append(rule.Value).Append(";\n");
+                break;
             case "StringExactLength": source.Append(schema).Append(".MinLength = ").Append(rule.Value).Append("; ").Append(schema).Append(".MaxLength = ").Append(rule.Value).Append(";\n"); break;
-            case "ItemsMinimumLength": source.Append(schema).Append(".MinItems = ").Append(rule.Value).Append(";\n"); break;
-            case "ItemsMaximumLength": source.Append(schema).Append(".MaxItems = ").Append(rule.Value).Append(";\n"); break;
+            case "ItemsMinimumLength":
+                source.Append(schema).Append(".MinItems = ").Append(rule.Value).Append(";\n");
+                break;
+            case "ItemsMaximumLength":
+                source.Append(schema).Append(".MaxItems = ").Append(rule.Value).Append(";\n");
+                break;
             case "ItemsExactLength": source.Append(schema).Append(".MinItems = ").Append(rule.Value).Append("; ").Append(schema).Append(".MaxItems = ").Append(rule.Value).Append(";\n"); break;
             case "StringNotEmpty": source.Append(schema).Append(".MinLength = 1;\n"); break;
             case "ItemsNotEmpty": source.Append(schema).Append(".MinItems = 1;\n"); break;
-            case "Pattern": source.Append(schema).Append(".Pattern = ").Append(Literal(rule.Value!)).Append(";\n"); break;
-            case "Format": source.Append(schema).Append(".Format = ").Append(Literal(rule.Value!)).Append(";\n"); break;
+            case "Pattern":
+                source.Append(schema).Append(".Pattern = ").Append(Literal(rule.Value!)).Append(";\n");
+                break;
+            case "Format":
+                source.Append(schema).Append(".Format = ").Append(Literal(rule.Value!)).Append(";\n");
+                break;
             case "FormatPattern": source.Append(schema).Append(".Format = ").Append(Literal(rule.Value!)).Append("; ").Append(schema).Append(".Pattern = ").Append(Literal(rule.Extra!)).Append(";\n"); break;
             default: source.Append("AddInexact(").Append(schema).Append(", ").Append(Literal(rule.Extra ?? "Custom")).Append(");\n"); break;
         }
@@ -502,8 +526,11 @@ public sealed class ExpoOpenApiGenerator : IIncrementalGenerator
 
         var temporary = new StringBuilder();
         AppendRule(temporary, rule, appliesToItems);
-        source.Append(temporary.ToString().Replace("schema.Required", "propertySchema.Required")
-            .Replace("jsonProperty.Name", "binding.Name"));
+        source.Append(
+            temporary.ToString()
+                .Replace("schema.Required", "propertySchema.Required")
+                .Replace("jsonProperty.Name", "binding.Name")
+        );
     }
 
     private static string? Value(AttributeData attribute)
@@ -512,8 +539,12 @@ public sealed class ExpoOpenApiGenerator : IIncrementalGenerator
         return value is null ? null : Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture);
     }
 
-    private static string? Message(AttributeData attribute) => attribute.ConstructorArguments
-        .LastOrDefault(item => item.Type?.SpecialType == SpecialType.System_String).Value as string;
+    private static string? Message(AttributeData attribute)
+    {
+        return attribute.ConstructorArguments
+            .LastOrDefault(item => item.Type?.SpecialType == SpecialType.System_String)
+            .Value as string;
+    }
 
     private static void AppendHelpers(StringBuilder source)
     {

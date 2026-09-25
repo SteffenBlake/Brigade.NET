@@ -30,7 +30,10 @@ public sealed class EngineHookTests
         var result = GeneratorTestHost.Run(source, engineName);
 
         Assert.Empty(result.Run.Diagnostics);
-        Assert.DoesNotContain(result.CompilationDiagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.DoesNotContain(
+            result.CompilationDiagnostics,
+            diagnostic => diagnostic.Severity == DiagnosticSeverity.Error
+        );
         Assert.Contains(
             expected.Replace("\"", "\\\""),
             result.Run.Results.Single().GeneratedSources.Single().SourceText.ToString()
@@ -68,16 +71,30 @@ public sealed class EngineHookTests
         var result = GeneratorTestHost.Run(source, engine);
 
         Assert.Empty(result.Run.Diagnostics);
-        Assert.DoesNotContain(result.CompilationDiagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
-        var generated = string.Join("\n", result.Run.Results.Single().GeneratedSources.Select(item => item.SourceText.ToString()));
-        string Quote(string value) => openingQuote + value.Replace(embeddedQuote, embeddedQuote + embeddedQuote) + closingQuote;
+        Assert.DoesNotContain(
+            result.CompilationDiagnostics,
+            diagnostic => diagnostic.Severity == DiagnosticSeverity.Error
+        );
+        var generated = string.Join(
+            "\n",
+            result.Run.Results.Single().GeneratedSources.Select(item => item.SourceText.ToString())
+        );
+        string Quote(string value)
+        {
+            return openingQuote
+                + value.Replace(embeddedQuote, embeddedQuote + embeddedQuote)
+                + closingQuote;
+        }
         var join = Quote("target") + " ON " + Quote("source") + "." + Quote(sourceColumn)
             + " = " + Quote("target") + "." + Quote(targetColumn);
         var aliasedJoin = Quote("target") + " ON " + Quote(alias) + "." + Quote(sourceColumn)
             + " = " + Quote("target") + "." + Quote(targetColumn);
         Assert.Contains(SymbolDisplay.FormatLiteral(join, true), generated);
         Assert.Contains(SymbolDisplay.FormatLiteral(aliasedJoin, true), generated);
-        Assert.Contains(SymbolDisplay.FormatLiteral(Quote(alias) + "." + Quote(sourceColumn), true), generated);
+        Assert.Contains(
+            SymbolDisplay.FormatLiteral(Quote(alias) + "." + Quote(sourceColumn), true),
+            generated
+        );
     }
 
     [Fact]
@@ -118,7 +135,10 @@ public sealed class EngineHookTests
         var diagnostic = Assert.Single(GeneratorTestHost.Run(source, "SqlServer").Run.Diagnostics);
 
         Assert.Equal("MISE001", diagnostic.Id);
-        Assert.Equal("Schema or database name must not be null, empty, or whitespace", diagnostic.GetMessage());
+        Assert.Equal(
+            "Schema or database name must not be null, empty, or whitespace",
+            diagnostic.GetMessage()
+        );
     }
 
     [Fact]

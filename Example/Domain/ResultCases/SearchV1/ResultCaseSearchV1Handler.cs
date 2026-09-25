@@ -3,7 +3,8 @@ using Brigade.Net.Partie;
 
 namespace Brigade.Net.Example.Domain.ResultCases.SearchV1;
 
-public sealed class ResultCaseSearchV1Handler :
+public sealed class ResultCaseSearchV1Handler
+    :
     IQueryHandler<ResultCaseSearchV1Query, ResultCaseSearchV1Result, Unit>
 {
     private static readonly DateTime DeprecatedAt = new(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc);

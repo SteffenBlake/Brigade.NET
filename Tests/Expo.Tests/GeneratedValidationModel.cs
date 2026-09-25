@@ -43,19 +43,3 @@ public partial class GeneratedValidationModel
         return PartialCustom == "good" ? [] : ["PartialCustom failed."];
     }
 }
-
-[Expo]
-public partial class GeneratedChildModel
-{
-    [IsRequired]
-    public string? Value { get; init; }
-
-    public GeneratedGrandchildModel? Grandchild { get; init; }
-}
-
-[Expo]
-public partial class GeneratedGrandchildModel
-{
-    [IsRequired]
-    public string? Value { get; init; }
-}

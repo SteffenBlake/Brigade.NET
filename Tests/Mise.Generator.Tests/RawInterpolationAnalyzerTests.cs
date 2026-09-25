@@ -63,8 +63,17 @@ public sealed class RawInterpolationAnalyzerTests
 
         Assert.Equal("MISE012", diagnostic.Id);
         Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
-        Assert.Equal("A ':raw' interpolation must be a compile-time constant string", diagnostic.GetMessage());
-        Assert.Equal(expression, source.Substring(diagnostic.Location.SourceSpan.Start, diagnostic.Location.SourceSpan.Length));
+        Assert.Equal(
+            "A ':raw' interpolation must be a compile-time constant string",
+            diagnostic.GetMessage()
+        );
+        Assert.Equal(
+            expression,
+            source.Substring(
+                diagnostic.Location.SourceSpan.Start,
+                diagnostic.Location.SourceSpan.Length
+            )
+        );
     }
 
     [Fact]
@@ -97,6 +106,12 @@ public sealed class RawInterpolationAnalyzerTests
 
         var diagnostic = Assert.Single(await GeneratorTestHost.AnalyzeRawAsync(source));
 
-        Assert.Equal("value", source.Substring(diagnostic.Location.SourceSpan.Start, diagnostic.Location.SourceSpan.Length));
+        Assert.Equal(
+            "value",
+            source.Substring(
+                diagnostic.Location.SourceSpan.Start,
+                diagnostic.Location.SourceSpan.Length
+            )
+        );
     }
 }

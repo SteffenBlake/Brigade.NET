@@ -6,10 +6,24 @@ namespace Brigade.Net.Partie.Engines.AspNetCore.Tests;
 
 internal static class EngineCompilation
 {
-    private static readonly MetadataReference[] References = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator).Concat(
-        [typeof(IPartieEngine).Assembly.Location, typeof(Result<>).Assembly.Location, typeof(RoutePolicyAttribute).Assembly.Location]
-    ).Distinct().Select(path => MetadataReference.CreateFromFile(path)).ToArray();
-    public static (Compilation Output, GeneratorDriverRunResult Result) Generate(string source, IEnumerable<MetadataReference>? additionalReferences = null)
+    private static readonly MetadataReference[] References = ((string)
+        AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!
+    )
+        .Split(Path.PathSeparator)
+        .Concat(
+        [
+            typeof(IPartieEngine).Assembly.Location,
+            typeof(Result<>).Assembly.Location,
+            typeof(RoutePolicyAttribute).Assembly.Location
+        ])
+        .Distinct()
+        .Select(path => MetadataReference.CreateFromFile(path))
+        .ToArray();
+
+    public static (Compilation Output, GeneratorDriverRunResult Result) Generate(
+        string source,
+        IEnumerable<MetadataReference>? additionalReferences = null
+    )
     {
         var compilation = CSharpCompilation.Create(
             "EngineScenario_" + Guid.NewGuid().ToString("N"),
@@ -34,16 +48,21 @@ internal static class EngineCompilation
         return (output, driver.GetRunResult());
     }
 
-    public static string Valid(string source, IEnumerable<MetadataReference>? additionalReferences = null)
+    public static string Valid(
+        string source,
+        IEnumerable<MetadataReference>? additionalReferences = null
+    )
     {
         var (output, result) = Generate(source, additionalReferences);
         Assert.Empty(result.Diagnostics);
         Assert.Empty(
-            output.GetDiagnostics().Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            output.GetDiagnostics()
+                .Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
         );
         return string.Join(
             "\n",
-            result.Results.Single().GeneratedSources.Select(source => source.SourceText.ToString())
+            result.Results.Single().GeneratedSources
+                .Select(source => source.SourceText.ToString())
         );
     }
 
@@ -54,11 +73,16 @@ internal static class EngineCompilation
         Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Id == "CS8785");
         Assert.DoesNotContain(
             "MapMethods",
-            result.Results.Single().GeneratedSources.Single(source => source.HintName == "PartieEngine.g.cs").SourceText.ToString()
+            result.Results.Single().GeneratedSources
+                .Single(source => source.HintName == "PartieEngine.g.cs")
+                .SourceText.ToString()
         );
     }
 
-    public static MetadataReference Reference(string source, IEnumerable<MetadataReference>? additionalReferences = null)
+    public static MetadataReference Reference(
+        string source,
+        IEnumerable<MetadataReference>? additionalReferences = null
+    )
     {
         var compilation = CSharpCompilation.Create(
             "Domain_" + Guid.NewGuid().ToString("N"),

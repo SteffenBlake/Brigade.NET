@@ -22,7 +22,19 @@ public class EngineProviderTests
     {
         var source = Source(
             $"Foo<{argument}>",
-            $"public sealed class Provider<T> : IQueryProvider<Foo<T>, Unit, Unit, int> where T : {constraint} {{ public static ValueTask<Result<int>> OnQueryAsync(Unit ctx, Unit query, Next<Foo<T>, int> next, CancellationToken ct) => next(new()); }}"
+            $$"""
+            public sealed class Provider<T> :
+                IQueryProvider<Foo<T>, Unit, Unit, int>
+                where T : {{constraint}}
+            {
+                public static ValueTask<Result<int>> OnQueryAsync(
+                    Unit ctx,
+                    Unit query,
+                    Next<Foo<T>, int> next,
+                    CancellationToken ct
+                ) => next(new());
+            }
+            """
         );
         CheckMatch(source, matches);
     }
@@ -43,7 +55,18 @@ public class EngineProviderTests
     {
         var source = Source(
             requested,
-            $"public sealed class Provider<T> : IQueryProvider<{provided}, Unit, Unit, int> {{ public static ValueTask<Result<int>> OnQueryAsync(Unit ctx, Unit query, Next<{provided}, int> next, CancellationToken ct) => next(default!); }}"
+            $$"""
+            public sealed class Provider<T> :
+                IQueryProvider<{{provided}}, Unit, Unit, int>
+            {
+                public static ValueTask<Result<int>> OnQueryAsync(
+                    Unit ctx,
+                    Unit query,
+                    Next<{{provided}}, int> next,
+                    CancellationToken ct
+                ) => next(default!);
+            }
+            """
         );
         CheckMatch(source, matches);
     }
@@ -56,9 +79,16 @@ public class EngineProviderTests
         var source = Source(
             $"Tuple<int[], {argument}>",
             """
-            public sealed class Provider<T, TOther> : IQueryProvider<Tuple<T, TOther>, Unit, Unit, int> where T : System.Collections.Generic.IEnumerable<TOther>
+            public sealed class Provider<T, TOther> :
+                IQueryProvider<Tuple<T, TOther>, Unit, Unit, int>
+                where T : System.Collections.Generic.IEnumerable<TOther>
             {
-                public static ValueTask<Result<int>> OnQueryAsync(Unit ctx, Unit query, Next<Tuple<T, TOther>, int> next, CancellationToken ct) => next(default!);
+                public static ValueTask<Result<int>> OnQueryAsync(
+                    Unit ctx,
+                    Unit query,
+                    Next<Tuple<T, TOther>, int> next,
+                    CancellationToken ct
+                ) => next(default!);
             }
             """,
             "Provider<,>"
@@ -68,16 +98,51 @@ public class EngineProviderTests
 
     [Theory]
     [InlineData("", "T")]
-    [InlineData("public static ValueTask<Result<TResult>> InvokeAsync<TResult>(Next<Foo<T>, TResult> next) => default; public static int InvokeAsync(int value) => value;", "T")]
-    [InlineData("public static ValueTask<Result<TResult>> InvokeAsync<TResult>(Next<Foo<T>, TResult> next) => default;", "T, TUnused")]
-    [InlineData("public static ValueTask<Result<TResult>> InvokeAsync<TResult>(Next<Unit, TResult> next) => default;", "T")]
-    [InlineData("public static ValueTask<Result<int>> InvokeAsync<TResult>(Next<Foo<T>, TResult> next) => default;", "T")]
-    [InlineData("public static ValueTask<Result<TResult>> InvokeAsync<TResult>(Next<Foo<T>, int> next) => default;", "T")]
-    [InlineData("public static ValueTask<Result<TResult>> InvokeAsync<TResult>(Next<Foo<TResult>, TResult> next) => default;", "T")]
-    [InlineData("public static ValueTask<Result<TResult>> InvokeAsync<TResult>(TResult value, Next<Foo<T>, TResult> next) => default;", "T")]
+    [InlineData(
+        "public static ValueTask<Result<TResult>> InvokeAsync<TResult>(Next<Foo<T>, TResult> next) "
+            + "=> default; public static int InvokeAsync(int value) => value;",
+        "T"
+    )]
+    [InlineData(
+        "public static ValueTask<Result<TResult>> InvokeAsync<TResult>(Next<Foo<T>, TResult> next) "
+            + "=> default;",
+        "T, TUnused"
+    )]
+    [InlineData(
+        "public static ValueTask<Result<TResult>> InvokeAsync<TResult>(Next<Unit, TResult> next) "
+            + "=> default;",
+        "T"
+    )]
+    [InlineData(
+        "public static ValueTask<Result<int>> InvokeAsync<TResult>(Next<Foo<T>, TResult> next) "
+            + "=> default;",
+        "T"
+    )]
+    [InlineData(
+        "public static ValueTask<Result<TResult>> InvokeAsync<TResult>(Next<Foo<T>, int> next) "
+            + "=> default;",
+        "T"
+    )]
+    [InlineData(
+        "public static ValueTask<Result<TResult>> InvokeAsync<TResult>(Next<Foo<TResult>, "
+            + "TResult> next) "
+            + "=> default;",
+        "T"
+    )]
+    [InlineData(
+        "public static ValueTask<Result<TResult>> InvokeAsync<TResult>(TResult value, "
+            + "Next<Foo<T>, TResult> next) => default;",
+        "T"
+    )]
     [InlineData("public static ValueTask<Result<TResult>> InvokeAsync<TResult>() => default;", "T")]
-    [InlineData("public static ValueTask<Result<TResult>> InvokeAsync<TResult>(Next<Foo<T>, TResult> first, Next<Foo<T>, TResult> second) => default;", "T")]
-    public void Engine_RejectsInvalidProviders(string method, string typeParameters) => EngineCompilation.Invalid(
+    [InlineData(
+        "public static ValueTask<Result<TResult>> InvokeAsync<TResult>(Next<Foo<T>, TResult> "
+            + "first, "
+            + "Next<Foo<T>, TResult> second) => default;",
+        "T"
+    )]
+    public void Engine_RejectsInvalidProviders(string method, string typeParameters) =>
+        EngineCompilation.Invalid(
         Source(
             "int",
             $"public static class Provider<{typeParameters}> {{ {method} }}",
@@ -88,10 +153,23 @@ public class EngineProviderTests
     [Theory]
     [InlineData("Foo<int>")]
     [InlineData("Foo<string>")]
-    public void Engine_RejectsProviderDependenciesWithoutAnEarlierSource(string dependency) => EngineCompilation.Invalid(
+    public void Engine_RejectsProviderDependenciesWithoutAnEarlierSource(string dependency) =>
+        EngineCompilation.Invalid(
         Source(
             "Foo<int>",
-            $"public sealed record ProviderContext<T>([Decorate] {dependency} Input); public sealed class Provider<T> : IQueryProvider<Foo<T>, ProviderContext<T>, Unit, int> {{ public static ValueTask<Result<int>> OnQueryAsync(ProviderContext<T> ctx, Unit query, Next<Foo<T>, int> next, CancellationToken ct) => default; }}"
+            $$"""
+            public sealed record ProviderContext<T>([Decorate] {{dependency}} Input);
+            public sealed class Provider<T> :
+                IQueryProvider<Foo<T>, ProviderContext<T>, Unit, int>
+            {
+                public static ValueTask<Result<int>> OnQueryAsync(
+                    ProviderContext<T> ctx,
+                    Unit query,
+                    Next<Foo<T>, int> next,
+                    CancellationToken ct
+                ) => default;
+            }
+            """
         ),
         "BRG001"
     );
@@ -102,13 +180,24 @@ public class EngineProviderTests
             Source(
                 "Foo<int>",
                 """
-                public sealed class Provider<T> : IQueryProvider<Foo<T>, Unit, Unit, int>
+                public sealed class Provider<T> :
+                    IQueryProvider<Foo<T>, Unit, Unit, int>
                 {
-                    public static ValueTask<Result<int>> OnQueryAsync(Unit ctx, Unit query, Next<Foo<T>, int> next, CancellationToken ct) => default;
+                    public static ValueTask<Result<int>> OnQueryAsync(
+                        Unit ctx,
+                        Unit query,
+                        Next<Foo<T>, int> next,
+                        CancellationToken ct
+                    ) => default;
                 }
                 public sealed class Closed : IQueryProvider<Foo<int>, Unit, Unit, int>
                 {
-                    public static ValueTask<Result<int>> OnQueryAsync(Unit ctx, Unit query, Next<Foo<int>, int> next, CancellationToken ct) => default;
+                    public static ValueTask<Result<int>> OnQueryAsync(
+                        Unit ctx,
+                        Unit query,
+                        Next<Foo<int>, int> next,
+                        CancellationToken ct
+                    ) => default;
                 }
                 """,
                 "Provider<>",
@@ -143,14 +232,21 @@ public class EngineProviderTests
     }
 
     [Fact]
-    public void Engine_RejectsSelfExpansionWithoutAnEarlierProvider() => EngineCompilation.Invalid(
+    public void Engine_RejectsSelfExpansionWithoutAnEarlierProvider() =>
+        EngineCompilation.Invalid(
         Source(
             "Foo<int>",
             """
         public sealed record ProviderContext<T>([Decorate] Foo<Foo<T>> Input);
-        public sealed class Provider<T> : IQueryProvider<Foo<T>, ProviderContext<T>, Unit, int>
+        public sealed class Provider<T> :
+            IQueryProvider<Foo<T>, ProviderContext<T>, Unit, int>
         {
-            public static ValueTask<Result<int>> OnQueryAsync(ProviderContext<T> ctx, Unit query, Next<Foo<T>, int> next, CancellationToken ct) => default;
+            public static ValueTask<Result<int>> OnQueryAsync(
+                ProviderContext<T> ctx,
+                Unit query,
+                Next<Foo<T>, int> next,
+                CancellationToken ct
+            ) => default;
         }
         """
         ),
@@ -159,13 +255,16 @@ public class EngineProviderTests
     [Theory]
     [InlineData("Provider")]
     [InlineData("Partie")]
-    public void Engine_RejectsIncompatibleResultConstraints(string attribute) => EngineCompilation.Invalid(
+    public void Engine_RejectsIncompatibleResultConstraints(string attribute) =>
+        EngineCompilation.Invalid(
         Source(
             "Foo<int>",
             """
         public static class Provider
         {
-            public static ValueTask<Result<TResult>> InvokeAsync<TResult>(Next<Foo<int>, TResult> next) where TResult : struct => default;
+            public static ValueTask<Result<TResult>> InvokeAsync<TResult>(
+                Next<Foo<int>, TResult> next
+            ) where TResult : struct => default;
         }
         """,
             "Provider",
@@ -208,7 +307,11 @@ public class EngineProviderTests
         public sealed record HandlerContext([Provide] {{requested}} Input);
         public sealed class Handler : IQueryHandler<Unit, {{resultType}}, HandlerContext>
         {
-            public static Task<Result<{{resultType}}>> RunAsync(HandlerContext ctx, Unit query, CancellationToken ct) => Task.FromResult<Result<{{resultType}}>>(default!);
+            public static Task<Result<{{resultType}}>> RunAsync(
+                HandlerContext ctx,
+                Unit query,
+                CancellationToken ct
+            ) => Task.FromResult<Result<{{resultType}}>>(default!);
         }
         """;
 }

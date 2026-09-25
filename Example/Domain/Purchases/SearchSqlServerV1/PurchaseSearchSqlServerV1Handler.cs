@@ -11,27 +11,37 @@ namespace Brigade.Net.Example.Domain.Purchases.SearchSqlServerV1;
 
 public sealed record PurchaseSearchSqlServerV1Context([Provide] DbReader Reader);
 
-public sealed class PurchaseSearchSqlServerV1Handler : IQueryHandler<Unit, IReadOnlyList<PurchaseSearchSqlServerV1Result>, PurchaseSearchSqlServerV1Context>
+public sealed class PurchaseSearchSqlServerV1Handler
+    : IQueryHandler<Unit, IReadOnlyList<PurchaseSearchSqlServerV1Result>, PurchaseSearchSqlServerV1Context>
 {
     public static Task<Result<IReadOnlyList<PurchaseSearchSqlServerV1Result>>> RunAsync(
         PurchaseSearchSqlServerV1Context ctx,
         Unit request,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         var rootId = 100;
         var minAmount = 10;
+
         var tag = "safe";
+
         var quotedName = "O'Reilly";
+
         var excludedGroup = "idle";
+
         var deliveredAfter = "2026-01-01";
+
+
         var anchor = new SqlServerQueryBuilder()
             .Select($"{CategoryTblSqlServer.IdCol:raw}")
             .From($"{CategoryTblSqlServer.Table:raw}")
             .Where($"{CategoryTblSqlServer.IdCol:raw} = {rootId}");
+
         var recursive = new SqlServerQueryBuilder()
             .Select($"{CategoryTblSqlServer.IdCol:raw}")
             .From($"{CategoryTblSqlServer.Table:raw}")
-            .InnerJoin($"{TreeTblSqlServer.Table:raw} ON {CategoryTblSqlServer.ParentIdCol:raw} = {TreeTblSqlServer.IdCol:raw}");
+            .InnerJoin($"{CategoryTblSqlServer.ParentIdJoin:raw}");
+
         var categories = new SqlServerQueryBuilder()
             .Select($"{TreeTblSqlServer.IdCol:raw}")
             .From($"{TreeTblSqlServer.Table:raw}")
@@ -39,11 +49,13 @@ public sealed class PurchaseSearchSqlServerV1Handler : IQueryHandler<Unit, IRead
                 .Select($"{CategoryTblSqlServer.IdCol:raw}")
                 .From($"{CategoryTblSqlServer.Table:raw}")
                 .Where($"{CategoryTblSqlServer.IdCol:raw} = {rootId}"));
+
         var taggedPurchase = new SqlServerQueryBuilder()
             .Select($"1")
             .From($"{PurchaseTagTblSqlServer.Table:raw}")
             .Where($"{PurchaseTagTblSqlServer.PurchaseIdCol:raw} = {PurchaseTblSqlServer.Purchase.IdCol:raw}")
             .Where($"{PurchaseTagTblSqlServer.TagCol:raw} = {tag}");
+
         var query = new SqlServerQueryBuilder()
             .WithRecursive(TreeTblSqlServer.Name, anchor, recursive)
             .Select($"{PurchaseTblSqlServer.Purchase.IdCol:raw}")
@@ -55,11 +67,19 @@ public sealed class PurchaseSearchSqlServerV1Handler : IQueryHandler<Unit, IRead
             .Select($"{PurchaseTblSqlServer.Purchase.StatusCol:raw}")
             .From($"{PurchaseTblSqlServer.Purchase.Table:raw}")
             .InnerJoin($"{PurchaseTblSqlServer.Purchase.BuyerIdJoin:raw}")
-            .InnerJoin($"{AccountTblSqlServer.Buyer.Table:raw} ON {AccountTblSqlServer.Buyer.IdCol:raw} = {PurchaseTblSqlServer.Purchase.BuyerIdCol:raw}")
-            .LeftJoin($"{AccountTblSqlServer.Seller.Table:raw} ON {AccountTblSqlServer.Seller.IdCol:raw} = {PurchaseTblSqlServer.Purchase.SellerIdCol:raw}")
+            .InnerJoin(
+                $"{PurchaseTblSqlServer.Purchase.BuyerIdJoinBuyer:raw}"
+            )
+            .LeftJoin(
+                $"{PurchaseTblSqlServer.Purchase.SellerIdJoinSeller:raw}"
+            )
             .CrossJoin(new SqlServerQueryBuilder().Select($"{42} AS marker"), "marker")
-            .LeftJoin($"{ShipmentTblSqlServer.Table:raw} ON {ShipmentTblSqlServer.PurchaseIdCol:raw} = {PurchaseTblSqlServer.Purchase.IdCol:raw}")
-            .InnerJoin($"{PurchaseTagTblSqlServer.Table:raw} ON {PurchaseTagTblSqlServer.PurchaseIdCol:raw} = {PurchaseTblSqlServer.Purchase.IdCol:raw} AND {PurchaseTagTblSqlServer.TagCol:raw} = {tag}")
+            .LeftJoin(
+                $"{ShipmentTblSqlServer.PurchaseIdJoinReversePurchase:raw}"
+            )
+            .InnerJoin(
+                $"{PurchaseTagTblSqlServer.PurchaseIdJoinReversePurchase:raw} AND {PurchaseTagTblSqlServer.TagCol:raw} = {tag}"
+            )
             .WhereIn($"{PurchaseTblSqlServer.Purchase.CategoryIdCol:raw}", categories)
             .WhereExists(taggedPurchase)
             .Where($"({AccountTblSqlServer.Buyer.NameCol:raw} = {quotedName} OR {AccountTblSqlServer.Buyer.GroupCol:raw} <> {excludedGroup})")
@@ -78,6 +98,7 @@ public sealed class PurchaseSearchSqlServerV1Handler : IQueryHandler<Unit, IRead
             .OrderBy($"{PurchaseTblSqlServer.Purchase.IdCol:raw} DESC")
             .Offset(1)
             .Limit(3);
+
         return ctx.Reader.ListAsync<PurchaseSearchSqlServerV1Result>(query, ct);
     }
 }

@@ -10,23 +10,39 @@ namespace Brigade.Net.Partie.Generator;
 public sealed class RouteGraphPlanner(Compilation compilation, int maximumProviderDepth = 256)
 {
     private static readonly DiagnosticDescriptor InvalidContract = new(
-        "BRG001", "Invalid routing contract", "{0}", "Brigade.Routing",
-        DiagnosticSeverity.Error, true
+        "BRG001",
+        "Invalid routing contract",
+        "{0}",
+        "Brigade.Routing",
+        DiagnosticSeverity.Error,
+        true
     );
 
     private static readonly DiagnosticDescriptor DependencyCycle = new(
-        "BRG002", "Provider dependency cycle", "Provider dependency cycle: {0}", "Brigade.Routing",
-        DiagnosticSeverity.Error, true
+        "BRG002",
+        "Provider dependency cycle",
+        "Provider dependency cycle: {0}",
+        "Brigade.Routing",
+        DiagnosticSeverity.Error,
+        true
     );
 
     private static readonly DiagnosticDescriptor AmbiguousProvider = new(
-        "BRG003", "Ambiguous provider", "Multiple providers make '{0}': {1}", "Brigade.Routing",
-        DiagnosticSeverity.Error, true
+        "BRG003",
+        "Ambiguous provider",
+        "Multiple providers make '{0}': {1}",
+        "Brigade.Routing",
+        DiagnosticSeverity.Error,
+        true
     );
 
     private static readonly DiagnosticDescriptor GraphDepthExceeded = new(
-        "BRG004", "Provider graph depth exceeded", "Provider graph exceeded depth {0} while resolving '{1}'; check for expanding generic dependencies", "Brigade.Routing",
-        DiagnosticSeverity.Error, true
+        "BRG004",
+        "Provider graph depth exceeded",
+        "Provider graph exceeded depth {0} while resolving '{1}'; check for expanding generic dependencies",
+        "Brigade.Routing",
+        DiagnosticSeverity.Error,
+        true
     );
 
     public RouteGraphResult Plan(
@@ -50,13 +66,19 @@ public sealed class RouteGraphPlanner(Compilation compilation, int maximumProvid
         var validator = new RouteCallValidator(compilation, cancellationToken);
         var nextId = 0;
         var fixedParties = parties.ToArray();
-        var declaredInputs = handler.Parameters.Concat(fixedParties.SelectMany(partie => partie.Parameters))
-            .Where(parameter => RouteInputBinding.Read(parameter).Length != 0).ToArray();
+        var declaredInputs = handler.Parameters
+            .Concat(fixedParties.SelectMany(partie => partie.Parameters))
+            .Where(parameter => RouteInputBinding.Read(parameter).Length != 0)
+            .ToArray();
 
         var resultType = GetHandlerResult(handler);
         if (resultType is null || !IsCallable(handler) || handler.Arity != 0)
         {
-            Invalid(handler, "Handler must be a callable static method returning Result<T>, Task<Result<T>>, or ValueTask<Result<T>>.");
+            Invalid(
+                handler,
+                "Handler must be a callable static method returning Result<T>, "
+                    + "Task<Result<T>>, or ValueTask<Result<T>>."
+            );
             return Failed();
         }
 
@@ -75,7 +97,11 @@ public sealed class RouteGraphPlanner(Compilation compilation, int maximumProvid
             var methods = definition.GetMembers("InvokeAsync").OfType<IMethodSymbol>().ToArray();
             if (methods.Length != 1 || !TryGetPartie(methods[0], out _, out var output))
             {
-                Invalid(provider, "Provider must declare exactly one static InvokeAsync<TResult> with a Next<TProvided, TResult> parameter and ValueTask<Result<TResult>> return.");
+                Invalid(
+                    provider,
+                    "Provider must declare exactly one static InvokeAsync<TResult> with a "
+                        + "Next<TProvided, TResult> parameter and ValueTask<Result<TResult>> return."
+                );
                 continue;
             }
 
@@ -100,7 +126,11 @@ public sealed class RouteGraphPlanner(Compilation compilation, int maximumProvid
             cancellationToken.ThrowIfCancellationRequested();
             if (!TryGetPartie(partie, out _, out _))
             {
-                Invalid(partie, "Partie must be a callable static InvokeAsync<TResult> with one Next<TProvided, TResult> and ValueTask<Result<TResult>> return.");
+                Invalid(
+                    partie,
+                    "Partie must be a callable static InvokeAsync<TResult> with one "
+                        + "Next<TProvided, TResult> and ValueTask<Result<TResult>> return."
+                );
                 continue;
             }
 
@@ -112,36 +142,53 @@ public sealed class RouteGraphPlanner(Compilation compilation, int maximumProvid
         FinalizeExternalBindings();
 
         return diagnostics.Count == 0
-            ? new RouteGraphResult(new RouteGraph(resultType, calls.ToImmutable(), externalValues.ToImmutable()), diagnostics.ToImmutable())
+            ? new RouteGraphResult(
+                new RouteGraph(resultType, calls.ToImmutable(), externalValues.ToImmutable()),
+                diagnostics.ToImmutable()
+            )
             : Failed();
 
         RouteGraphResult Failed() => new(null, diagnostics.ToImmutable());
 
         void Invalid(ISymbol symbol, string message)
         {
-            diagnostics.Add(Diagnostic.Create(InvalidContract, symbol.Locations.FirstOrDefault(), message));
+            diagnostics.Add(
+                Diagnostic.Create(InvalidContract, symbol.Locations.FirstOrDefault(), message)
+            );
         }
 
         void FinalizeExternalBindings()
         {
-            var boundInputs = externalValues.Where(value => RouteInputBinding.Read(value.ExternalParameter!).Length != 0).ToArray();
+            var boundInputs = externalValues
+                .Where(value => RouteInputBinding.Read(value.ExternalParameter!).Length != 0)
+                .ToArray();
             for (var callIndex = 0; callIndex < calls.Count; callIndex++)
             {
                 var call = calls[callIndex];
-                var parameters = call.Method.Parameters.Where(parameter => parameter.Ordinal != call.ContinuationParameterIndex).ToArray();
+                var parameters = call.Method.Parameters
+                    .Where(parameter => parameter.Ordinal != call.ContinuationParameterIndex)
+                    .ToArray();
                 var arguments = call.Arguments.ToBuilder();
                 for (var index = 0; index < arguments.Count; index++)
                 {
                     var parameter = parameters[index];
-                    if (arguments[index].ExternalParameter is null || RouteInputBinding.Read(parameter).Length != 0)
+                    if (
+                        arguments[index].ExternalParameter is null
+                        || RouteInputBinding.Read(parameter).Length != 0
+                    )
                     {
                         continue;
                     }
 
-                    var matches = boundInputs.Where(value => SymbolEqualityComparer.Default.Equals(value.Type, parameter.Type)).ToArray();
+                    var matches = boundInputs
+                        .Where(value => SymbolEqualityComparer.Default.Equals(value.Type, parameter.Type))
+                        .ToArray();
                     if (matches.Length > 1)
                     {
-                        Invalid(parameter, "Several external inputs have this type; use a binding attribute to select one.");
+                        Invalid(
+                            parameter,
+                            "Several external inputs have this type; use a binding attribute to select one."
+                        );
                     }
 
                     if (matches.Length != 0)
@@ -150,7 +197,13 @@ public sealed class RouteGraphPlanner(Compilation compilation, int maximumProvid
                     }
                 }
 
-                calls[callIndex] = new RouteCall(call.Method, arguments.ToImmutable(), call.ProvidedValue, call.ContinuationParameterIndex, call.IsProvider);
+                calls[callIndex] = new RouteCall(
+                    call.Method,
+                    arguments.ToImmutable(),
+                    call.ProvidedValue,
+                    call.ContinuationParameterIndex,
+                    call.IsProvider
+                );
             }
 
             var usedInputs = new HashSet<RouteValue>(calls.SelectMany(call => call.Arguments));
@@ -215,10 +268,17 @@ public sealed class RouteGraphPlanner(Compilation compilation, int maximumProvid
                 return existing;
             }
 
-            var knownInputs = declaredInputs.Concat(externalValues.Select(value => value.ExternalParameter!)
-                .Where(input => RouteInputBinding.Read(input).Length != 0)).ToArray();
-            var declared = knownInputs.Where(input => SymbolEqualityComparer.Default.Equals(input.Type, requested))
-                .Select(input => External(input, RouteInputBinding.Read(input)[0])).Distinct().ToArray();
+            var knownInputs = declaredInputs
+                .Concat(
+                    externalValues.Select(value => value.ExternalParameter!)
+                        .Where(input => RouteInputBinding.Read(input).Length != 0)
+                )
+                .ToArray();
+            var declared = knownInputs
+                .Where(input => SymbolEqualityComparer.Default.Equals(input.Type, requested))
+                .Select(input => External(input, RouteInputBinding.Read(input)[0]))
+                .Distinct()
+                .ToArray();
             if (declared.Length != 0)
             {
                 return declared[0];
@@ -226,11 +286,16 @@ public sealed class RouteGraphPlanner(Compilation compilation, int maximumProvid
 
             if (resolving.Any(type => SymbolEqualityComparer.Default.Equals(type, requested)))
             {
-                diagnostics.Add(Diagnostic.Create(
-                    DependencyCycle,
-                    parameter.Locations.FirstOrDefault(),
-                    string.Join(" -> ", resolving.Concat(new[] { requested }).Select(type => type.ToDisplayString()))
-                ));
+                diagnostics.Add(
+                    Diagnostic.Create(
+                        DependencyCycle,
+                        parameter.Locations.FirstOrDefault(),
+                        string.Join(
+                            " -> ",
+                            resolving.Concat(new[] { requested }).Select(type => type.ToDisplayString())
+                        )
+                    )
+                );
                 return new RouteValue(requested, nextId++, null);
             }
 
@@ -238,7 +303,9 @@ public sealed class RouteGraphPlanner(Compilation compilation, int maximumProvid
             foreach (var providerMethod in providerMethods)
             {
                 TryGetNext(providerMethod, out _, out var pattern);
-                var typeBindings = new Dictionary<ITypeParameterSymbol, ITypeSymbol>(SymbolEqualityComparer.Default);
+                var typeBindings = new Dictionary<ITypeParameterSymbol, ITypeSymbol>(
+                    SymbolEqualityComparer.Default
+                );
                 if (!Unify(pattern!, requested, typeBindings))
                 {
                     continue;
@@ -250,18 +317,26 @@ public sealed class RouteGraphPlanner(Compilation compilation, int maximumProvid
                     continue;
                 }
 
-                var closedMethod = closedType.GetMembers("InvokeAsync").OfType<IMethodSymbol>().Single().Construct(resultType);
+                var closedMethod = closedType.GetMembers("InvokeAsync")
+                    .OfType<IMethodSymbol>()
+                    .Single()
+                    .Construct(resultType);
                 matches.Add(closedMethod);
             }
 
             if (matches.Count > 1)
             {
-                diagnostics.Add(Diagnostic.Create(
-                    AmbiguousProvider,
-                    parameter.Locations.FirstOrDefault(),
-                    requested.ToDisplayString(),
-                    string.Join(", ", matches.Select(method => method.ContainingType.ToDisplayString()))
-                ));
+                diagnostics.Add(
+                    Diagnostic.Create(
+                        AmbiguousProvider,
+                        parameter.Locations.FirstOrDefault(),
+                        requested.ToDisplayString(),
+                        string.Join(
+                            ", ",
+                            matches.Select(method => method.ContainingType.ToDisplayString())
+                        )
+                    )
+                );
                 return new RouteValue(requested, nextId++, null);
             }
 
@@ -269,12 +344,14 @@ public sealed class RouteGraphPlanner(Compilation compilation, int maximumProvid
             {
                 if (resolving.Count >= maximumProviderDepth)
                 {
-                    diagnostics.Add(Diagnostic.Create(
-                        GraphDepthExceeded,
-                        parameter.Locations.FirstOrDefault(),
-                        maximumProviderDepth,
-                        requested.ToDisplayString()
-                    ));
+                    diagnostics.Add(
+                        Diagnostic.Create(
+                            GraphDepthExceeded,
+                            parameter.Locations.FirstOrDefault(),
+                            maximumProviderDepth,
+                            requested.ToDisplayString()
+                        )
+                    );
                     return new RouteValue(requested, nextId++, null);
                 }
 
@@ -323,7 +400,10 @@ public sealed class RouteGraphPlanner(Compilation compilation, int maximumProvid
 
     private bool TryGetPartie(IMethodSymbol method, out int nextIndex, out ITypeSymbol? output)
     {
-        if (!TryGetNext(method, out nextIndex, out output) || !IsCallable(method) || method.Arity != 1 || method.Name != "InvokeAsync")
+        if (!TryGetNext(method, out nextIndex, out output)
+            || !IsCallable(method)
+            || method.Arity != 1
+            || method.Name != "InvokeAsync")
         {
             return false;
         }
@@ -331,10 +411,14 @@ public sealed class RouteGraphPlanner(Compilation compilation, int maximumProvid
         var continuationIndex = nextIndex;
         var next = (INamedTypeSymbol)method.Parameters[continuationIndex].Type;
         return IsType(method.ReturnType, "System.Threading.Tasks.ValueTask`1")
-            && SymbolEqualityComparer.Default.Equals(GetHandlerResult(method), method.TypeParameters[0])
+            && SymbolEqualityComparer.Default.Equals(
+                GetHandlerResult(method),
+                method.TypeParameters[0]
+            )
             && SymbolEqualityComparer.Default.Equals(next.TypeArguments[1], method.TypeParameters[0])
             && !Contains(output!, method.TypeParameters[0])
-            && method.Parameters.Where(parameter => parameter.Ordinal != continuationIndex)
+            && method.Parameters
+                .Where(parameter => parameter.Ordinal != continuationIndex)
                 .All(parameter => !Contains(parameter.Type, method.TypeParameters[0]));
     }
 
@@ -362,15 +446,20 @@ public sealed class RouteGraphPlanner(Compilation compilation, int maximumProvid
         return nextIndex != -1;
     }
 
-    private static bool IsCallable(IMethodSymbol method) => method.IsStatic
-        && !method.IsAbstract
-        && !method.ReturnsByRef
-        && !method.ReturnsByRefReadonly
-        && method.Parameters.All(parameter => parameter.RefKind == RefKind.None);
+    private static bool IsCallable(IMethodSymbol method)
+    {
+        return method.IsStatic
+            && !method.IsAbstract
+            && !method.ReturnsByRef
+            && !method.ReturnsByRefReadonly
+            && method.Parameters.All(parameter => parameter.RefKind == RefKind.None);
+    }
 
-    private bool IsType(ITypeSymbol type, string metadataName) => SymbolEqualityComparer.Default.Equals(
-        type.OriginalDefinition, compilation.GetTypeByMetadataName(metadataName)
-    );
+    private bool IsType(ITypeSymbol type, string metadataName) =>
+        SymbolEqualityComparer.Default.Equals(
+            type.OriginalDefinition,
+            compilation.GetTypeByMetadataName(metadataName)
+        );
 
     private bool IsUnit(ITypeSymbol type) => IsType(type, "Brigade.Net.Core.Unit")
         || IsType(type, "Brigade.Net.Core.Results.Unit");
@@ -404,8 +493,10 @@ public sealed class RouteGraphPlanner(Compilation compilation, int maximumProvid
         }
 
         return type is INamedTypeSymbol named
-            && ((named.ContainingType is not null && Contains(named.ContainingType, parameter))
-                || named.TypeArguments.Any(argument => Contains(argument, parameter)));
+            && (
+                (named.ContainingType is not null && Contains(named.ContainingType, parameter))
+                || named.TypeArguments.Any(argument => Contains(argument, parameter))
+            );
     }
 
     private static bool Unify(
@@ -427,14 +518,29 @@ public sealed class RouteGraphPlanner(Compilation compilation, int maximumProvid
 
         if (pattern is IArrayTypeSymbol patternArray && requested is IArrayTypeSymbol requestedArray)
         {
-            return patternArray.Rank == requestedArray.Rank && Unify(patternArray.ElementType, requestedArray.ElementType, bindings);
+            return patternArray.Rank == requestedArray.Rank
+                && Unify(patternArray.ElementType, requestedArray.ElementType, bindings);
         }
 
-        if (pattern is INamedTypeSymbol patternNamed && requested is INamedTypeSymbol requestedNamed
-            && SymbolEqualityComparer.Default.Equals(patternNamed.OriginalDefinition, requestedNamed.OriginalDefinition))
+        if (
+            pattern is INamedTypeSymbol patternNamed
+            && requested is INamedTypeSymbol requestedNamed
+            && SymbolEqualityComparer.Default.Equals(
+                patternNamed.OriginalDefinition,
+                requestedNamed.OriginalDefinition
+            )
+        )
         {
             if (patternNamed.ContainingType is not null
-                && (requestedNamed.ContainingType is null || !Unify(patternNamed.ContainingType, requestedNamed.ContainingType, bindings)))
+                && (
+                    requestedNamed.ContainingType is null
+                    || !Unify(
+                        patternNamed.ContainingType,
+                        requestedNamed.ContainingType,
+                        bindings
+                    )
+                )
+            )
             {
                 return false;
             }
@@ -466,6 +572,7 @@ public sealed class RouteGraphPlanner(Compilation compilation, int maximumProvid
             ? definition
             : definition.Construct(type.TypeArguments.Select(argument =>
                 argument is ITypeParameterSymbol parameter ? bindings[parameter] : argument
-            ).ToArray());
+            ).ToArray()
+        );
     }
 }

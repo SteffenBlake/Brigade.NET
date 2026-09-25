@@ -8,7 +8,8 @@ public sealed record OrderInspectionContext(
     [Inject] OrderRequestScope Scope
 );
 
-public sealed class OrderInspectionPartie<TRequest, TResult> :
+public sealed class OrderInspectionPartie<TRequest, TResult>
+    :
     IQueryPartie<Unit, OrderInspectionContext, TRequest, TResult>,
     ICommandPartie<Unit, OrderInspectionContext, TRequest, TResult>
 {

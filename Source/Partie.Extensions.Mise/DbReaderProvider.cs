@@ -4,10 +4,13 @@ using Brigade.Net.Mise;
 namespace Brigade.Net.Partie.Extensions.Mise;
 
 /// <summary>Gets the configuration selected for a read route.</summary>
-public sealed record DbReaderProviderContext([Provide] IEnumerable<IDbConfig> Configs);
+public sealed record DbReaderProviderContext(
+    [Provide] IEnumerable<IDbConfig> Configs
+);
 
 /// <summary>Provides a reader for one query pipeline.</summary>
-public sealed class DbReaderProvider<TQuery, TResult> :
+public sealed class DbReaderProvider<TQuery, TResult>
+    :
     IQueryProvider<DbReader, DbReaderProviderContext, TQuery, TResult>
 {
     /// <inheritdoc />

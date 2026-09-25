@@ -6,7 +6,13 @@ namespace Brigade.Net.Partie.Generator.Tests;
 
 public sealed class ContractValidationTests
 {
-    private static readonly MetadataReference[] References = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator).Concat([typeof(IPartieEngine).Assembly.Location, typeof(Result<>).Assembly.Location]).Distinct().Select(path => MetadataReference.CreateFromFile(path)).ToArray();
+    private static readonly MetadataReference[] References = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
+        .Split(Path.PathSeparator)
+        .Concat([typeof(IPartieEngine).Assembly.Location, typeof(Result<>).Assembly.Location])
+        .Distinct()
+        .Select(path => MetadataReference.CreateFromFile(path))
+        .ToArray();
+
     [Theory]
     [InlineData("struct Handler", "Handler must")]
     [InlineData("abstract class Handler", "Handler must")]
@@ -81,7 +87,10 @@ public sealed class ContractValidationTests
     public void SelectsLatestSingleValue(string registrations)
     {
         var generated = Valid(
-            Source(registrations).Replace("public class Context { }", "public record Context([Decorate] string Value);") + Step("class First", "string", "Unit") + Step("class Second", "string", "Unit")
+            Source(registrations)
+                .Replace("public class Context { }", "public record Context([Decorate] string Value);")
+                + Step("class First", "string", "Unit")
+                + Step("class Second", "string", "Unit")
         );
         Assert.Contains("QueryProvider<global::Second,", generated);
     }
@@ -90,7 +99,10 @@ public sealed class ContractValidationTests
     public void RejectsSelfDependencyWithoutAnEarlierSource()
     {
         Invalid(
-            Source("[Provider(typeof(Step))]").Replace("public class Context { }", "public record Context([Provide] string Value);") + "public record StepContext([Decorate] string Value);" + Step("class Step", "string", "StepContext"),
+            Source("[Provider(typeof(Step))]")
+                .Replace("public class Context { }", "public record Context([Provide] string Value);")
+                + "public record StepContext([Decorate] string Value);"
+                + Step("class Step", "string", "StepContext"),
             "No earlier Provider or Partie"
         );
     }
@@ -111,7 +123,10 @@ public sealed class ContractValidationTests
     public void CollectionDependencyDoesNotIncludeTheProviderItself()
     {
         var generated = Valid(
-            Source("[Provider(typeof(Step))]").Replace("public class Context { }", "public record Context([Provide] string Value);") + "public record StepContext([Decorate] IEnumerable<string> Values);" + Step("class Step", "string", "StepContext")
+            Source("[Provider(typeof(Step))]")
+                .Replace("public class Context { }", "public record Context([Provide] string Value);")
+                + "public record StepContext([Decorate] IEnumerable<string> Values);"
+                + Step("class Step", "string", "StepContext")
         );
         Assert.Contains("new global::StepContext(new string[] { })", generated);
     }
@@ -174,7 +189,10 @@ public sealed class ContractValidationTests
         bool matches
     )
     {
-        var source = Source("[Provider(typeof(Step<>))]").Replace("public class Context { }", "public record Context([Provide] " + requested + " Value);") + "public class Outer<T> { public class Value { } }" + Step("class Step<T>", output, "Unit");
+        var source = Source("[Provider(typeof(Step<>))]")
+            .Replace("public class Context { }", "public record Context([Provide] " + requested + " Value);")
+            + "public class Outer<T> { public class Value { } }"
+            + Step("class Step<T>", output, "Unit");
         if (matches)
         {
             Assert.Contains("RouteDispatch.QueryProvider<global::Step<int>", Valid(source));
@@ -200,15 +218,25 @@ public sealed class ContractValidationTests
     ) => $$"""
         public {{declaration}} : IQueryProvider<{{output}}, {{context}}, Request, int>
         {
-                public static ValueTask<Result<int>> OnQueryAsync({{context}} ctx, Request query, Next<{{output}}, int> next, CancellationToken ct) => next(default!);
+            public static ValueTask<Result<int>> OnQueryAsync(
+                {{context}} ctx,
+                Request query,
+                Next<{{output}}, int> next,
+                CancellationToken ct
+            ) => next(default!);
         }
         """;
+
     private static string Source(string registrations = "") => $$"""
         public class Request { }
         public class Context { }
         public class Handler : IQueryHandler<Request, int, Context>
         {
-            public static Task<Result<int>> RunAsync(Context ctx, Request query, CancellationToken ct) => Task.FromResult<Result<int>>(42);
+            public static Task<Result<int>> RunAsync(
+                Context ctx,
+                Request query,
+                CancellationToken ct
+            ) => Task.FromResult<Result<int>>(42);
         }
         [BrigadeGroup("")]
         public static partial class Routes
@@ -218,6 +246,7 @@ public sealed class ContractValidationTests
             static partial void Go();
         }
         """;
+
     private static (Compilation Output, GeneratorDriverRunResult Result) Generate(string source)
     {
         var compilation = CSharpCompilation.Create(

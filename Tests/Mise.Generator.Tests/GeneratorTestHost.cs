@@ -8,7 +8,10 @@ namespace Brigade.Net.Mise.Generator.Tests;
 
 internal static class GeneratorTestHost
 {
-    public static (GeneratorDriverRunResult Run, ImmutableArray<Diagnostic> CompilationDiagnostics) Run(
+    public static (
+        GeneratorDriverRunResult Run,
+        ImmutableArray<Diagnostic> CompilationDiagnostics
+    ) Run(
         string source,
         string engineName = "SqlServer"
     )
@@ -19,16 +22,37 @@ internal static class GeneratorTestHost
             .Split(Path.PathSeparator)
             .Select(path => MetadataReference.CreateFromFile(path))
             .Append(MetadataReference.CreateFromFile(typeof(TableAttributeBase).Assembly.Location))
-            .Append(MetadataReference.CreateFromFile(typeof(Brigade.Net.Mise.SqlServer.SqlServerTableAttribute).Assembly.Location))
-            .Append(MetadataReference.CreateFromFile(typeof(Brigade.Net.Mise.PostgreSQL.PostgreSqlTableAttribute).Assembly.Location))
-            .Append(MetadataReference.CreateFromFile(typeof(Brigade.Net.Mise.SQLite.SqliteTableAttribute).Assembly.Location))
-            .Append(MetadataReference.CreateFromFile(typeof(Brigade.Net.Mise.MySQL.MySqlTableAttribute).Assembly.Location))
-            .Append(MetadataReference.CreateFromFile(typeof(Brigade.Net.Mise.MariaDb.MariaDbTableAttribute).Assembly.Location));
+            .Append(
+                MetadataReference.CreateFromFile(
+                    typeof(Brigade.Net.Mise.SqlServer.SqlServerTableAttribute).Assembly.Location
+                )
+            )
+            .Append(
+                MetadataReference.CreateFromFile(
+                    typeof(Brigade.Net.Mise.PostgreSQL.PostgreSqlTableAttribute).Assembly.Location
+                )
+            )
+            .Append(
+                MetadataReference.CreateFromFile(
+                    typeof(Brigade.Net.Mise.SQLite.SqliteTableAttribute).Assembly.Location
+                )
+            )
+            .Append(
+                MetadataReference.CreateFromFile(
+                    typeof(Brigade.Net.Mise.MySQL.MySqlTableAttribute).Assembly.Location
+                )
+            )
+            .Append(
+                MetadataReference.CreateFromFile(
+                    typeof(Brigade.Net.Mise.MariaDb.MariaDbTableAttribute).Assembly.Location
+                )
+            );
         var compilation = CSharpCompilation.Create(
             "GeneratorTests",
             [syntaxTree],
             references,
-            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary).WithNullableContextOptions(NullableContextOptions.Enable)
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+                .WithNullableContextOptions(NullableContextOptions.Enable)
         );
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
             [new TestMiseGenerator(engineName).AsSourceGenerator()],
@@ -38,7 +62,10 @@ internal static class GeneratorTestHost
         return (driver.GetRunResult(), output.GetDiagnostics());
     }
 
-    public static (GeneratorDriverRunResult Run, ImmutableArray<Diagnostic> CompilationDiagnostics) Run(
+    public static (
+        GeneratorDriverRunResult Run,
+        ImmutableArray<Diagnostic> CompilationDiagnostics
+    ) Run(
         string source,
         MiseEngineOptions options
     )
@@ -65,11 +92,31 @@ internal static class GeneratorTestHost
             .Split(Path.PathSeparator)
             .Select(path => MetadataReference.CreateFromFile(path))
             .Append(MetadataReference.CreateFromFile(typeof(TableAttributeBase).Assembly.Location))
-            .Append(MetadataReference.CreateFromFile(typeof(Brigade.Net.Mise.SqlServer.SqlServerTableAttribute).Assembly.Location))
-            .Append(MetadataReference.CreateFromFile(typeof(Brigade.Net.Mise.PostgreSQL.PostgreSqlTableAttribute).Assembly.Location))
-            .Append(MetadataReference.CreateFromFile(typeof(Brigade.Net.Mise.SQLite.SqliteTableAttribute).Assembly.Location))
-            .Append(MetadataReference.CreateFromFile(typeof(Brigade.Net.Mise.MySQL.MySqlTableAttribute).Assembly.Location))
-            .Append(MetadataReference.CreateFromFile(typeof(Brigade.Net.Mise.MariaDb.MariaDbTableAttribute).Assembly.Location));
+            .Append(
+                MetadataReference.CreateFromFile(
+                    typeof(Brigade.Net.Mise.SqlServer.SqlServerTableAttribute).Assembly.Location
+                )
+            )
+            .Append(
+                MetadataReference.CreateFromFile(
+                    typeof(Brigade.Net.Mise.PostgreSQL.PostgreSqlTableAttribute).Assembly.Location
+                )
+            )
+            .Append(
+                MetadataReference.CreateFromFile(
+                    typeof(Brigade.Net.Mise.SQLite.SqliteTableAttribute).Assembly.Location
+                )
+            )
+            .Append(
+                MetadataReference.CreateFromFile(
+                    typeof(Brigade.Net.Mise.MySQL.MySqlTableAttribute).Assembly.Location
+                )
+            )
+            .Append(
+                MetadataReference.CreateFromFile(
+                    typeof(Brigade.Net.Mise.MariaDb.MariaDbTableAttribute).Assembly.Location
+                )
+            );
         Compilation compilation = CSharpCompilation.Create(
             "AnalyzerTests",
             [syntaxTree],
@@ -85,7 +132,8 @@ internal static class GeneratorTestHost
             driver.RunGeneratorsAndUpdateCompilation(compilation, out compilation, out _);
         }
 
-        return await compilation.WithAnalyzers([new MiseRawInterpolationAnalyzer()]).GetAnalyzerDiagnosticsAsync();
+        return await compilation.WithAnalyzers([new MiseRawInterpolationAnalyzer()])
+            .GetAnalyzerDiagnosticsAsync();
     }
 
     public static async Task<ImmutableArray<Diagnostic>> AnalyzeJoinAsync(
@@ -93,23 +141,27 @@ internal static class GeneratorTestHost
         bool runGenerator = false
     )
     {
-        var tree = CSharpSyntaxTree.ParseText(source, CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Preview));
+        var parseOptions = CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Preview);
+        var tree = CSharpSyntaxTree.ParseText(source, parseOptions);
         Compilation compilation = CreateCompilation([tree]);
         if (runGenerator)
         {
             GeneratorDriver driver = CSharpGeneratorDriver.Create(
                 [new TestMiseGenerator("SqlServer").AsSourceGenerator()],
-                parseOptions: CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Preview)
+                parseOptions: parseOptions
             );
             driver.RunGeneratorsAndUpdateCompilation(compilation, out compilation, out _);
         }
-        return await compilation.WithAnalyzers([new MiseJoinCapabilityAnalyzer()]).GetAnalyzerDiagnosticsAsync();
+        return await compilation.WithAnalyzers([new MiseJoinCapabilityAnalyzer()])
+            .GetAnalyzerDiagnosticsAsync();
     }
 
     public static GeneratorDriverRunResult RunSources(params (string Path, string Source)[] sources)
     {
         var parseOptions = CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Preview);
-        var trees = sources.Select(source => CSharpSyntaxTree.ParseText(source.Source, parseOptions, source.Path));
+        var trees = sources.Select(source =>
+            CSharpSyntaxTree.ParseText(source.Source, parseOptions, source.Path)
+        );
         var compilation = CreateCompilation(trees);
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
             [new TestMiseGenerator("SqlServer").AsSourceGenerator()],
@@ -118,19 +170,7 @@ internal static class GeneratorTestHost
         return driver.RunGenerators(compilation).GetRunResult();
     }
 
-    public static GeneratorDriverRunResult RunWithEngines(string source, params string[] engineNames)
-    {
-        var parseOptions = CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Preview);
-        var syntaxTree = CSharpSyntaxTree.ParseText(source, parseOptions);
-        var compilation = CreateCompilation([syntaxTree]);
-        var generators = engineNames
-            .Select(engineName => new TestMiseGenerator(engineName).AsSourceGenerator())
-            .ToArray();
-        GeneratorDriver driver = CSharpGeneratorDriver.Create(generators, parseOptions: parseOptions);
-        return driver.RunGenerators(compilation).GetRunResult();
-    }
-
-    public static (GeneratorDriverRunResult Run, ImmutableArray<Diagnostic> CompilationDiagnostics) CompileWithEngines(
+    public static GeneratorDriverRunResult RunWithEngines(
         string source,
         params string[] engineNames
     )
@@ -141,7 +181,31 @@ internal static class GeneratorTestHost
         var generators = engineNames
             .Select(engineName => new TestMiseGenerator(engineName).AsSourceGenerator())
             .ToArray();
-        GeneratorDriver driver = CSharpGeneratorDriver.Create(generators, parseOptions: parseOptions);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(
+            generators,
+            parseOptions: parseOptions
+        );
+        return driver.RunGenerators(compilation).GetRunResult();
+    }
+
+    public static (
+        GeneratorDriverRunResult Run,
+        ImmutableArray<Diagnostic> CompilationDiagnostics
+    ) CompileWithEngines(
+        string source,
+        params string[] engineNames
+    )
+    {
+        var parseOptions = CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Preview);
+        var syntaxTree = CSharpSyntaxTree.ParseText(source, parseOptions);
+        var compilation = CreateCompilation([syntaxTree]);
+        var generators = engineNames
+            .Select(engineName => new TestMiseGenerator(engineName).AsSourceGenerator())
+            .ToArray();
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(
+            generators,
+            parseOptions: parseOptions
+        );
         driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var output, out _);
         return (driver.GetRunResult(), output.GetDiagnostics());
     }
@@ -169,11 +233,31 @@ internal static class GeneratorTestHost
             .Split(Path.PathSeparator)
             .Select(path => MetadataReference.CreateFromFile(path))
             .Append(MetadataReference.CreateFromFile(typeof(TableAttributeBase).Assembly.Location))
-            .Append(MetadataReference.CreateFromFile(typeof(Brigade.Net.Mise.SqlServer.SqlServerTableAttribute).Assembly.Location))
-            .Append(MetadataReference.CreateFromFile(typeof(Brigade.Net.Mise.PostgreSQL.PostgreSqlTableAttribute).Assembly.Location))
-            .Append(MetadataReference.CreateFromFile(typeof(Brigade.Net.Mise.SQLite.SqliteTableAttribute).Assembly.Location))
-            .Append(MetadataReference.CreateFromFile(typeof(Brigade.Net.Mise.MySQL.MySqlTableAttribute).Assembly.Location))
-            .Append(MetadataReference.CreateFromFile(typeof(Brigade.Net.Mise.MariaDb.MariaDbTableAttribute).Assembly.Location));
+            .Append(
+                MetadataReference.CreateFromFile(
+                    typeof(Brigade.Net.Mise.SqlServer.SqlServerTableAttribute).Assembly.Location
+                )
+            )
+            .Append(
+                MetadataReference.CreateFromFile(
+                    typeof(Brigade.Net.Mise.PostgreSQL.PostgreSqlTableAttribute).Assembly.Location
+                )
+            )
+            .Append(
+                MetadataReference.CreateFromFile(
+                    typeof(Brigade.Net.Mise.SQLite.SqliteTableAttribute).Assembly.Location
+                )
+            )
+            .Append(
+                MetadataReference.CreateFromFile(
+                    typeof(Brigade.Net.Mise.MySQL.MySqlTableAttribute).Assembly.Location
+                )
+            )
+            .Append(
+                MetadataReference.CreateFromFile(
+                    typeof(Brigade.Net.Mise.MariaDb.MariaDbTableAttribute).Assembly.Location
+                )
+            );
         return CSharpCompilation.Create(
             "GeneratorTests",
             trees,

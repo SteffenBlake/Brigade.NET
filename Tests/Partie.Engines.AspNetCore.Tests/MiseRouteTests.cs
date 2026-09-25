@@ -18,7 +18,11 @@ public sealed class MiseRouteTests
             public sealed class ReadQuery;
             public sealed class ReadHandler : IQueryHandler<ReadQuery, Unit, ReadContext>
             {
-                public static Task<Result<Unit>> RunAsync(ReadContext ctx, ReadQuery query, CancellationToken ct)
+                public static Task<Result<Unit>> RunAsync(
+                    ReadContext ctx,
+                    ReadQuery query,
+                    CancellationToken ct
+                )
                     => Task.FromResult<Result<Unit>>(Unit.Default);
             }
 
@@ -55,7 +59,12 @@ public sealed class MiseRouteTests
             public sealed class WriteCommand;
             public sealed class WriteHandler : ICommandHandler<WriteCommand, Unit, WriteContext>
             {
-                public static Task<Result<Unit>> RunAsync(UnitOfWork work, WriteContext ctx, WriteCommand command, CancellationToken ct)
+                public static Task<Result<Unit>> RunAsync(
+                    UnitOfWork work,
+                    WriteContext ctx,
+                    WriteCommand command,
+                    CancellationToken ct
+                )
                     => Task.FromResult<Result<Unit>>(Unit.Default);
             }
 

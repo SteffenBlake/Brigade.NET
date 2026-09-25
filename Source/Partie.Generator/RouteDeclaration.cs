@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis;
 
 namespace Brigade.Net.Partie.Generator;
 
-public sealed class RouteDeclaration(
+public sealed record RouteDeclaration(
     IEnumerable<string> path,
     string operation,
     INamedTypeSymbol? handler = null,
@@ -12,7 +12,11 @@ public sealed class RouteDeclaration(
 )
 {
     public ImmutableArray<string> Path { get; } = path.ToImmutableArray();
+
     public string Operation { get; } = operation;
+
     public INamedTypeSymbol? Handler { get; } = handler;
-    public ImmutableDictionary<string, string> Parameters { get; } = parameters ?? ImmutableDictionary<string, string>.Empty;
+
+    public ImmutableDictionary<string, string> Parameters { get; } = parameters
+        ?? ImmutableDictionary<string, string>.Empty;
 }

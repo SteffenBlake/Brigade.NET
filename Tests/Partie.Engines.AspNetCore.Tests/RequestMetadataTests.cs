@@ -9,7 +9,10 @@ public sealed class RequestMetadataTests
     public void CommandPoliciesReceiveTheInnerPayloadType(string payload, string bodyType)
     {
         var source = Source(
-            "public record Body(string Text); public class Request { [FromPath] public int Id { get; set; } " + payload + " }",
+            "public record Body(string Text); public class Request { "
+                + "[FromPath] public int Id { get; set; } "
+                + payload
+                + " }",
             true
         ).Replace("[BrigadeGroup", "[RoutePolicy(typeof(PayloadRoutePolicy))] [BrigadeGroup") + """
             public static class PayloadRoutePolicy
@@ -40,7 +43,9 @@ public sealed class RequestMetadataTests
             """
         );
         var generated = EngineCompilation.Valid(
-            Source("").Replace("<Request,", "<Domain.Request,").Replace("Request request", "Domain.Request request"),
+            Source("")
+                .Replace("<Request,", "<Domain.Request,")
+                .Replace("Request request", "Domain.Request request"),
             [reference]
         );
         Assert.Contains("required string @Id", generated);
@@ -56,9 +61,14 @@ public sealed class RequestMetadataTests
     public void InjectsOrdinaryAndNullableServicesExplicitly()
     {
         var generated = EngineCompilation.Valid(
-            Source("public sealed class Request { }").Replace("Unit", "Context") + "public record Context([Inject] Uri Service, [Inject] string? Optional, [Inject] int? Number);"
+            Source("public sealed class Request { }").Replace("Unit", "Context")
+                + "public record Context([Inject] Uri Service, [Inject] string? Optional, "
+                + "[Inject] int? Number);"
         );
-        Assert.Contains("[global::Microsoft.AspNetCore.Mvc.FromServices] global::System.Uri", generated);
+        Assert.Contains(
+            "[global::Microsoft.AspNetCore.Mvc.FromServices] global::System.Uri",
+            generated
+        );
         Assert.Contains("[global::Microsoft.AspNetCore.Mvc.FromServices] string?", generated);
         Assert.Contains("typeof(string)", generated);
         Assert.Contains("typeof(int?)", generated.Replace(" ", ""));
@@ -73,14 +83,21 @@ public sealed class RequestMetadataTests
             public enum Mode { One = 1 }
             [AttributeUsage(AttributeTargets.Class | AttributeTargets.Property)]
             public sealed class MetadataAttribute(
-                string text, Type type, int[] numbers, Mode mode, float weight, bool enabled, char marker
+                string text,
+                Type type,
+                int[] numbers,
+                Mode mode,
+                float weight,
+                bool enabled,
+                char marker
             ) : Attribute
             {
                 public string? Optional { get; set; }
                 public string[]? Tags { get; set; }
             }
             /// <summary>Request documentation.</summary>
-            [Metadata("line\nquoted\"", typeof(Uri), new[] { 1, 2 }, Mode.One, 1.5f, true, 'x', Optional = null, Tags = new[] { "a", "b" })]
+            [Metadata("line\nquoted\"", typeof(Uri), new[] { 1, 2 }, Mode.One, 1.5f, true, 'x',
+                Optional = null, Tags = new[] { "a", "b" })]
             public sealed class Request
             {
                 /// <summary>Property documentation.</summary>
@@ -200,7 +217,9 @@ public sealed class RequestMetadataTests
         {
             public static Task<Result<int>> RunAsync(
                 {{(command ? "UnitOfWork uow," : "")}}
-                Unit ctx, Request request, CancellationToken ct
+                Unit ctx,
+                Request request,
+                CancellationToken ct
             ) => Task.FromResult<Result<int>>(42);
         }
         [BrigadeGroup("")]

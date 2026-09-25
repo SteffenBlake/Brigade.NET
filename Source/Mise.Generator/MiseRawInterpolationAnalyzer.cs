@@ -15,7 +15,9 @@ public sealed class MiseRawInterpolationAnalyzer : DiagnosticAnalyzer
 
     public override void Initialize(AnalysisContext context)
     {
-        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.Analyze | GeneratedCodeAnalysisFlags.ReportDiagnostics);
+        context.ConfigureGeneratedCodeAnalysis(
+            GeneratedCodeAnalysisFlags.Analyze | GeneratedCodeAnalysisFlags.ReportDiagnostics
+        );
         context.EnableConcurrentExecution();
         context.RegisterSyntaxNodeAction(AnalyzeInterpolatedString, SyntaxKind.InterpolatedStringExpression);
     }
@@ -39,7 +41,12 @@ public sealed class MiseRawInterpolationAnalyzer : DiagnosticAnalyzer
             var constant = context.SemanticModel.GetConstantValue(hole.Expression, context.CancellationToken);
             if (!constant.HasValue || constant.Value is not string)
             {
-                context.ReportDiagnostic(Diagnostic.Create(MiseDiagnostics.UnsafeRawInterpolation, hole.Expression.GetLocation()));
+                context.ReportDiagnostic(
+                    Diagnostic.Create(
+                        MiseDiagnostics.UnsafeRawInterpolation,
+                        hole.Expression.GetLocation()
+                    )
+                );
             }
         }
     }

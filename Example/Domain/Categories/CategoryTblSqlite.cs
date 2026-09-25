@@ -11,9 +11,9 @@ public static partial class CategoryTblSqlite
     private static int Id { get; }
 
     [Column("parent_id")]
+    [Relationship(Brigade.Net.Example.Domain.Purchases.SearchSqliteV1.TreeTblSqlite.IdCol)]
     private static int? ParentId { get; }
 
     [Column("label")]
     private static string Label => string.Empty;
-
 }

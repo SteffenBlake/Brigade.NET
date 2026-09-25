@@ -51,13 +51,21 @@ public sealed class PrefabValidationTests
     {
         var metadata = PrefabValidationModel.Metadata;
 
-        Assert.Equal(ExpoRuleKind.StringMinimumLength,
-            metadata.Properties.Single(item => item.Name == "Minimum").Rules.Single().Kind);
-        Assert.Equal("email",
-            metadata.Properties.Single(item => item.Name == "Email").Rules.Single().Format);
-        Assert.Equal(@"^CODE-\d{3}$",
-            metadata.Properties.Single(item => item.Name == "Code").Rules.Single().Pattern);
-        Assert.True(metadata.Properties.Single(item => item.Name == "Children").IsNestedValidatable);
+        Assert.Equal(
+            ExpoRuleKind.StringMinimumLength,
+            metadata.Properties.Single(item => item.Name == "Minimum").Rules.Single().Kind
+        );
+        Assert.Equal(
+            "email",
+            metadata.Properties.Single(item => item.Name == "Email").Rules.Single().Format
+        );
+        Assert.Equal(
+            @"^CODE-\d{3}$",
+            metadata.Properties.Single(item => item.Name == "Code").Rules.Single().Pattern
+        );
+        Assert.True(
+            metadata.Properties.Single(item => item.Name == "Children").IsNestedValidatable
+        );
     }
 
     [Fact]

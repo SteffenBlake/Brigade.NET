@@ -88,7 +88,12 @@ public sealed class UnitOfWorkPartieTests
             )]
         );
         Result<int> expected = deprecated ? new Deprecated<int>(42, DateTime.UnixEpoch, "old") : 42;
-        var actual = await UnitOfWorkPartie<Unit, int>.OnCommandAsync(context, new Unit(), work => ValueTask.FromResult(expected), CancellationToken.None);
+        var actual = await UnitOfWorkPartie<Unit, int>.OnCommandAsync(
+            context,
+            new Unit(),
+            work => ValueTask.FromResult(expected),
+            CancellationToken.None
+        );
         Assert.Same(expected, actual);
         Assert.Equal(1, commits);
         Assert.Equal(0, rollbacks);
@@ -109,7 +114,12 @@ public sealed class UnitOfWorkPartieTests
             )]
         );
         Result<int> expected = new Conflict("busy");
-        var actual = await UnitOfWorkPartie<Unit, int>.OnCommandAsync(context, new Unit(), work => ValueTask.FromResult(expected), CancellationToken.None);
+        var actual = await UnitOfWorkPartie<Unit, int>.OnCommandAsync(
+            context,
+            new Unit(),
+            work => ValueTask.FromResult(expected),
+            CancellationToken.None
+        );
         Assert.Same(expected, actual);
         Assert.Equal(1, rollbacks);
     }

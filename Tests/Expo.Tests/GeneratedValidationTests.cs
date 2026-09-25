@@ -25,7 +25,10 @@ public sealed class GeneratedValidationTests
 
         Assert.False(isValid);
         Assert.Equal(12, errorDetails.Length);
-        Assert.Contains(errorDetails, item => item.Detail == "Name needed" && item.Pointer == "/Name");
+        Assert.Contains(
+            errorDetails,
+            item => item.Detail == "Name needed" && item.Pointer == "/Name"
+        );
         Assert.Contains(errorDetails, item => item.Detail == "StaticCustom is invalid.");
         Assert.Contains(errorDetails, item => item.Detail == "PartialCustom failed.");
         Assert.Contains(errorDetails, item => item.Pointer == "/Child/Value");

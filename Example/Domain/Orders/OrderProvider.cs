@@ -9,7 +9,8 @@ public sealed record OrderProviderContext(
     [Inject] OrderRequestScope Scope
 );
 
-public sealed class OrderProvider<TQuery, TResult> :
+public sealed class OrderProvider<TQuery, TResult>
+    :
     IQueryProvider<Order[], OrderProviderContext, TQuery, TResult>
     where TQuery : OrderSearchV1Query
 {

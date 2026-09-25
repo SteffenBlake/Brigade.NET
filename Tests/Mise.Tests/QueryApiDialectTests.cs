@@ -43,7 +43,12 @@ public sealed class QueryApiDialectTests
         Assert.Contains("@p0", compiled.Text);
         Assert.Contains("@p1", compiled.Text);
         Assert.Contains("@p2", compiled.Text);
-        Assert.Equal(quoted, dialect.QuoteIdentifier(engine == "SqlServer" ? "a]b" : engine is "MySQL" or "MariaDB" ? "a`b" : "a\"b"));
+        var identifier = engine == "SqlServer"
+            ? "a]b"
+            : engine is "MySQL" or "MariaDB"
+                ? "a`b"
+                : "a\"b";
+        Assert.Equal(quoted, dialect.QuoteIdentifier(identifier));
     }
 
     [Theory]
@@ -62,10 +67,18 @@ public sealed class QueryApiDialectTests
     [Fact]
     public void PagingRequiresEngineDialectAndSqlServerOrder()
     {
-        Assert.Throws<NotSupportedException>(() => new QueryBuilder().Select($"1").Limit(2).Compile());
-        Assert.Throws<InvalidOperationException>(() => new SqlServerQueryBuilder().Select($"1").Limit(2).Compile());
-        Assert.Throws<ArgumentOutOfRangeException>(() => new SqlServerQueryBuilder().Select($"1").OrderBy($"1").Limit(0).Compile());
-        Assert.Throws<ArgumentOutOfRangeException>(() => new SqliteQueryBuilder().Limit(1).Limit(2));
+        Assert.Throws<NotSupportedException>(
+            () => new QueryBuilder().Select($"1").Limit(2).Compile()
+        );
+        Assert.Throws<InvalidOperationException>(
+            () => new SqlServerQueryBuilder().Select($"1").Limit(2).Compile()
+        );
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new SqlServerQueryBuilder().Select($"1").OrderBy($"1").Limit(0).Compile()
+        );
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new SqliteQueryBuilder().Limit(1).Limit(2)
+        );
     }
 
     [Theory]
@@ -77,11 +90,17 @@ public sealed class QueryApiDialectTests
     public void FullJoinUsesCapability(string engine, bool supported)
     {
         const string relationship = "purchases ON purchases.user_id = users.id";
-        var query = new QueryBuilder(GetDialect(engine)).Select($"users.id").From($"users").FullJoin($"{relationship:raw}");
+        var query = new QueryBuilder(GetDialect(engine))
+            .Select($"users.id")
+            .From($"users")
+            .FullJoin($"{relationship:raw}");
 
         if (supported)
         {
-            Assert.Contains(" FULL JOIN purchases ON purchases.user_id = users.id", query.Compile().Text);
+            Assert.Contains(
+                " FULL JOIN purchases ON purchases.user_id = users.id",
+                query.Compile().Text
+            );
         }
         else
         {
@@ -106,15 +125,28 @@ public sealed class QueryApiDialectTests
             {
                 continue;
             }
-            var query = new QueryBuilder(dialect).Select($"users.id").From($"users");
+            var query = new QueryBuilder(dialect)
+                .Select($"users.id")
+                .From($"users");
             switch (kind)
             {
-                case "INNER JOIN": query.InnerJoin($"{relationship:raw}"); break;
-                case "LEFT JOIN": query.LeftJoin($"{relationship:raw}"); break;
-                case "RIGHT JOIN": query.RightJoin($"{relationship:raw}"); break;
-                case "FULL JOIN": query.FullJoin($"{relationship:raw}"); break;
+                case "INNER JOIN":
+                    query.InnerJoin($"{relationship:raw}");
+                    break;
+                case "LEFT JOIN":
+                    query.LeftJoin($"{relationship:raw}");
+                    break;
+                case "RIGHT JOIN":
+                    query.RightJoin($"{relationship:raw}");
+                    break;
+                case "FULL JOIN":
+                    query.FullJoin($"{relationship:raw}");
+                    break;
             }
-            Assert.Equal($"SELECT users.id FROM users {kind} {relationship}", query.Compile().Text);
+            Assert.Equal(
+                $"SELECT users.id FROM users {kind} {relationship}",
+                query.Compile().Text
+            );
         }
     }
 
@@ -127,7 +159,8 @@ public sealed class QueryApiDialectTests
     public void JoinRuntimeValueUsesParameterInSqlOrder(string engine)
     {
         var kind = "x' OR 1=1 --";
-        FormattableString join = $"purchases ON purchases.user_id = users.id AND purchases.kind = {kind}";
+        FormattableString join =
+            $"purchases ON purchases.user_id = users.id AND purchases.kind = {kind}";
         var query = new QueryBuilder(GetDialect(engine))
             .Where($"users.id = {9}")
             .InnerJoin(join)
@@ -137,7 +170,8 @@ public sealed class QueryApiDialectTests
         var sql = query.Compile();
 
         Assert.Equal(
-            "SELECT @p0 AS marker FROM users INNER JOIN purchases ON purchases.user_id = users.id AND purchases.kind = @p1 WHERE users.id = @p2",
+            "SELECT @p0 AS marker FROM users INNER JOIN purchases ON purchases.user_id = users.id "
+            + "AND purchases.kind = @p1 WHERE users.id = @p2",
             sql.Text
         );
         Assert.Equal([7, kind, 9], sql.Parameters.Select(parameter => parameter.Value).ToArray());
@@ -164,7 +198,8 @@ public sealed class QueryApiDialectTests
         Assert.Equal("DELETE FROM people WHERE id = @p0", delete.Text);
         Assert.Equal("INSERT INTO people (id, name) VALUES (@p0, @p1)", insert.Text);
         Assert.Equal(CommandType.Text, insert.CommandType);
-        Assert.Equal(CommandType.StoredProcedure, new CommandBuilder(dialect).Procedure("save_person").Compile().CommandType);
+        var procedure = new CommandBuilder(dialect).Procedure("save_person").Compile();
+        Assert.Equal(CommandType.StoredProcedure, procedure.CommandType);
         var insertSelect = new CommandBuilder(dialect).InsertInto($"people")
             .FromQuery(new QueryBuilder(dialect).Select($"{5}")).Compile();
         Assert.Equal("INSERT INTO people SELECT @p0", insertSelect.Text);
@@ -188,7 +223,11 @@ public sealed class QueryApiDialectTests
         var custom = new QueryBuilder(dialect).Sql($"SELECT {5}").Compile();
         var write = new CommandBuilder(dialect).Sql($"DELETE FROM items WHERE id = {6}").Compile();
 
-        Assert.Equal("SELECT DISTINCT category FROM items WHERE enabled = @p0 GROUP BY category HAVING COUNT(*) > @p1 ORDER BY category", grouped.Text);
+        Assert.Equal(
+            "SELECT DISTINCT category FROM items WHERE enabled = @p0 GROUP BY category "
+            + "HAVING COUNT(*) > @p1 ORDER BY category",
+            grouped.Text
+        );
         Assert.Equal(["@p0", "@p1"], grouped.Parameters.Select(parameter => parameter.Name));
         Assert.Equal([true, 2], grouped.Parameters.Select(parameter => parameter.Value));
         Assert.Equal("SELECT id FROM items WHERE id IN (@p0, @p1)", listed.Text);
@@ -217,9 +256,18 @@ public sealed class QueryApiDialectTests
         var compiled = query.Compile();
 
         Assert.Contains(" UNION SELECT @p3 ORDER BY 1", compiled.Text);
-        Assert.Contains("EXISTS (SELECT 1 FROM seed WHERE seed.id = s.id AND seed.id > @p2)", compiled.Text);
-        Assert.Equal(["@p0", "@p1", "@p2", "@p3"], compiled.Parameters.Select(parameter => parameter.Name));
-        Assert.Equal([1, 2, 3, 4], compiled.Parameters.Select(parameter => parameter.Value));
+        Assert.Contains(
+            "EXISTS (SELECT 1 FROM seed WHERE seed.id = s.id AND seed.id > @p2)",
+            compiled.Text
+        );
+        Assert.Equal(
+            ["@p0", "@p1", "@p2", "@p3"],
+            compiled.Parameters.Select(parameter => parameter.Name)
+        );
+        Assert.Equal(
+            [1, 2, 3, 4],
+            compiled.Parameters.Select(parameter => parameter.Value)
+        );
     }
 
     [Fact]
@@ -277,7 +325,9 @@ public sealed class QueryApiDialectTests
     public void MixedEngineChildIsRejectedBeforeACommandIsProduced()
     {
         var child = new QueryBuilder(new PostgreSqlDialect()).Select($"{1}");
-        var command = new CommandBuilder(new SqlServerDialect()).InsertInto($"target").FromQuery(child);
+        var command = new CommandBuilder(new SqlServerDialect())
+            .InsertInto($"target")
+            .FromQuery(child);
 
         Assert.Throws<InvalidOperationException>(() => command.Compile());
     }
@@ -325,8 +375,12 @@ public sealed class QueryApiDialectTests
         var query = new QueryBuilder().Select($"1").Behavior(CommandBehavior.SequentialAccess);
 
         Assert.Equal(CommandBehavior.SequentialAccess, query.Compile().Behavior);
-        Assert.Throws<ArgumentOutOfRangeException>(() => new CompiledSql("SELECT 1", behavior: CommandBehavior.CloseConnection));
-        Assert.Throws<InvalidOperationException>(() => query.Behavior(CommandBehavior.SingleResult));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new CompiledSql("SELECT 1", behavior: CommandBehavior.CloseConnection)
+        );
+        Assert.Throws<InvalidOperationException>(
+            () => query.Behavior(CommandBehavior.SingleResult)
+        );
     }
 
     [Fact]
@@ -340,7 +394,9 @@ public sealed class QueryApiDialectTests
         Assert.Throws<InvalidOperationException>(() => insert.FromQuery(child));
         Assert.Throws<InvalidOperationException>(() => delete.Compile());
         Assert.Throws<InvalidOperationException>(() => update.Compile());
-        Assert.Throws<InvalidOperationException>(() => new QueryBuilder().Select($"1").InnerJoin($"x ON 1 = 1").Compile());
+        Assert.Throws<InvalidOperationException>(
+            () => new QueryBuilder().Select($"1").InnerJoin($"x ON 1 = 1").Compile()
+        );
     }
 
     [Fact]
@@ -367,10 +423,22 @@ public sealed class QueryApiDialectTests
         var query = new QueryBuilder().Select($"u.id").From($"users AS u")
             .LeftJoin($"{relationship:raw}").CrossJoin($"{other:raw}");
 
-        Assert.Equal("SELECT u.id FROM users AS u LEFT JOIN purchases ON purchases.user_id = u.id CROSS JOIN teams", query.Compile().Text);
-        Assert.Throws<ArgumentException>(() => new QueryBuilder().Select($"1").From($"users").CrossJoin($"{relationship:raw}").Compile());
-        Assert.Throws<ArgumentException>(() => new QueryBuilder().Select($"1").From($"users").InnerJoin($"{other:raw}").Compile());
-        Assert.Throws<ArgumentException>(() => new QueryBuilder().Select($"1").From($"users").InnerJoin($"   ").Compile());
+        Assert.Equal(
+            "SELECT u.id FROM users AS u LEFT JOIN purchases ON purchases.user_id = u.id "
+            + "CROSS JOIN teams",
+            query.Compile().Text
+        );
+        Assert.Throws<ArgumentException>(
+            () => new QueryBuilder().Select($"1").From($"users")
+                .CrossJoin($"{relationship:raw}").Compile()
+        );
+        Assert.Throws<ArgumentException>(
+            () => new QueryBuilder().Select($"1").From($"users")
+                .InnerJoin($"{other:raw}").Compile()
+        );
+        Assert.Throws<ArgumentException>(
+            () => new QueryBuilder().Select($"1").From($"users").InnerJoin($"   ").Compile()
+        );
     }
 
     [Fact]
@@ -378,14 +446,21 @@ public sealed class QueryApiDialectTests
     {
         var child = new QueryBuilder().Select($"{5}");
         var parent = new QueryBuilder().Select(child).Select(child);
-        var compiled = await Task.WhenAll(Enumerable.Range(0, 32).Select(_ => Task.Run(parent.Compile)));
+        var compiled = await Task.WhenAll(
+            Enumerable.Range(0, 32).Select(_ => Task.Run(parent.Compile))
+        );
 
         Assert.All(compiled, sql =>
         {
             Assert.Equal("SELECT (SELECT @p0), (SELECT @p1)", sql.Text);
             Assert.Equal([5, 5], sql.Parameters.Select(parameter => parameter.Value));
         });
-        Assert.Equal(32, compiled.Select(sql => sql.Parameters).Distinct(ReferenceEqualityComparer.Instance).Count());
+        Assert.Equal(
+            32,
+            compiled.Select(sql => sql.Parameters)
+                .Distinct(ReferenceEqualityComparer.Instance)
+                .Count()
+        );
     }
 
     [Fact]
@@ -393,14 +468,21 @@ public sealed class QueryApiDialectTests
     {
         var child = new QueryBuilder().Select($"{5}");
         var command = new CommandBuilder().InsertInto($"target").FromQuery(child);
-        var compiled = await Task.WhenAll(Enumerable.Range(0, 32).Select(_ => Task.Run(command.Compile)));
+        var compiled = await Task.WhenAll(
+            Enumerable.Range(0, 32).Select(_ => Task.Run(command.Compile))
+        );
 
         Assert.All(compiled, sql =>
         {
             Assert.Equal("INSERT INTO target SELECT @p0", sql.Text);
             Assert.Equal(5, sql.Parameters[0].Value);
         });
-        Assert.Equal(32, compiled.Select(sql => sql.Parameters).Distinct(ReferenceEqualityComparer.Instance).Count());
+        Assert.Equal(
+            32,
+            compiled.Select(sql => sql.Parameters)
+                .Distinct(ReferenceEqualityComparer.Instance)
+                .Count()
+        );
     }
 
     [Fact]
@@ -416,11 +498,17 @@ public sealed class QueryApiDialectTests
         var mariaDb = new MariaDbCommandBuilder().Returning("id")
             .InsertInto($"{table:raw}").Values($"{1}").Compile();
 
-        Assert.Equal("INSERT INTO people OUTPUT INSERTED.[id] VALUES (@p0)", sqlServer.Text);
+        Assert.Equal(
+            "INSERT INTO people OUTPUT INSERTED.[id] VALUES (@p0)",
+            sqlServer.Text
+        );
         Assert.Equal("INSERT INTO people VALUES (@p0) RETURNING \"id\"", postgreSql.Text);
         Assert.Equal("INSERT INTO people VALUES (@p0) RETURNING \"id\"", sqlite.Text);
         Assert.Equal("INSERT INTO people VALUES (@p0) RETURNING `id`", mariaDb.Text);
-        Assert.Equal("SELECT LAST_INSERT_ID()", MySqlQueryBuilder.LastInsertId().Compile().Text);
+        Assert.Equal(
+            "SELECT LAST_INSERT_ID()",
+            MySqlQueryBuilder.LastInsertId().Compile().Text
+        );
     }
 
     [Theory]
@@ -474,11 +562,17 @@ public sealed class QueryApiDialectTests
     public void UpdateSubqueryUsesSharedParameterScope()
     {
         var child = new QueryBuilder().Select($"{4}").Where($"id = {5}");
-        var command = new CommandBuilder().Where($"id = {6}").Set("score", child).Update($"players");
+        var command = new CommandBuilder()
+            .Where($"id = {6}")
+            .Set("score", child)
+            .Update($"players");
 
         var compiled = command.Compile();
 
-        Assert.Equal("UPDATE players SET \"score\" = (SELECT @p0 WHERE id = @p1) WHERE id = @p2", compiled.Text);
+        Assert.Equal(
+            "UPDATE players SET \"score\" = (SELECT @p0 WHERE id = @p1) WHERE id = @p2",
+            compiled.Text
+        );
         Assert.Equal([4, 5, 6], compiled.Parameters.Select(parameter => parameter.Value));
     }
 

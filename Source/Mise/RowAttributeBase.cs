@@ -8,4 +8,6 @@ namespace Brigade.Net.Mise;
 /// valid constructor is an error. Required members and C# nullability remain part of selection.
 /// </remarks>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, Inherited = false)]
-public abstract class RowAttributeBase : Attribute;
+public abstract class RowAttributeBase : Attribute
+{
+}

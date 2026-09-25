@@ -9,12 +9,14 @@ namespace Brigade.Net.Example.Domain.Accounts.SearchSqlServerV1;
 
 public sealed record AccountSearchSqlServerV1Context([Provide] DbReader Reader);
 
-public sealed class AccountSearchSqlServerV1Handler : IQueryHandler<Unit, IReadOnlyList<AccountSearchSqlServerV1Result>, AccountSearchSqlServerV1Context>
+public sealed class AccountSearchSqlServerV1Handler
+    : IQueryHandler<Unit, IReadOnlyList<AccountSearchSqlServerV1Result>, AccountSearchSqlServerV1Context>
 {
     public static Task<Result<IReadOnlyList<AccountSearchSqlServerV1Result>>> RunAsync(
         AccountSearchSqlServerV1Context ctx,
         Unit request,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         var query = new SqlServerQueryBuilder()
             .Select($"{AccountTblSqlServer.Buyer.IdCol:raw}")
@@ -23,9 +25,15 @@ public sealed class AccountSearchSqlServerV1Handler : IQueryHandler<Unit, IReadO
             .Select($"{AccountTblSqlServer.Buyer.ParentIdCol:raw}")
             .Select($"{AccountTblSqlServer.Buyer.GroupCol:raw}")
             .From($"{PurchaseTblSqlServer.Purchase.Table:raw}")
-            .RightJoin($"{AccountTblSqlServer.Buyer.Table:raw} ON {AccountTblSqlServer.Buyer.IdCol:raw} = {PurchaseTblSqlServer.Purchase.BuyerIdCol:raw}")
-            .LeftJoin($"{AccountTblSqlServer.Seller.Table:raw} ON {AccountTblSqlServer.Seller.IdCol:raw} = {PurchaseTblSqlServer.Purchase.SellerIdCol:raw}")
-            .FullJoin($"{ShipmentTblSqlServer.Table:raw} ON {ShipmentTblSqlServer.PurchaseIdCol:raw} = {PurchaseTblSqlServer.Purchase.IdCol:raw}")
+            .RightJoin(
+                $"{PurchaseTblSqlServer.Purchase.BuyerIdJoinBuyer:raw}"
+            )
+            .LeftJoin(
+                $"{PurchaseTblSqlServer.Purchase.SellerIdJoinSeller:raw}"
+            )
+            .FullJoin(
+                $"{ShipmentTblSqlServer.PurchaseIdJoinReversePurchase:raw}"
+            )
             .Where($"{AccountTblSqlServer.Buyer.IdCol:raw} IS NOT NULL")
             .GroupBy($"{AccountTblSqlServer.Buyer.IdCol:raw}")
             .GroupBy($"{AccountTblSqlServer.Buyer.NameCol:raw}")
@@ -33,6 +41,7 @@ public sealed class AccountSearchSqlServerV1Handler : IQueryHandler<Unit, IReadO
             .GroupBy($"{AccountTblSqlServer.Buyer.ParentIdCol:raw}")
             .GroupBy($"{AccountTblSqlServer.Buyer.GroupCol:raw}")
             .OrderBy($"{AccountTblSqlServer.Buyer.IdCol:raw}");
+
         return ctx.Reader.ListAsync<AccountSearchSqlServerV1Result>(query, ct);
     }
 }

@@ -2,6 +2,7 @@ using Brigade.Net.Expo;
 using Brigade.Net.Partie;
 
 namespace Brigade.Net.Example.Domain.Orders.SearchV1;
+
 /// <summary>Search orders by ID, customer, or both.</summary>
 [Expo]
 public partial class OrderSearchV1Query

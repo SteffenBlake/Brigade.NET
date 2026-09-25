@@ -6,7 +6,11 @@ public class ResultsTests
 {
     private static Result<int> SuccessResult => 5;
 
-    private static Result<int> DeprecatedResult => new Deprecated<int>(5, new DateTime(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc), "old");
+    private static Result<int> DeprecatedResult => new Deprecated<int>(
+        5,
+        new DateTime(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+        "old"
+    );
 
     [Fact]
     public void ImplicitConversion_FromValue_IsSuccess()
@@ -253,7 +257,10 @@ public class ResultsTests
 
         Assert.True(mapped.IsDeprecated(out var deprecated));
         Assert.Equal("5", deprecated.Value);
-        Assert.Equal(new DateTime(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc), deprecated.DeprecatedAfterUtc);
+        Assert.Equal(
+            new DateTime(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            deprecated.DeprecatedAfterUtc
+        );
         Assert.Equal("old", deprecated.Message);
     }
 
@@ -545,7 +552,10 @@ public class ResultsTests
     {
         Result<int> result = new Error(Title: "bad");
 
-        var mapped = await result.MapAsync(success: v => Task.FromResult(v.ToString()), error: e => Task.FromResult(e.Title!));
+        var mapped = await result.MapAsync(
+            success: v => Task.FromResult(v.ToString()),
+            error: e => Task.FromResult(e.Title!)
+        );
 
         Assert.True(mapped.IsSuccess(out var value));
         Assert.Equal("bad", value);
@@ -556,7 +566,10 @@ public class ResultsTests
     {
         Result<int> result = new NotFound("missing");
 
-        var mapped = await result.MapAsync(success: v => Task.FromResult(v.ToString()), notFound: n => Task.FromResult(n.Message!));
+        var mapped = await result.MapAsync(
+            success: v => Task.FromResult(v.ToString()),
+            notFound: n => Task.FromResult(n.Message!)
+        );
 
         Assert.True(mapped.IsSuccess(out var value));
         Assert.Equal("missing", value);
@@ -567,7 +580,10 @@ public class ResultsTests
     {
         Result<int> result = new Conflict("conflict");
 
-        var mapped = await result.MapAsync(success: v => Task.FromResult(v.ToString()), conflict: c => Task.FromResult(c.Message!));
+        var mapped = await result.MapAsync(
+            success: v => Task.FromResult(v.ToString()),
+            conflict: c => Task.FromResult(c.Message!)
+        );
 
         Assert.True(mapped.IsSuccess(out var value));
         Assert.Equal("conflict", value);
@@ -578,7 +594,10 @@ public class ResultsTests
     {
         Result<int> result = new Forbidden();
 
-        var mapped = await result.MapAsync(success: v => Task.FromResult(v.ToString()), forbidden: _ => Task.FromResult("forbidden"));
+        var mapped = await result.MapAsync(
+            success: v => Task.FromResult(v.ToString()),
+            forbidden: _ => Task.FromResult("forbidden")
+        );
 
         Assert.True(mapped.IsSuccess(out var value));
         Assert.Equal("forbidden", value);
@@ -589,7 +608,10 @@ public class ResultsTests
     {
         Result<int> result = new GatewayError("gateway");
 
-        var mapped = await result.MapAsync(success: v => Task.FromResult(v.ToString()), gatewayError: g => Task.FromResult(g.Message!));
+        var mapped = await result.MapAsync(
+            success: v => Task.FromResult(v.ToString()),
+            gatewayError: g => Task.FromResult(g.Message!)
+        );
 
         Assert.True(mapped.IsSuccess(out var value));
         Assert.Equal("gateway", value);
@@ -600,7 +622,10 @@ public class ResultsTests
     {
         Result<int> result = new TimeoutResult("timeout");
 
-        var mapped = await result.MapAsync(success: v => Task.FromResult(v.ToString()), timeout: t => Task.FromResult(t.Message!));
+        var mapped = await result.MapAsync(
+            success: v => Task.FromResult(v.ToString()),
+            timeout: t => Task.FromResult(t.Message!)
+        );
 
         Assert.True(mapped.IsSuccess(out var value));
         Assert.Equal("timeout", value);
@@ -612,8 +637,14 @@ public class ResultsTests
         Result<int> notFound = new NotFound("missing");
         Result<int> conflict = new Conflict("conflict");
 
-        var mappedNotFound = notFound.Map(success: v => v.ToString(), failure: f => f.GetType().Name);
-        var mappedConflict = conflict.Map(success: v => v.ToString(), failure: f => f.GetType().Name);
+        var mappedNotFound = notFound.Map(
+            success: v => v.ToString(),
+            failure: f => f.GetType().Name
+        );
+        var mappedConflict = conflict.Map(
+            success: v => v.ToString(),
+            failure: f => f.GetType().Name
+        );
 
         Assert.True(mappedNotFound.IsSuccess(out var notFoundValue));
         Assert.Equal(nameof(NotFound), notFoundValue);
@@ -636,7 +667,10 @@ public class ResultsTests
     {
         Result<int> notFound = new NotFound("missing");
 
-        var mapped = await notFound.MapAsync(success: v => Task.FromResult(v.ToString()), failure: f => Task.FromResult(f.GetType().Name));
+        var mapped = await notFound.MapAsync(
+            success: v => Task.FromResult(v.ToString()),
+            failure: f => Task.FromResult(f.GetType().Name)
+        );
 
         Assert.True(mapped.IsSuccess(out var value));
         Assert.Equal(nameof(NotFound), value);
@@ -645,7 +679,10 @@ public class ResultsTests
     [Fact]
     public async Task MapAsync_SingleFailureDelegate_Success_OnlyInvokesSuccessDelegate()
     {
-        var mapped = await SuccessResult.MapAsync(success: v => Task.FromResult(v.ToString()), failure: _ => Task.FromResult("failure"));
+        var mapped = await SuccessResult.MapAsync(
+            success: v => Task.FromResult(v.ToString()),
+            failure: _ => Task.FromResult("failure")
+        );
 
         Assert.True(mapped.IsSuccess(out var value));
         Assert.Equal("5", value);
@@ -689,7 +726,10 @@ public class ResultsTests
     {
         Result<int> result = new NotFound("missing");
 
-        var mapped = result.FlatMap(success: v => (Result<string>)v.ToString(), notFound: n => (Result<string>)n.Message!);
+        var mapped = result.FlatMap(
+            success: v => (Result<string>)v.ToString(),
+            notFound: n => (Result<string>)n.Message!
+        );
 
         Assert.True(mapped.IsSuccess(out var value));
         Assert.Equal("missing", value);
@@ -724,7 +764,10 @@ public class ResultsTests
     {
         Result<int> result = new Conflict("conflict");
 
-        var mapped = result.FlatMap(success: v => (Result<string>)v.ToString(), failure: f => (Result<string>)f.GetType().Name);
+        var mapped = result.FlatMap(
+            success: v => (Result<string>)v.ToString(),
+            failure: f => (Result<string>)f.GetType().Name
+        );
 
         Assert.True(mapped.IsSuccess(out var value));
         Assert.Equal(nameof(Conflict), value);

@@ -31,7 +31,10 @@ internal sealed class FakeDbParameterCollection : DbParameterCollection
 
     public override bool Contains(string value) => IndexOf(value) >= 0;
 
-    public override void CopyTo(Array array, int index) => ((ICollection)_items).CopyTo(array, index);
+    public override void CopyTo(Array array, int index)
+    {
+        ((ICollection)_items).CopyTo(array, index);
+    }
 
     public override IEnumerator GetEnumerator() => _items.GetEnumerator();
 
@@ -42,7 +45,10 @@ internal sealed class FakeDbParameterCollection : DbParameterCollection
         return _items.FindIndex(parameter => parameter.ParameterName == parameterName);
     }
 
-    public override void Insert(int index, object value) => _items.Insert(index, (DbParameter)value);
+    public override void Insert(int index, object value)
+    {
+        _items.Insert(index, (DbParameter)value);
+    }
 
     public override void Remove(object value) => _items.Remove((DbParameter)value);
 
@@ -52,7 +58,10 @@ internal sealed class FakeDbParameterCollection : DbParameterCollection
 
     protected override DbParameter GetParameter(int index) => _items[index];
 
-    protected override DbParameter GetParameter(string parameterName) => _items[IndexOf(parameterName)];
+    protected override DbParameter GetParameter(string parameterName)
+    {
+        return _items[IndexOf(parameterName)];
+    }
 
     protected override void SetParameter(int index, DbParameter value) => _items[index] = value;
 

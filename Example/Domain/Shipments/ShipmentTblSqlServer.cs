@@ -11,9 +11,9 @@ public static partial class ShipmentTblSqlServer
     private static int Id { get; }
 
     [Column("purchase_id")]
+    [Relationship(Brigade.Net.Example.Domain.Purchases.PurchaseTblSqlServer.IdCol)]
     private static int PurchaseId { get; }
 
     [Column("delivered_at")]
     private static string? DeliveredAt { get; }
-
 }

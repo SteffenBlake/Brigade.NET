@@ -23,7 +23,9 @@ internal static class HttpRouteAttributes
             return new RouteDeclaration(
                 new[] { pathIndex < 0 || pathIndex >= attribute.ConstructorArguments.Length
                     ? "" : attribute.ConstructorArguments[pathIndex].Value as string ?? "" },
-                attribute.AttributeClass.Name.Replace("Attribute", "").ToUpperInvariant(),
+                attribute.AttributeClass.Name
+                    .Replace("Attribute", "")
+                    .ToUpperInvariant(),
                 (INamedTypeSymbol)baseType.TypeArguments[0],
                 ContextParameters.Arguments(attribute)
             );
@@ -72,7 +74,11 @@ internal static class HttpRouteAttributes
                 var signature = operation.Equals("GET", StringComparison.OrdinalIgnoreCase)
                     ? isGenerated ? "Query" : "Query<TParams>"
                     : isGenerated ? "Command" : "Command<TParams, TBody>";
-                report(method, $"RoutePolicy '{policyType.ToDisplayString()}' must declare exactly one accessible, non-async static void {signature}(RouteHandlerBuilder route) method");
+                report(
+                    method,
+                    $"RoutePolicy '{policyType.ToDisplayString()}' must declare exactly one "
+                        + $"accessible, non-async static void {signature}(RouteHandlerBuilder route) method"
+                );
                 continue;
             }
             var policyTypeName = matchedPolicy!.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
@@ -86,9 +92,13 @@ internal static class HttpRouteAttributes
         return policies.ToImmutable();
     }
 
-    public static bool DiscoverPolicyFunctions(IMethodSymbol method) => method.Parameters.Length == 1
-        && method.Parameters[0].RefKind == RefKind.None
-        && method.Parameters[0].Type.ToDisplayString() == "Microsoft.AspNetCore.Builder.RouteHandlerBuilder";
+    public static bool DiscoverPolicyFunctions(IMethodSymbol method)
+    {
+        return method.Parameters.Length == 1
+            && method.Parameters[0].RefKind == RefKind.None
+            && method.Parameters[0].Type.ToDisplayString()
+                == "Microsoft.AspNetCore.Builder.RouteHandlerBuilder";
+    }
 
     private static bool IsPolicy(AttributeData attribute) =>
         attribute.AttributeClass?.ToDisplayString() == AttributeNamespace + ".RoutePolicyAttribute"

@@ -50,7 +50,8 @@ public class ExpoDomainGeneratorTests
             """;
 
         var result = Run((source, "Models.cs"));
-        var generated = Assert.Single(result.RunResult.Results.Single().GeneratedSources).SourceText.ToString();
+        var generated = Assert.Single(result.RunResult.Results.Single().GeneratedSources)
+            .SourceText.ToString();
 
         Assert.Contains("private sealed class IsGreaterThanStartAttribute", generated);
         Assert.Contains("private sealed class IsGreaterThanOrEqualToStartAttribute", generated);
@@ -62,22 +63,44 @@ public class ExpoDomainGeneratorTests
         Assert.Contains("IEnumerable<string> ValidateEnd();", generated);
         Assert.Contains("private sealed class IsGreaterThanMinimumAttribute", generated);
         Assert.DoesNotContain("IgnoredAttribute", generated);
-        Assert.Empty(result.Compilation.GetDiagnostics().Where(item => item.Severity == DiagnosticSeverity.Error));
+        Assert.Empty(
+            result.Compilation.GetDiagnostics()
+                .Where(item => item.Severity == DiagnosticSeverity.Error)
+        );
     }
 
     [Fact]
     public void GeneratesOneOutputForEachInputFile()
     {
         var result = Run(
-            ("using Brigade.Net.Expo; [Expo] partial class First { [IsComparable] public int A { get; set; } }", "First.cs"),
-            ("using Brigade.Net.Expo; [Expo] partial struct Second { [IsComparable] public int B { get; set; } }", "Second.cs")
+            (
+                "using Brigade.Net.Expo; "
+                    + "[Expo] partial class First { "
+                    + "[IsComparable] public int A { get; set; } }",
+                "First.cs"
+            ),
+            (
+                "using Brigade.Net.Expo; "
+                    + "[Expo] partial struct Second { "
+                    + "[IsComparable] public int B { get; set; } }",
+                "Second.cs"
+            )
         );
 
         var sources = result.RunResult.Results.Single().GeneratedSources;
         Assert.Equal(2, sources.Length);
-        Assert.Contains(sources, item => item.HintName.StartsWith("First.", StringComparison.Ordinal));
-        Assert.Contains(sources, item => item.HintName.StartsWith("Second.", StringComparison.Ordinal));
-        Assert.Empty(result.Compilation.GetDiagnostics().Where(item => item.Severity == DiagnosticSeverity.Error));
+        Assert.Contains(
+            sources,
+            item => item.HintName.StartsWith("First.", StringComparison.Ordinal)
+        );
+        Assert.Contains(
+            sources,
+            item => item.HintName.StartsWith("Second.", StringComparison.Ordinal)
+        );
+        Assert.Empty(
+            result.Compilation.GetDiagnostics()
+                .Where(item => item.Severity == DiagnosticSeverity.Error)
+        );
     }
 
     [Fact]
@@ -120,14 +143,18 @@ public class ExpoDomainGeneratorTests
             """;
 
         var result = Run((source, "Nested.cs"));
-        var generated = Assert.Single(result.RunResult.Results.Single().GeneratedSources).SourceText.ToString();
+        var generated = Assert.Single(result.RunResult.Results.Single().GeneratedSources)
+            .SourceText.ToString();
 
         Assert.Contains("partial class Outer<T>", generated);
         Assert.Contains("partial record struct Range<TValue>", generated);
         Assert.Contains("IsGreaterThanMinimumAttribute", generated);
         Assert.DoesNotContain("StaticAttribute", generated);
         Assert.DoesNotContain("indexAttribute", generated);
-        Assert.Empty(result.Compilation.GetDiagnostics().Where(item => item.Severity == DiagnosticSeverity.Error));
+        Assert.Empty(
+            result.Compilation.GetDiagnostics()
+                .Where(item => item.Severity == DiagnosticSeverity.Error)
+        );
     }
 
     [Fact]
@@ -181,7 +208,8 @@ public class ExpoDomainGeneratorTests
             """;
 
         var result = Run((source, "Prefabs.cs"));
-        var generated = Assert.Single(result.RunResult.Results.Single().GeneratedSources).SourceText.ToString();
+        var generated = Assert.Single(result.RunResult.Results.Single().GeneratedSources)
+            .SourceText.ToString();
 
         Assert.Contains("class StringMatchesCodeRegexAttribute", generated);
         Assert.Contains("CodeRegex().IsMatch(this.Code)", generated);
@@ -200,7 +228,9 @@ public class ExpoDomainGeneratorTests
         params (string Source, string Path)[] inputs
     )
     {
-        var trees = inputs.Select(input => CSharpSyntaxTree.ParseText(input.Source, path: input.Path));
+        var trees = inputs.Select(input =>
+            CSharpSyntaxTree.ParseText(input.Source, path: input.Path)
+        );
         var compilation = CSharpCompilation.Create(
             "GeneratorTests",
             trees,

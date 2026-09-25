@@ -16,6 +16,7 @@ public static partial class PurchaseTblMySql
     private static int BuyerId { get; }
 
     [Column("seller_id")]
+    [Relationship(AccountTblMySql.IdCol)]
     private static int SellerId { get; }
 
     [Column("purchase")]

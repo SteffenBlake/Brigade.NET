@@ -16,7 +16,10 @@ public sealed class ParameterRegistrationTests
             public static ValueTask<Result<string>> OnQueryAsync(
                 TraceContext ctx, Unit query, Next<Unit, string> next, CancellationToken ct)
             {
-                Calls.Add(ctx.Label + ":" + ctx.Day + ":" + ctx.Kind?.Name + ":" + string.Join(",", ctx.Levels ?? []));
+                Calls.Add(
+                    ctx.Label + ":" + ctx.Day + ":" + ctx.Kind?.Name + ":"
+                    + string.Join(",", ctx.Levels ?? [])
+                );
                 return next(Unit.Default);
             }
         }
@@ -24,7 +27,11 @@ public sealed class ParameterRegistrationTests
         public sealed class Supply : IQueryProvider<string, SupplyContext, Unit, string>
         {
             public static ValueTask<Result<string>> OnQueryAsync(
-                SupplyContext ctx, Unit query, Next<string, string> next, CancellationToken ct)
+                SupplyContext ctx,
+                Unit query,
+                Next<string, string> next,
+                CancellationToken ct
+            )
                 => next(ctx.Value);
         }
         public sealed record ReadContext([Provide] string Value, [Parameter] string Suffix = "!");
@@ -52,13 +59,24 @@ public sealed class ParameterRegistrationTests
                 private Task<string> result = null!;
                 public void Map<TInputs, TResult>(PartieRoute<TInputs, TResult> route)
                 {
-                    var inputs = (TInputs)Activator.CreateInstance(typeof(TInputs), new Unit(), CancellationToken.None)!;
+                    var inputs = (TInputs)Activator.CreateInstance(
+                        typeof(TInputs),
+                        new Unit(),
+                        CancellationToken.None
+                    )!;
                     result = Execute(route, inputs);
                 }
-                private static async Task<string> Execute<TInputs, TResult>(PartieRoute<TInputs, TResult> route, TInputs inputs)
+                private static async Task<string> Execute<TInputs, TResult>(
+                    PartieRoute<TInputs, TResult> route,
+                    TInputs inputs
+                )
                 {
                     var text = "failed";
-                    (await route.ExecuteAsync(inputs)).Map(value => { text = value!.ToString()!; return Unit.Default; });
+                    (await route.ExecuteAsync(inputs)).Map(value =>
+                    {
+                        text = value!.ToString()!;
+                        return Unit.Default;
+                    });
                     return text;
                 }
                 public static async Task<string[]> Run()
@@ -75,7 +93,9 @@ public sealed class ParameterRegistrationTests
         var emitted = output.Emit(stream);
         Assert.True(emitted.Success, string.Join("\n", emitted.Diagnostics));
         var assembly = System.Reflection.Assembly.Load(stream.ToArray());
-        var values = await (Task<string[]>)assembly.GetType("Harness")!.GetMethod("Run")!.Invoke(null, null)!;
+        var values = await (Task<string[]>)assembly.GetType("Harness")!
+            .GetMethod("Run")!
+            .Invoke(null, null)!;
         Assert.Equal(new[] { "provided?", "default:Monday::", "second:Friday:String:1,2" }, values);
     }
 
@@ -144,10 +164,17 @@ public sealed class ParameterRegistrationTests
     public void NeutralRoutesUseContextDefaultsWithoutAttributeArguments()
     {
         var generated = EngineCompilation.Valid("""
-            public sealed record Context([Parameter] int? Count = null, [Parameter] DateTime Timestamp = default);
+            public sealed record Context(
+                [Parameter] int? Count = null,
+                [Parameter] DateTime Timestamp = default
+            );
             public sealed class Read : IQueryHandler<Unit, int, Context>
             {
-                public static Task<Result<int>> RunAsync(Context ctx, Unit query, CancellationToken ct)
+                public static Task<Result<int>> RunAsync(
+                    Context ctx,
+                    Unit query,
+                    CancellationToken ct
+                )
                     => Task.FromResult<Result<int>>(ctx.Count ?? 0);
             }
             [BrigadeGroup]
@@ -164,10 +191,16 @@ public sealed class ParameterRegistrationTests
     public void OpenProviderContextDoesNotCrashDeclarationDiscovery()
     {
         EngineCompilation.Valid("""
-            public sealed class Supply<TContext> : IQueryProvider<int, TContext, Unit, string> where TContext : class
+            public sealed class Supply<TContext> :
+                IQueryProvider<int, TContext, Unit, string>
+                where TContext : class
             {
                 public static ValueTask<Result<string>> OnQueryAsync(
-                    TContext ctx, Unit query, Next<int, string> next, CancellationToken ct) => next(1);
+                    TContext ctx,
+                    Unit query,
+                    Next<int, string> next,
+                    CancellationToken ct
+                ) => next(1);
             }
             """);
     }
@@ -179,7 +212,11 @@ public sealed class ParameterRegistrationTests
             public sealed record Context([Parameter] string path);
             public sealed class Read : IQueryHandler<Unit, string, Context>
             {
-                public static Task<Result<string>> RunAsync(Context ctx, Unit query, CancellationToken ct)
+                public static Task<Result<string>> RunAsync(
+                    Context ctx,
+                    Unit query,
+                    CancellationToken ct
+                )
                     => Task.FromResult<Result<string>>(ctx.path);
             }
             [BrigadeGroup]
@@ -219,7 +256,10 @@ public sealed class ParameterRegistrationTests
     public void NullableValueDefaultsAndEscapedNamesArePreserved()
     {
         var source = EngineCompilation.Valid("""
-            public sealed record Context([Parameter] object? @event = null, [Parameter] double Number = 1.5);
+            public sealed record Context(
+                [Parameter] object? @event = null,
+                [Parameter] double Number = 1.5
+            );
             public sealed class Read : IQueryHandler<Unit, string, Context>
             {
                 public static Task<Result<string>> RunAsync(Context ctx, Unit query, CancellationToken ct)

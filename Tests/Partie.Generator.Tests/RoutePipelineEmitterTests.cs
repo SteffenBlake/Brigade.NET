@@ -99,7 +99,12 @@ public class RoutePipelineEmitterTests
         }
         public static class Handler
         {
-            public static HANDLER_RETURN InvokeAsync(Foo<int> first, Foo<string> second, Bar bar, State state)
+            public static HANDLER_RETURN InvokeAsync(
+                Foo<int> first,
+                Foo<string> second,
+                Bar bar,
+                State state
+            )
             {
                 state.Events.Add($"handler:{first.Id}:{second.Id}:{bar.Id}");
                 if (state.Fail)
@@ -138,7 +143,18 @@ public class RoutePipelineEmitterTests
         var events = await Run(returnType, returnValue, false, false);
 
         Assert.Equal(
-            ["foo:Int32", "first:42", "second", "bar", "third:7", "foo:String", "handler:43:42:7", "after-second", "after-first", "result:99"],
+            [
+                "foo:Int32",
+                "first:42",
+                "second",
+                "bar",
+                "third:7",
+                "foo:String",
+                "handler:43:42:7",
+                "after-second",
+                "after-first",
+                "result:99"
+            ],
             events
         );
     }
@@ -157,12 +173,28 @@ public class RoutePipelineEmitterTests
         var events = await Run("Result<int>", "new Result<int>(99)", false, true);
 
         Assert.Equal(
-            ["foo:Int32", "first:42", "second", "bar", "third:7", "foo:String", "handler:43:42:7", "after-second", "after-first", "handler failure"],
+            [
+                "foo:Int32",
+                "first:42",
+                "second",
+                "bar",
+                "third:7",
+                "foo:String",
+                "handler:43:42:7",
+                "after-second",
+                "after-first",
+                "handler failure"
+            ],
             events
         );
     }
 
-    private static async Task<string[]> Run(string returnType, string returnValue, bool stop, bool fail)
+    private static async Task<string[]> Run(
+        string returnType,
+        string returnValue,
+        bool stop,
+        bool fail
+    )
     {
         var source = Source.Replace("HANDLER_RETURN", returnType).Replace("HANDLER_VALUE", returnValue);
         var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
@@ -170,7 +202,11 @@ public class RoutePipelineEmitterTests
             .Select(path => MetadataReference.CreateFromFile(path));
         var compilation = CSharpCompilation.Create(
             "Pipeline_" + Guid.NewGuid().ToString("N"),
-            [CSharpSyntaxTree.ParseText(source.Replace("EMITTED_METHOD", "private static ValueTask<Result<int>> Execute(State state) => default;"))],
+            [
+                CSharpSyntaxTree.ParseText(
+                    source.Replace("EMITTED_METHOD", "private static ValueTask<Result<int>> Execute(State state) => default;")
+                )
+            ],
             references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
         );

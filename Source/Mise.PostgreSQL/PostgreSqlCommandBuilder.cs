@@ -12,6 +12,7 @@ public sealed class PostgreSqlCommandBuilder() : CommandBuilder(new PostgreSqlDi
         {
             throw new InvalidOperationException("RETURNING columns must be set once and cannot be empty.");
         }
+
         var dialect = new PostgreSqlDialect();
         _returning = "RETURNING " + string.Join(", ", columns.Select(dialect.QuoteIdentifier));
         return this;

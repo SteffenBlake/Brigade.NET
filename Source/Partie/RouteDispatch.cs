@@ -3,7 +3,9 @@ using Brigade.Net.Core.Transactions;
 
 namespace Brigade.Net.Partie;
 
-/// <summary>Dispatches static interface contracts, including explicit implementations.</summary>
+/// <summary>
+/// Dispatches static interface contracts, including explicit implementations.
+/// </summary>
 public static class RouteDispatch
 {
     /// <summary>Invokes a query contract.</summary>
@@ -30,7 +32,8 @@ public static class RouteDispatch
     }
 
     /// <summary>Invokes the query hook of a step contract.</summary>
-    public static ValueTask<Result<TResult>> QueryPartie<TPartie, TProvided, TContext, TQuery, TResult>(
+    public static ValueTask<Result<TResult>>
+        QueryPartie<TPartie, TProvided, TContext, TQuery, TResult>(
         TContext ctx,
         TQuery query,
         Next<TProvided, TResult> next,
@@ -42,7 +45,8 @@ public static class RouteDispatch
     }
 
     /// <summary>Invokes the command hook of a step contract.</summary>
-    public static ValueTask<Result<TResult>> CommandPartie<TPartie, TProvided, TContext, TCommand, TResult>(
+    public static ValueTask<Result<TResult>>
+        CommandPartie<TPartie, TProvided, TContext, TCommand, TResult>(
         TContext ctx,
         TCommand command,
         Next<TProvided, TResult> next,
@@ -54,7 +58,8 @@ public static class RouteDispatch
     }
 
     /// <summary>Invokes the query hook of a provider contract.</summary>
-    public static ValueTask<Result<TResult>> QueryProvider<TProvider, TProvided, TContext, TQuery, TResult>(
+    public static ValueTask<Result<TResult>>
+        QueryProvider<TProvider, TProvided, TContext, TQuery, TResult>(
         TContext ctx,
         TQuery query,
         Next<TProvided, TResult> next,
@@ -66,7 +71,8 @@ public static class RouteDispatch
     }
 
     /// <summary>Invokes the command hook of a provider contract.</summary>
-    public static ValueTask<Result<TResult>> CommandProvider<TProvider, TProvided, TContext, TCommand, TResult>(
+    public static ValueTask<Result<TResult>>
+        CommandProvider<TProvider, TProvided, TContext, TCommand, TResult>(
         TContext ctx,
         TCommand command,
         Next<TProvided, TResult> next,

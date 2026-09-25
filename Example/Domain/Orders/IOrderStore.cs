@@ -10,6 +10,11 @@ public interface IOrderStore
         int quantity,
         decimal unitPrice
     );
-    Order[] Search(Guid? id, string? customer);
+
+    Order[] Search(
+        Guid? id,
+        string? customer
+    );
+
     Result<Unit> Delete(Guid id);
 }

@@ -20,7 +20,10 @@ public sealed class OpenApiSpecificationTests(AppHostFixture host)
 
         var delete = Operation(root, "/api/v1/orders/{orderId}", "delete");
         var orderId = Parameter(delete, "path", "orderId").GetProperty("schema");
-        Assert.Contains("CustomValidationAttribute", orderId.GetProperty("description").GetString());
+        Assert.Contains(
+            "CustomValidationAttribute",
+            orderId.GetProperty("description").GetString()
+        );
 
         var validate = Operation(root, "/api/v1/orders/validate", "post");
         var header = Parameter(validate, "header", "X-Validation-Code").GetProperty("schema");
@@ -37,7 +40,10 @@ public sealed class OpenApiSpecificationTests(AppHostFixture host)
         AssertProperty(payload, "contactEmail", property =>
         {
             Assert.Equal("email", property.GetProperty("format").GetString());
-            Assert.Equal(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", property.GetProperty("pattern").GetString());
+            Assert.Equal(
+                @"^[^@\s]+@[^@\s]+\.[^@\s]+$",
+                property.GetProperty("pattern").GetString()
+            );
         });
         AssertProperty(payload, "contactEmails", property =>
         {
@@ -74,7 +80,11 @@ public sealed class OpenApiSpecificationTests(AppHostFixture host)
         AssertFormat(payload, "base64", "byte");
 
         AssertPattern(payload, "phoneNumber", @"^\+[1-9]\d{1,14}$");
-        AssertPattern(payload, "hexColor", @"^#?(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$");
+        AssertPattern(
+            payload,
+            "hexColor",
+            @"^#?(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$"
+        );
         AssertPattern(payload, "slug", @"^[a-z0-9]+(?:-[a-z0-9]+)*$");
         AssertPattern(payload, "alpha", @"^\p{L}+$");
         AssertPattern(payload, "alphaNumeric", @"^[\p{L}\p{Nd}]+$");
@@ -87,7 +97,9 @@ public sealed class OpenApiSpecificationTests(AppHostFixture host)
         AssertRequired(Schema(root, "OrderValidationLocation"), "postalCode");
     }
 
-    [Fact(Skip = "Result<T> union schemas are empty until native .NET 11 union-type OpenAPI support is adopted.")]
+    [Fact(
+        Skip = "Result<T> union schemas are empty until native .NET 11 union-type OpenAPI support is adopted."
+    )]
     public async Task ResultUnionSchemasDescribeEveryOutcome()
     {
         using var document = await GetDocument();
@@ -112,8 +124,11 @@ public sealed class OpenApiSpecificationTests(AppHostFixture host)
         root.GetProperty("components").GetProperty("schemas").GetProperty(name);
 
     private static JsonElement Parameter(JsonElement operation, string location, string name) =>
-        Assert.Single(operation.GetProperty("parameters").EnumerateArray(), item =>
-            item.GetProperty("in").GetString() == location && item.GetProperty("name").GetString() == name);
+        Assert.Single(
+            operation.GetProperty("parameters").EnumerateArray(),
+            item => item.GetProperty("in").GetString() == location
+                && item.GetProperty("name").GetString() == name
+        );
 
     private static void AssertRequired(JsonElement schema, params string[] names)
     {

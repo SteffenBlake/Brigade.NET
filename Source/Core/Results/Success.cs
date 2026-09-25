@@ -27,5 +27,8 @@ public class Success<T>(T value) : Result<T>
     public override Result<TOut> Map<TOut>(Func<T, TOut> mapper) => new Success<TOut>(mapper(Value));
 
     /// <inheritdoc />
-    public override async Task<Result<TOut>> MapAsync<TOut>(Func<T, Task<TOut>> mapper) => new Success<TOut>(await mapper(Value));
+    public override async Task<Result<TOut>> MapAsync<TOut>(Func<T, Task<TOut>> mapper)
+    {
+        return new Success<TOut>(await mapper(Value));
+    }
 }

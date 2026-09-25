@@ -20,6 +20,7 @@ public sealed class MiseEngineGenerator : IIncrementalGenerator
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var targets = MiseGeneratorCore.CreateTargets(context, Engine);
+
         context.RegisterSourceOutput(targets.Tables, MiseGeneratorCore.EmitTarget);
         context.RegisterSourceOutput(targets.Rows, MiseGeneratorCore.EmitTarget);
     }

@@ -4,7 +4,8 @@ using Brigade.Net.Partie;
 
 namespace Brigade.Net.Example.Domain.ResultCases.DeleteV1;
 
-public sealed class ResultCaseDeleteV1Handler :
+public sealed class ResultCaseDeleteV1Handler
+    :
     ICommandHandler<Unit, Unit, Unit>
 {
     public static Task<Result<Unit>> RunAsync(

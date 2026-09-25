@@ -8,7 +8,8 @@ namespace Brigade.Net.Partie.AspNetCore;
 public sealed record HttpResultContext([Inject] HttpResponse Response);
 
 /// <summary>Maps Brigade result cases to HTTP status codes and deprecation metadata.</summary>
-public sealed class HttpResultPartie<TRequest, TResult> :
+public sealed class HttpResultPartie<TRequest, TResult>
+    :
     IQueryPartie<Unit, HttpResultContext, TRequest, TResult>,
     ICommandPartie<Unit, HttpResultContext, TRequest, TResult>
 {
@@ -45,7 +46,9 @@ public sealed class HttpResultPartie<TRequest, TResult> :
         if (result.IsDeprecated(out var deprecated))
         {
             var deprecatedAt = new DateTimeOffset(deprecated.DeprecatedAfterUtc.ToUniversalTime());
-            response.Headers["Deprecation"] = "@" + deprecatedAt.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
+            response.Headers["Deprecation"] = "@" + deprecatedAt.ToUnixTimeSeconds().ToString(
+                CultureInfo.InvariantCulture
+            );
         }
 
         return result;

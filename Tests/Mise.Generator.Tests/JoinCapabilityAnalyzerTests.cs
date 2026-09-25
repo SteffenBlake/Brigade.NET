@@ -30,7 +30,13 @@ public sealed class JoinCapabilityAnalyzerTests
         Assert.Equal("MISE017", diagnostic.Id);
         Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
         Assert.Equal($"{engine} does not support FULL JOIN", diagnostic.GetMessage());
-        Assert.Equal("FullJoin", source.Substring(diagnostic.Location.SourceSpan.Start, diagnostic.Location.SourceSpan.Length));
+        Assert.Equal(
+            "FullJoin",
+            source.Substring(
+                diagnostic.Location.SourceSpan.Start,
+                diagnostic.Location.SourceSpan.Length
+            )
+        );
     }
 
     [Fact]
@@ -54,7 +60,8 @@ public sealed class JoinCapabilityAnalyzerTests
             using Brigade.Net.Mise.PostgreSQL;
             class Example
             {
-                void Run(string value) => new PostgreSqlQueryBuilder().InnerJoin($"purchases ON purchases.kind = {value}");
+                void Run(string value) =>
+                    new PostgreSqlQueryBuilder().InnerJoin($"purchases ON purchases.kind = {value}");
             }
             """;
 
@@ -80,7 +87,10 @@ public sealed class JoinCapabilityAnalyzerTests
     [InlineData("new QueryBuilder(new MySqlDialect()).FullJoin($\"t ON 1 = 1\")", "MySQL")]
     [InlineData("new QueryBuilder(new MariaDbDialect()).FullJoin($\"t ON 1 = 1\")", "MariaDB")]
     [InlineData("(new MariaDbQueryBuilder()).FullJoin($\"t ON 1 = 1\")", "MariaDB")]
-    public async Task EngineCanBeFoundThroughBaseBuilderAndParentheses(string statement, string engine)
+    public async Task EngineCanBeFoundThroughBaseBuilderAndParentheses(
+        string statement,
+        string engine
+    )
     {
         var source = $$"""
             using Brigade.Net.Mise;

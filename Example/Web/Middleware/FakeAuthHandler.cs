@@ -21,8 +21,11 @@ public class FakeAuthHandler(
         }
 
         var claims = new[] { new Claim(ClaimTypes.NameIdentifier, "fake-user") };
+
         var identity = new ClaimsIdentity(claims, Scheme.Name);
+
         var principal = new ClaimsPrincipal(identity);
+
         var ticket = new AuthenticationTicket(principal, Scheme.Name);
         return Task.FromResult(AuthenticateResult.Success(ticket));
     }

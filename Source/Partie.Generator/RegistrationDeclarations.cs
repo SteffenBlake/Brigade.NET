@@ -9,7 +9,9 @@ public static class RegistrationDeclarations
 {
     public static GeneratedDeclaration? Describe(INamedTypeSymbol type, Compilation compilation)
     {
-        var contract = type.AllInterfaces.FirstOrDefault(candidate => StepContracts.IsStep(candidate, compilation));
+        var contract = type.AllInterfaces.FirstOrDefault(candidate =>
+            StepContracts.IsStep(candidate, compilation)
+        );
         if (contract is null)
         {
             return null;
@@ -23,11 +25,16 @@ public static class RegistrationDeclarations
             source.Append("namespace ").Append(type.ContainingNamespace.ToDisplayString()).Append(";\n");
         }
         source.Append("[global::Brigade.Net.Partie.Registration(typeof(")
-            .Append(SymbolEmission.TypeName(registeredType)).Append("), ").Append(provider ? "true" : "false").Append(")]\n")
+            .Append(SymbolEmission.TypeName(registeredType))
+            .Append("), ")
+            .Append(provider ? "true" : "false")
+            .Append(")]\n")
             .Append("[global::System.AttributeUsage(global::System.AttributeTargets.Method")
             .Append(" | global::System.AttributeTargets.Class")
             .Append(", AllowMultiple = true, Inherited = false)]\ninternal sealed class @")
-            .Append(type.Name).Append("Attribute(").Append(string.Join(", ", parameters.Select(ContextParameters.Declaration)))
+            .Append(type.Name)
+            .Append("Attribute(")
+            .Append(string.Join(", ", parameters.Select(ContextParameters.Declaration)))
             .Append(") : global::System.Attribute\n{\n");
         foreach (var parameter in parameters)
         {
@@ -35,7 +42,9 @@ public static class RegistrationDeclarations
                 .Append(parameter.Name).Append(" { get; } = @").Append(parameter.Name).Append(";\n");
         }
         source.Append("}\n");
-        var ns = type.ContainingNamespace.IsGlobalNamespace ? "" : type.ContainingNamespace.ToDisplayString() + "/";
+        var ns = type.ContainingNamespace.IsGlobalNamespace
+            ? ""
+            : type.ContainingNamespace.ToDisplayString() + "/";
         return new GeneratedDeclaration(ns + type.Name + "Attribute.g.cs", source.ToString());
     }
 }

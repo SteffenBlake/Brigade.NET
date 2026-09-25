@@ -109,7 +109,10 @@ public sealed class EngineBehaviorTests
 
         Assert.Empty(result.Run.Diagnostics);
         var generated = result.Run.Results.Single().GeneratedSources.Single().SourceText.ToString();
-        Assert.Contains("public const string Table = \"" + expected.Replace("\"", "\\\"") + "\";", generated);
+        Assert.Contains(
+            "public const string Table = \"" + expected.Replace("\"", "\\\"") + "\";",
+            generated
+        );
     }
 
     [Theory]
@@ -150,9 +153,18 @@ public sealed class EngineBehaviorTests
         var result = GeneratorTestHost.Run(source, engine);
 
         Assert.Empty(result.Run.Diagnostics);
-        Assert.DoesNotContain(result.CompilationDiagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
-        var generated = string.Join("\n", result.Run.Results.Single().GeneratedSources.Select(item => item.SourceText.ToString()));
-        Assert.Contains("public const string Table = \"" + quotedTable.Replace("\"", "\\\"") + "\";", generated);
+        Assert.DoesNotContain(
+            result.CompilationDiagnostics,
+            diagnostic => diagnostic.Severity == DiagnosticSeverity.Error
+        );
+        var generated = string.Join(
+            "\n",
+            result.Run.Results.Single().GeneratedSources.Select(item => item.SourceText.ToString())
+        );
+        Assert.Contains(
+            "public const string Table = \"" + quotedTable.Replace("\"", "\\\"") + "\";",
+            generated
+        );
         Assert.Contains(quotedAlias.Replace("\"", "\\\"") + ".", generated);
         Assert.Contains(" ON ", generated);
         Assert.DoesNotContain(" INNER ", generated);
@@ -222,7 +234,10 @@ public sealed class EngineBehaviorTests
         var result = GeneratorTestHost.Run(source, engineName);
 
         Assert.Empty(result.Run.Diagnostics);
-        Assert.DoesNotContain(result.CompilationDiagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.DoesNotContain(
+            result.CompilationDiagnostics,
+            diagnostic => diagnostic.Severity == DiagnosticSeverity.Error
+        );
         var generated = result.Run.Results.Single().GeneratedSources.Single().SourceText.ToString();
         Assert.Contains(
             "public const string Table = \"" + expectedTable.Replace("\"", "\\\"") + "\";",
@@ -253,8 +268,17 @@ public sealed class EngineBehaviorTests
         {
             Assert.Equal("MISE013", diagnostic.Id);
             Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
-            Assert.Equal("Mapped target 'Bad' has table attributes for more than one database engine", diagnostic.GetMessage());
-            Assert.Equal("Bad", source.Substring(diagnostic.Location.SourceSpan.Start, diagnostic.Location.SourceSpan.Length));
+            Assert.Equal(
+                "Mapped target 'Bad' has table attributes for more than one database engine",
+                diagnostic.GetMessage()
+            );
+            Assert.Equal(
+                "Bad",
+                source.Substring(
+                    diagnostic.Location.SourceSpan.Start,
+                    diagnostic.Location.SourceSpan.Length
+                )
+            );
         });
         Assert.All(result.Results, generator => Assert.Empty(generator.GeneratedSources));
     }
@@ -290,7 +314,10 @@ public sealed class EngineBehaviorTests
         );
 
         Assert.Empty(result.Run.Diagnostics);
-        Assert.DoesNotContain(result.CompilationDiagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.DoesNotContain(
+            result.CompilationDiagnostics,
+            diagnostic => diagnostic.Severity == DiagnosticSeverity.Error
+        );
         Assert.Single(result.Run.Results.SelectMany(generator => generator.GeneratedSources));
         var engineIndex = engineName switch
         {
@@ -303,9 +330,14 @@ public sealed class EngineBehaviorTests
         Assert.Single(result.Run.Results[engineIndex].GeneratedSources);
         Assert.Contains(
             "IRow<Person>",
-            result.Run.Results.SelectMany(generator => generator.GeneratedSources).Single().SourceText.ToString()
+            result.Run.Results.SelectMany(generator => generator.GeneratedSources)
+                .Single()
+                .SourceText.ToString()
         );
-        Assert.Equal(1, result.Run.Results.Count(generator => generator.GeneratedSources.Length == 1));
+        Assert.Equal(
+            1,
+            result.Run.Results.Count(generator => generator.GeneratedSources.Length == 1)
+        );
     }
 
     [Theory]
@@ -323,13 +355,20 @@ public sealed class EngineBehaviorTests
             [{{otherRow}}]
             partial class Bad;
             """;
-        var result = GeneratorTestHost.RunWithEngines(source, activeEngine, EngineForAttribute(otherAttribute));
+        var result = GeneratorTestHost.RunWithEngines(
+            source,
+            activeEngine,
+            EngineForAttribute(otherAttribute)
+        );
 
         Assert.Equal(2, result.Diagnostics.Length);
         Assert.All(result.Diagnostics, diagnostic =>
         {
             Assert.Equal("MISE014", diagnostic.Id);
-            Assert.Equal("Mapped target 'Bad' has row attributes for more than one database engine", diagnostic.GetMessage());
+            Assert.Equal(
+                "Mapped target 'Bad' has row attributes for more than one database engine",
+                diagnostic.GetMessage()
+            );
         });
         Assert.All(result.Results, generator => Assert.Empty(generator.GeneratedSources));
     }
@@ -346,18 +385,26 @@ public sealed class EngineBehaviorTests
             "MySQL" => "Brigade.Net.Mise.MySQL.MySqlTable",
             _ => "Brigade.Net.Mise.MariaDb.MariaDbTable"
         };
-        var otherRowAttribute = otherTableAttribute[..otherTableAttribute.LastIndexOf('.')] + ".Mise";
+        var otherRowAttribute =
+            otherTableAttribute[..otherTableAttribute.LastIndexOf('.')] + ".Mise";
         var source = $$"""
             [{{tableAttribute}}("people")]
             [{{otherRowAttribute}}]
             static partial class Bad;
             """;
 
-        var result = GeneratorTestHost.RunWithEngines(source, tableEngine, EngineForAttribute(otherTableAttribute));
+        var result = GeneratorTestHost.RunWithEngines(
+            source,
+            tableEngine,
+            EngineForAttribute(otherTableAttribute)
+        );
         var diagnostic = Assert.Single(result.Diagnostics);
 
         Assert.Equal("MISE015", diagnostic.Id);
-        Assert.Equal("Mapped target 'Bad' must use table and row attributes from the same database engine", diagnostic.GetMessage());
+        Assert.Equal(
+            "Mapped target 'Bad' must use table and row attributes from the same database engine",
+            diagnostic.GetMessage()
+        );
         Assert.All(result.Results, generator => Assert.Empty(generator.GeneratedSources));
     }
 
@@ -375,12 +422,30 @@ public sealed class EngineBehaviorTests
         var result = GeneratorTestHost.CompileWithEngines(source, "SqlServer", "PostgreSQL");
 
         Assert.Empty(result.Run.Diagnostics);
-        Assert.DoesNotContain(result.CompilationDiagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
-        Assert.All(result.Run.Results, generator => Assert.Single(generator.GeneratedSources));
-        var outputs = result.Run.Results.SelectMany(generator => generator.GeneratedSources).ToArray();
-        Assert.Equal(2, outputs.Select(output => output.HintName).Distinct(StringComparer.Ordinal).Count());
-        Assert.Contains(outputs, output => output.SourceText.ToString().Contains("[people]", StringComparison.Ordinal));
-        Assert.Contains(outputs, output => output.SourceText.ToString().Contains("\\\"people\\\"", StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            result.CompilationDiagnostics,
+            diagnostic => diagnostic.Severity == DiagnosticSeverity.Error
+        );
+        Assert.All(
+            result.Run.Results,
+            generator => Assert.Single(generator.GeneratedSources)
+        );
+        var outputs = result.Run.Results
+            .SelectMany(generator => generator.GeneratedSources)
+            .ToArray();
+        Assert.Equal(
+            2,
+            outputs.Select(output => output.HintName).Distinct(StringComparer.Ordinal).Count()
+        );
+        Assert.Contains(
+            outputs,
+            output => output.SourceText.ToString().Contains("[people]", StringComparison.Ordinal)
+        );
+        Assert.Contains(
+            outputs,
+            output => output.SourceText.ToString()
+                .Contains("\\\"people\\\"", StringComparison.Ordinal)
+        );
     }
 
     [Theory]
@@ -403,9 +468,14 @@ public sealed class EngineBehaviorTests
 
     [Theory]
     [MemberData(nameof(RuntimeTableAttributes))]
-    public void EveryRuntimeTableAttributeHasTheEngineOwnedContract(Type attributeType, string expectedName)
+    public void EveryRuntimeTableAttributeHasTheEngineOwnedContract(
+        Type attributeType,
+        string expectedName
+    )
     {
-        var usage = Assert.Single(attributeType.GetCustomAttributes(typeof(AttributeUsageAttribute), inherit: false));
+        var usage = Assert.Single(
+            attributeType.GetCustomAttributes(typeof(AttributeUsageAttribute), inherit: false)
+        );
         var attributeUsage = Assert.IsType<AttributeUsageAttribute>(usage);
         var instance = Assert.IsAssignableFrom<Brigade.Net.Mise.TableAttributeBase>(
             Activator.CreateInstance(attributeType, "people")
@@ -422,9 +492,14 @@ public sealed class EngineBehaviorTests
 
     [Theory]
     [MemberData(nameof(RuntimeRowAttributes))]
-    public void EveryRuntimeRowAttributeHasTheEngineOwnedContract(Type attributeType, string expectedName)
+    public void EveryRuntimeRowAttributeHasTheEngineOwnedContract(
+        Type attributeType,
+        string expectedName
+    )
     {
-        var usage = Assert.Single(attributeType.GetCustomAttributes(typeof(AttributeUsageAttribute), inherit: false));
+        var usage = Assert.Single(
+            attributeType.GetCustomAttributes(typeof(AttributeUsageAttribute), inherit: false)
+        );
         var attributeUsage = Assert.IsType<AttributeUsageAttribute>(usage);
 
         Assert.Equal(expectedName, attributeType.Name);
@@ -440,9 +515,13 @@ public sealed class EngineBehaviorTests
     public void EngineQualifierAttributesExposeTheirNameAndTargetContract(Type attributeType)
     {
         var usage = Assert.IsType<AttributeUsageAttribute>(
-            Assert.Single(attributeType.GetCustomAttributes(typeof(AttributeUsageAttribute), inherit: false))
+            Assert.Single(
+                attributeType.GetCustomAttributes(typeof(AttributeUsageAttribute), inherit: false)
+            )
         );
-        var attribute = Assert.IsAssignableFrom<Attribute>(Activator.CreateInstance(attributeType, "audit"));
+        var attribute = Assert.IsAssignableFrom<Attribute>(
+            Activator.CreateInstance(attributeType, "audit")
+        );
         var name = Assert.IsType<string>(attributeType.GetProperty("Name")!.GetValue(attribute));
 
         Assert.Equal("audit", name);

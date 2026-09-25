@@ -5,7 +5,10 @@ using Microsoft.AspNetCore.Http;
 
 namespace Brigade.Net.Partie.Engines.AspNetCore.Tests.Fixtures.Items;
 
-public sealed record ContextProviderContext([Inject] HttpContext Http, [Inject] Counts Counts);
+public sealed record ContextProviderContext(
+    [Inject] HttpContext Http,
+    [Inject] Counts Counts
+);
 
 public sealed class ContextProvider<TRequest, TResult> :
     IQueryProvider<ContextValue, ContextProviderContext, TRequest, TResult>,

@@ -11,27 +11,37 @@ namespace Brigade.Net.Example.Domain.Purchases.SearchPostgreSqlV1;
 
 public sealed record PurchaseSearchPostgreSqlV1Context([Provide] DbReader Reader);
 
-public sealed class PurchaseSearchPostgreSqlV1Handler : IQueryHandler<Unit, IReadOnlyList<PurchaseSearchPostgreSqlV1Result>, PurchaseSearchPostgreSqlV1Context>
+public sealed class PurchaseSearchPostgreSqlV1Handler
+    : IQueryHandler<Unit, IReadOnlyList<PurchaseSearchPostgreSqlV1Result>, PurchaseSearchPostgreSqlV1Context>
 {
     public static Task<Result<IReadOnlyList<PurchaseSearchPostgreSqlV1Result>>> RunAsync(
         PurchaseSearchPostgreSqlV1Context ctx,
         Unit request,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         var rootId = 100;
         var minAmount = 10;
+
         var tag = "safe";
+
         var quotedName = "O'Reilly";
+
         var excludedGroup = "idle";
+
         var deliveredAfter = "2026-01-01";
+
+
         var anchor = new PostgreSqlQueryBuilder()
             .Select($"{CategoryTblPostgreSql.IdCol:raw}")
             .From($"{CategoryTblPostgreSql.Table:raw}")
             .Where($"{CategoryTblPostgreSql.IdCol:raw} = {rootId}");
+
         var recursive = new PostgreSqlQueryBuilder()
             .Select($"{CategoryTblPostgreSql.IdCol:raw}")
             .From($"{CategoryTblPostgreSql.Table:raw}")
-            .InnerJoin($"{TreeTblPostgreSql.Table:raw} ON {CategoryTblPostgreSql.ParentIdCol:raw} = {TreeTblPostgreSql.IdCol:raw}");
+            .InnerJoin($"{CategoryTblPostgreSql.ParentIdJoin:raw}");
+
         var categories = new PostgreSqlQueryBuilder()
             .Select($"{TreeTblPostgreSql.IdCol:raw}")
             .From($"{TreeTblPostgreSql.Table:raw}")
@@ -39,11 +49,13 @@ public sealed class PurchaseSearchPostgreSqlV1Handler : IQueryHandler<Unit, IRea
                 .Select($"{CategoryTblPostgreSql.IdCol:raw}")
                 .From($"{CategoryTblPostgreSql.Table:raw}")
                 .Where($"{CategoryTblPostgreSql.IdCol:raw} = {rootId}"));
+
         var taggedPurchase = new PostgreSqlQueryBuilder()
             .Select($"1")
             .From($"{PurchaseTagTblPostgreSql.Table:raw}")
             .Where($"{PurchaseTagTblPostgreSql.PurchaseIdCol:raw} = {PurchaseTblPostgreSql.Purchase.IdCol:raw}")
             .Where($"{PurchaseTagTblPostgreSql.TagCol:raw} = {tag}");
+
         var query = new PostgreSqlQueryBuilder()
             .WithRecursive(TreeTblPostgreSql.Name, anchor, recursive)
             .Select($"{PurchaseTblPostgreSql.Purchase.IdCol:raw}")
@@ -55,11 +67,19 @@ public sealed class PurchaseSearchPostgreSqlV1Handler : IQueryHandler<Unit, IRea
             .Select($"{PurchaseTblPostgreSql.Purchase.StatusCol:raw}")
             .From($"{PurchaseTblPostgreSql.Purchase.Table:raw}")
             .InnerJoin($"{PurchaseTblPostgreSql.Purchase.BuyerIdJoin:raw}")
-            .InnerJoin($"{AccountTblPostgreSql.Buyer.Table:raw} ON {AccountTblPostgreSql.Buyer.IdCol:raw} = {PurchaseTblPostgreSql.Purchase.BuyerIdCol:raw}")
-            .LeftJoin($"{AccountTblPostgreSql.Seller.Table:raw} ON {AccountTblPostgreSql.Seller.IdCol:raw} = {PurchaseTblPostgreSql.Purchase.SellerIdCol:raw}")
+            .InnerJoin(
+                $"{PurchaseTblPostgreSql.Purchase.BuyerIdJoinBuyer:raw}"
+            )
+            .LeftJoin(
+                $"{PurchaseTblPostgreSql.Purchase.SellerIdJoinSeller:raw}"
+            )
             .CrossJoin(new PostgreSqlQueryBuilder().Select($"{42} AS marker"), "marker")
-            .LeftJoin($"{ShipmentTblPostgreSql.Table:raw} ON {ShipmentTblPostgreSql.PurchaseIdCol:raw} = {PurchaseTblPostgreSql.Purchase.IdCol:raw}")
-            .InnerJoin($"{PurchaseTagTblPostgreSql.Table:raw} ON {PurchaseTagTblPostgreSql.PurchaseIdCol:raw} = {PurchaseTblPostgreSql.Purchase.IdCol:raw} AND {PurchaseTagTblPostgreSql.TagCol:raw} = {tag}")
+            .LeftJoin(
+                $"{ShipmentTblPostgreSql.PurchaseIdJoinReversePurchase:raw}"
+            )
+            .InnerJoin(
+                $"{PurchaseTagTblPostgreSql.PurchaseIdJoinReversePurchase:raw} AND {PurchaseTagTblPostgreSql.TagCol:raw} = {tag}"
+            )
             .WhereIn($"{PurchaseTblPostgreSql.Purchase.CategoryIdCol:raw}", categories)
             .WhereExists(taggedPurchase)
             .Where($"({AccountTblPostgreSql.Buyer.NameCol:raw} = {quotedName} OR {AccountTblPostgreSql.Buyer.GroupCol:raw} <> {excludedGroup})")
@@ -78,6 +98,7 @@ public sealed class PurchaseSearchPostgreSqlV1Handler : IQueryHandler<Unit, IRea
             .OrderBy($"{PurchaseTblPostgreSql.Purchase.IdCol:raw} DESC")
             .Offset(1)
             .Limit(3);
+
         return ctx.Reader.ListAsync<PurchaseSearchPostgreSqlV1Result>(query, ct);
     }
 }

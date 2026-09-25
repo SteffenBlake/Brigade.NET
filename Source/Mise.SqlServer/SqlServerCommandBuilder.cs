@@ -12,6 +12,7 @@ public sealed class SqlServerCommandBuilder() : CommandBuilder(new SqlServerDial
         {
             throw new InvalidOperationException("OUTPUT columns must be set once and cannot be empty.");
         }
+
         var dialect = new SqlServerDialect();
         _output = "OUTPUT " + string.Join(", ",
             columns.Select(column => "INSERTED." + dialect.QuoteIdentifier(column)));
@@ -33,5 +34,4 @@ public sealed class SqlServerCommandBuilder() : CommandBuilder(new SqlServerDial
         }
         return null;
     }
-
 }

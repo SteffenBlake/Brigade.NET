@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis;
 
 namespace Brigade.Net.Partie.Generator;
 
-internal sealed class RegistrationModel(
+internal sealed record RegistrationModel(
     INamedTypeSymbol type,
     AttributeData attribute,
     bool isProvider

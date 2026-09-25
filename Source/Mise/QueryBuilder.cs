@@ -3,7 +3,7 @@ using System.Data;
 namespace Brigade.Net.Mise;
 
 /// <summary>Collects read clauses and renders them in SQL order. Do not mutate while compiling.</summary>
-public class QueryBuilder : IQueryBuilder
+public class QueryBuilder(SqlDialect dialect) : IQueryBuilder
 {
     private readonly List<(string Name, IQueryBuilder Query, IQueryBuilder? Recursive)> _ctes = [];
     private readonly List<Action<SqlRenderContext>> _select = [];
@@ -25,14 +25,8 @@ public class QueryBuilder : IQueryBuilder
     {
     }
 
-    /// <summary>Creates a query for an engine dialect.</summary>
-    public QueryBuilder(SqlDialect dialect)
-    {
-        Dialect = dialect ?? throw new ArgumentNullException(nameof(dialect));
-    }
-
     /// <summary>Gets the dialect selected for this query.</summary>
-    public SqlDialect Dialect { get; }
+    public SqlDialect Dialect { get; } = dialect ?? throw new ArgumentNullException(nameof(dialect));
 
     /// <summary>Adds a named common table expression.</summary>
     public QueryBuilder With(string name, IQueryBuilder query)
@@ -108,11 +102,14 @@ public class QueryBuilder : IQueryBuilder
     public QueryBuilder CrossJoin(FormattableString source) => AddJoinFragment("CROSS JOIN", source);
 
     /// <summary>Adds a derived cross join with no ON predicate.</summary>
-    public QueryBuilder CrossJoin(IQueryBuilder query, string alias) => AddJoin("CROSS JOIN", context =>
+    public QueryBuilder CrossJoin(IQueryBuilder query, string alias)
     {
-        RenderNested(context, query);
-        context.Text.Append(" AS ").Append(Dialect.QuoteIdentifier(alias));
-    });
+        return AddJoin("CROSS JOIN", context =>
+        {
+            RenderNested(context, query);
+            context.Text.Append(" AS ").Append(Dialect.QuoteIdentifier(alias));
+        });
+    }
 
     /// <summary>Adds an AND predicate.</summary>
     public QueryBuilder Where(FormattableString predicate)
@@ -215,6 +212,7 @@ public class QueryBuilder : IQueryBuilder
         {
             throw new InvalidOperationException("Reader behavior is already set.");
         }
+
         _behavior = behavior;
         return this;
     }
@@ -238,6 +236,7 @@ public class QueryBuilder : IQueryBuilder
         {
             throw new InvalidOperationException("Custom SQL is already set.");
         }
+
         _custom = sql;
         return this;
     }
@@ -261,6 +260,7 @@ public class QueryBuilder : IQueryBuilder
         {
             throw new InvalidOperationException("A query child uses an incompatible SQL engine.");
         }
+
         context.Enter(this);
         try
         {
@@ -380,6 +380,7 @@ public class QueryBuilder : IQueryBuilder
         {
             throw new InvalidOperationException("FROM is already set.");
         }
+
         _from = source;
     }
 

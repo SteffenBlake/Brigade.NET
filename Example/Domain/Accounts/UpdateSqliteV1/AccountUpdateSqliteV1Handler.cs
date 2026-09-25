@@ -8,18 +8,21 @@ namespace Brigade.Net.Example.Domain.Accounts.UpdateSqliteV1;
 
 public sealed record AccountUpdateSqliteV1Context([Provide] DbWriter Writer);
 
-public sealed class AccountUpdateSqliteV1Handler : ICommandHandler<AccountUpdateSqliteV1Cmd, int, AccountUpdateSqliteV1Context>
+public sealed class AccountUpdateSqliteV1Handler
+    : ICommandHandler<AccountUpdateSqliteV1Cmd, int, AccountUpdateSqliteV1Context>
 {
     public static Task<Result<int>> RunAsync(
         UnitOfWork work,
         AccountUpdateSqliteV1Context ctx,
         AccountUpdateSqliteV1Cmd command,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         var sql = new SqliteCommandBuilder()
             .Update($"{AccountTblSqlite.Table:raw}")
             .Set($"note = {command.Note}")
             .Where($"{AccountTblSqlite.IdCol:raw} = {command.Id}");
+
         return ctx.Writer.ExecuteAsync(sql, ct);
     }
 }

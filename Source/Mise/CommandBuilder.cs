@@ -3,7 +3,7 @@ using System.Data;
 namespace Brigade.Net.Mise;
 
 /// <summary>Builds one SQL write command. Instances are not safe to mutate concurrently.</summary>
-public class CommandBuilder : ICommandBuilder
+public class CommandBuilder(SqlDialect dialect) : ICommandBuilder
 {
     private readonly List<Action<SqlRenderContext>> _assignments = [];
     private readonly List<FormattableString> _predicates = [];
@@ -22,14 +22,8 @@ public class CommandBuilder : ICommandBuilder
     {
     }
 
-    /// <summary>Creates a command for an engine dialect.</summary>
-    public CommandBuilder(SqlDialect dialect)
-    {
-        Dialect = dialect ?? throw new ArgumentNullException(nameof(dialect));
-    }
-
     /// <summary>Gets the engine dialect selected for this command.</summary>
-    public SqlDialect Dialect { get; }
+    public SqlDialect Dialect { get; } = dialect ?? throw new ArgumentNullException(nameof(dialect));
 
     /// <summary>Gets the selected command kind for engine validation.</summary>
     protected string? Kind => _kind;
@@ -77,6 +71,7 @@ public class CommandBuilder : ICommandBuilder
         {
             throw new InvalidOperationException("INSERT source query is already set.");
         }
+
         _source = source ?? throw new ArgumentNullException(nameof(source));
         return this;
     }
@@ -88,6 +83,7 @@ public class CommandBuilder : ICommandBuilder
         {
             throw new InvalidOperationException("INSERT columns are already set.");
         }
+
         _columns = columns;
         return this;
     }
@@ -106,6 +102,7 @@ public class CommandBuilder : ICommandBuilder
         {
             throw new InvalidOperationException("Command kind is already set.");
         }
+
         _kind = "SQL";
         _custom = sql;
         return this;
@@ -118,6 +115,7 @@ public class CommandBuilder : ICommandBuilder
         {
             throw new InvalidOperationException("Command kind is already set.");
         }
+
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         _kind = "PROCEDURE";
         _procedureName = name;
@@ -147,6 +145,7 @@ public class CommandBuilder : ICommandBuilder
         {
             throw new ArgumentOutOfRangeException(nameof(seconds));
         }
+
         _timeout = seconds;
         return this;
     }
@@ -204,8 +203,13 @@ public class CommandBuilder : ICommandBuilder
         }
         AppendSql(context, TrailingSql());
         var result = context.Snapshot();
-        return new CompiledSql(result.Text, _kind == "PROCEDURE" ? _procedureParameters : result.Parameters,
-            _kind == "PROCEDURE" ? CommandType.StoredProcedure : CommandType.Text, _timeout);
+
+        return new CompiledSql(
+            result.Text,
+            _kind == "PROCEDURE" ? _procedureParameters : result.Parameters,
+            _kind == "PROCEDURE" ? CommandType.StoredProcedure : CommandType.Text,
+            _timeout
+        );
     }
 
     /// <summary>Gets engine SQL after an INSERT target.</summary>
@@ -254,6 +258,7 @@ public class CommandBuilder : ICommandBuilder
         {
             throw new ArgumentException("A command child must be a Mise query builder.");
         }
+
         query.Render(context);
     }
 
@@ -281,6 +286,7 @@ public class CommandBuilder : ICommandBuilder
         {
             throw new InvalidOperationException("Command target is already set.");
         }
+
         _kind = kind;
         _target = target;
         return this;

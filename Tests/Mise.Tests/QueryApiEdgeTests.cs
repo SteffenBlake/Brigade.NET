@@ -20,7 +20,10 @@ public sealed class QueryApiEdgeTests
 
         var compiled = query.Compile();
 
-        Assert.Equal("SELECT DISTINCT category FROM items GROUP BY category HAVING COUNT(*) > @p0 UNION ALL SELECT @p1 INTERSECT SELECT @p2 EXCEPT SELECT @p3 ORDER BY category", compiled.Text);
+        const string expected =
+            "SELECT DISTINCT category FROM items GROUP BY category HAVING COUNT(*) > @p0 "
+            + "UNION ALL SELECT @p1 INTERSECT SELECT @p2 EXCEPT SELECT @p3 ORDER BY category";
+        Assert.Equal(expected, compiled.Text);
         Assert.Equal([2, 7, 7, 7], compiled.Parameters.Select(parameter => parameter.Value));
     }
 
@@ -34,7 +37,11 @@ public sealed class QueryApiEdgeTests
 
         var compiled = query.Compile();
 
-        Assert.Equal("SELECT d.id FROM items CROSS JOIN (SELECT @p0 AS id) AS \"d\" WHERE d.id IN (SELECT @p1)", compiled.Text);
+        Assert.Equal(
+            "SELECT d.id FROM items CROSS JOIN (SELECT @p0 AS id) AS \"d\" "
+            + "WHERE d.id IN (SELECT @p1)",
+            compiled.Text
+        );
         Assert.Equal([1, 2], compiled.Parameters.Select(parameter => parameter.Value));
     }
 
@@ -44,7 +51,10 @@ public sealed class QueryApiEdgeTests
         var child = new QueryBuilder().Select($"{1}");
         var query = new QueryBuilder().With("a", child).With("b", child).Select($"1");
 
-        Assert.Equal("WITH \"a\" AS (SELECT @p0), \"b\" AS (SELECT @p1) SELECT 1", query.Compile().Text);
+        Assert.Equal(
+            "WITH \"a\" AS (SELECT @p0), \"b\" AS (SELECT @p1) SELECT 1",
+            query.Compile().Text
+        );
         Assert.Throws<InvalidOperationException>(() => query.With("a", child));
     }
 
@@ -52,9 +62,15 @@ public sealed class QueryApiEdgeTests
     public void InvalidQueryShapesFailBeforeReturningSql()
     {
         Assert.Throws<InvalidOperationException>(() => new QueryBuilder().Compile());
-        Assert.Throws<InvalidOperationException>(() => new QueryBuilder().Sql($"SELECT 1").Sql($"SELECT 2"));
-        Assert.Throws<InvalidOperationException>(() => new QueryBuilder().Sql($"SELECT 1").Distinct().Compile());
-        Assert.Throws<InvalidOperationException>(() => new QueryBuilder().Select($"1").From($"a").From($"b"));
+        Assert.Throws<InvalidOperationException>(
+            () => new QueryBuilder().Sql($"SELECT 1").Sql($"SELECT 2")
+        );
+        Assert.Throws<InvalidOperationException>(
+            () => new QueryBuilder().Sql($"SELECT 1").Distinct().Compile()
+        );
+        Assert.Throws<InvalidOperationException>(
+            () => new QueryBuilder().Select($"1").From($"a").From($"b")
+        );
         Assert.Throws<ArgumentOutOfRangeException>(() => new QueryBuilder().Offset(-1));
         Assert.Throws<ArgumentNullException>(() => new QueryBuilder().Union(null!));
         Assert.Throws<ArgumentNullException>(() => new QueryBuilder(null!));
@@ -105,7 +121,9 @@ public sealed class QueryApiEdgeTests
         var foreign = new TestQueryBuilder(new CompiledSql("SELECT 1"));
 
         Assert.Throws<ArgumentException>(() => new QueryBuilder().Select(foreign).Compile());
-        Assert.Throws<ArgumentException>(() => new CommandBuilder().InsertInto($"target").FromQuery(foreign).Compile());
+        Assert.Throws<ArgumentException>(
+            () => new CommandBuilder().InsertInto($"target").FromQuery(foreign).Compile()
+        );
     }
 
     [Theory]
@@ -135,32 +153,54 @@ public sealed class QueryApiEdgeTests
     {
         var aligned = FormattableStringFactory.Create("{0  , -8 } + {0,+8:raw}", "id");
 
-        Assert.Equal("SELECT @p0 + id", new QueryBuilder().Select(aligned).Compile().Text);
+        var compiled = new QueryBuilder().Select(aligned).Compile();
+        Assert.Equal("SELECT @p0 + id", compiled.Text);
     }
 
     [Fact]
     public void CommandShapeAndDuplicateSlotsAreChecked()
     {
         Assert.Throws<InvalidOperationException>(() => new CommandBuilder().Compile());
-        Assert.Throws<InvalidOperationException>(() => new CommandBuilder().Update($"a").Update($"b"));
-        Assert.Throws<InvalidOperationException>(() => new CommandBuilder().Columns($"id").Columns($"name"));
-        Assert.Throws<InvalidOperationException>(() => new CommandBuilder().Sql($"DELETE FROM x").Procedure("p"));
-        Assert.Throws<InvalidOperationException>(() => new CommandBuilder().Procedure("p").Sql($"DELETE FROM x"));
-        Assert.Throws<InvalidOperationException>(() => new CommandBuilder().Procedure("p")
-            .ProcedureParameter("@id", 1).ProcedureParameter("@id", 2));
+        Assert.Throws<InvalidOperationException>(
+            () => new CommandBuilder().Update($"a").Update($"b")
+        );
+        Assert.Throws<InvalidOperationException>(
+            () => new CommandBuilder().Columns($"id").Columns($"name")
+        );
+        Assert.Throws<InvalidOperationException>(
+            () => new CommandBuilder().Sql($"DELETE FROM x").Procedure("p")
+        );
+        Assert.Throws<InvalidOperationException>(
+            () => new CommandBuilder().Procedure("p").Sql($"DELETE FROM x")
+        );
+        Assert.Throws<InvalidOperationException>(
+            () => new CommandBuilder().Procedure("p")
+                .ProcedureParameter("@id", 1)
+                .ProcedureParameter("@id", 2)
+        );
         Assert.Throws<ArgumentOutOfRangeException>(() => new CommandBuilder().Timeout(-1));
-        Assert.Throws<ArgumentOutOfRangeException>(() => new CommandBuilder().Timeout(1).Timeout(2));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new CommandBuilder().Timeout(1).Timeout(2)
+        );
     }
 
     [Fact]
     public void CommandClausesDoNotDisappearWhenKindDiffers()
     {
-        Assert.Throws<InvalidOperationException>(() => new CommandBuilder().Where($"id = 1").Procedure("p").Compile());
-        Assert.Throws<InvalidOperationException>(() => new CommandBuilder().ProcedureParameter("@id", 1).Sql($"SELECT 1").Compile());
-        Assert.Throws<InvalidOperationException>(() => new CommandBuilder().InsertInto($"t").Compile());
+        Assert.Throws<InvalidOperationException>(
+            () => new CommandBuilder().Where($"id = 1").Procedure("p").Compile()
+        );
+        Assert.Throws<InvalidOperationException>(
+            () => new CommandBuilder().ProcedureParameter("@id", 1).Sql($"SELECT 1").Compile()
+        );
+        Assert.Throws<InvalidOperationException>(
+            () => new CommandBuilder().InsertInto($"t").Compile()
+        );
         Assert.Throws<InvalidOperationException>(() => new CommandBuilder().Update($"t").Compile());
-        Assert.Throws<InvalidOperationException>(() => new CommandBuilder().InsertInto($"t").Values($"{1}")
-            .FromQuery(new QueryBuilder().Select($"2")).Compile());
+        Assert.Throws<InvalidOperationException>(
+            () => new CommandBuilder().InsertInto($"t").Values($"{1}")
+                .FromQuery(new QueryBuilder().Select($"2")).Compile()
+        );
     }
 
     [Fact]
@@ -171,21 +211,29 @@ public sealed class QueryApiEdgeTests
 
         var compiled = command.Compile();
 
-        Assert.Equal("UPDATE items SET a = @p0, b = @p1 WHERE id > @p2 AND id < @p3", compiled.Text);
+        Assert.Equal(
+            "UPDATE items SET a = @p0, b = @p1 WHERE id > @p2 AND id < @p3",
+            compiled.Text
+        );
         Assert.Equal([1, 2, 3, 4], compiled.Parameters.Select(parameter => parameter.Value));
     }
 
     [Fact]
     public void EngineReturnOptionsRejectUnsupportedCommandKinds()
     {
-        Assert.Throws<InvalidOperationException>(() => new MariaDbCommandBuilder().Returning("id")
-            .Update($"items").Set($"id = {1}").Compile());
-        Assert.Throws<InvalidOperationException>(() => new PostgreSqlCommandBuilder().Returning("id")
-            .Procedure("p").Compile());
+        Assert.Throws<InvalidOperationException>(
+            () => new MariaDbCommandBuilder().Returning("id")
+                .Update($"items").Set($"id = {1}").Compile()
+        );
+        Assert.Throws<InvalidOperationException>(
+            () => new PostgreSqlCommandBuilder().Returning("id").Procedure("p").Compile()
+        );
         Assert.Throws<InvalidOperationException>(() => new SqliteCommandBuilder().Returning("id")
             .Procedure("p").Compile());
-        Assert.Throws<InvalidOperationException>(() => new SqlServerCommandBuilder().OutputInserted("id")
-            .DeleteFrom($"items").Compile());
+        Assert.Throws<InvalidOperationException>(
+            () => new SqlServerCommandBuilder().OutputInserted("id")
+                .DeleteFrom($"items").Compile()
+        );
     }
 
     [Fact]
@@ -194,9 +242,15 @@ public sealed class QueryApiEdgeTests
         Assert.Throws<InvalidOperationException>(() => new PostgreSqlCommandBuilder().Returning());
         Assert.Throws<InvalidOperationException>(() => new SqliteCommandBuilder().Returning());
         Assert.Throws<InvalidOperationException>(() => new MariaDbCommandBuilder().Returning());
-        Assert.Throws<InvalidOperationException>(() => new SqlServerCommandBuilder().OutputInserted());
-        Assert.Throws<InvalidOperationException>(() => new PostgreSqlCommandBuilder().Returning("id").Returning("name"));
-        Assert.Throws<InvalidOperationException>(() => new SqlServerCommandBuilder().OutputInserted("id").OutputInserted("name"));
+        Assert.Throws<InvalidOperationException>(
+            () => new SqlServerCommandBuilder().OutputInserted()
+        );
+        Assert.Throws<InvalidOperationException>(
+            () => new PostgreSqlCommandBuilder().Returning("id").Returning("name")
+        );
+        Assert.Throws<InvalidOperationException>(
+            () => new SqlServerCommandBuilder().OutputInserted("id").OutputInserted("name")
+        );
     }
 
     [Fact]
@@ -229,8 +283,14 @@ public sealed class QueryApiEdgeTests
     [Fact]
     public void SqlServerMaxRecursionHasBoundedCardinality()
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => new SqlServerQueryBuilder().MaxRecursion(-1));
-        Assert.Throws<ArgumentOutOfRangeException>(() => new SqlServerQueryBuilder().MaxRecursion(32768));
-        Assert.Throws<ArgumentOutOfRangeException>(() => new SqlServerQueryBuilder().MaxRecursion(1).MaxRecursion(2));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new SqlServerQueryBuilder().MaxRecursion(-1)
+        );
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new SqlServerQueryBuilder().MaxRecursion(32768)
+        );
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new SqlServerQueryBuilder().MaxRecursion(1).MaxRecursion(2)
+        );
     }
 }

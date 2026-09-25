@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Builder;
 using Brigade.Net.Partie.Engines.AspNetCore;
+using Microsoft.AspNetCore.Builder;
 
 namespace Brigade.Net.Example.Web.RoutePolicies;
 

@@ -1,4 +1,5 @@
 using System.Text;
+
 namespace Brigade.Net.Mise;
 
 /// <summary>Defines engine SQL syntax used while compiling Mise builders.</summary>

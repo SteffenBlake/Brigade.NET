@@ -47,11 +47,17 @@ public sealed class ContractGeneratorTests
         var duplicate = Assert.Single(diagnostics, diagnostic => diagnostic.Id == "MISE003");
 
         Assert.Equal("Mapped property 'Missing' must have ColumnAttribute", missing.GetMessage());
-        Assert.Equal("Missing", source.Substring(missing.Location.SourceSpan.Start, missing.Location.SourceSpan.Length));
+        Assert.Equal(
+            "Missing",
+            source.Substring(missing.Location.SourceSpan.Start, missing.Location.SourceSpan.Length)
+        );
         Assert.Equal("Column identifier 'SAME' is duplicated", duplicate.GetMessage());
         Assert.Equal(
             "Column(\"SAME\")",
-            source.Substring(duplicate.Location.SourceSpan.Start, duplicate.Location.SourceSpan.Length)
+            source.Substring(
+                duplicate.Location.SourceSpan.Start,
+                duplicate.Location.SourceSpan.Length
+            )
         );
     }
 
@@ -90,10 +96,16 @@ public sealed class ContractGeneratorTests
                 diagnostic.Location.SourceSpan.Length
             )).ToArray()
         );
-        Assert.Equal("Mapped property 'Four' cannot be both database-generated and computed", contradiction.GetMessage());
+        Assert.Equal(
+            "Mapped property 'Four' cannot be both database-generated and computed",
+            contradiction.GetMessage()
+        );
         Assert.Equal(
             "Four",
-            source.Substring(contradiction.Location.SourceSpan.Start, contradiction.Location.SourceSpan.Length)
+            source.Substring(
+                contradiction.Location.SourceSpan.Start,
+                contradiction.Location.SourceSpan.Length
+            )
         );
     }
 
@@ -162,8 +174,13 @@ public sealed class ContractGeneratorTests
         var result = GeneratorTestHost.Run(source);
 
         Assert.Empty(result.Run.Diagnostics);
-        Assert.DoesNotContain(result.CompilationDiagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
-        var generated = Assert.Single(result.Run.Results).GeneratedSources.Single().SourceText.ToString();
+        Assert.DoesNotContain(
+            result.CompilationDiagnostics,
+            diagnostic => diagnostic.Severity == DiagnosticSeverity.Error
+        );
+        var generated = Assert.Single(result.Run.Results)
+            .GeneratedSources.Single()
+            .SourceText.ToString();
         Assert.Contains("IRow<Good>", generated);
         Assert.Contains("\"id\"", generated);
         Assert.Contains("reader.GetName(index)", generated);
@@ -194,9 +211,15 @@ public sealed class ContractGeneratorTests
         var result = GeneratorTestHost.Run(source);
 
         Assert.Empty(result.Run.Diagnostics);
-        Assert.DoesNotContain(result.CompilationDiagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.DoesNotContain(
+            result.CompilationDiagnostics,
+            diagnostic => diagnostic.Severity == DiagnosticSeverity.Error
+        );
         var generated = result.Run.Results.Single().GeneratedSources.Single().SourceText.ToString();
-        Assert.True(generated.IndexOf("\"base_id\"", StringComparison.Ordinal) < generated.IndexOf("\"name\"", StringComparison.Ordinal));
+        Assert.True(
+            generated.IndexOf("\"base_id\"", StringComparison.Ordinal)
+                < generated.IndexOf("\"name\"", StringComparison.Ordinal)
+        );
         Assert.Contains("private string? Name", source);
     }
 
@@ -219,9 +242,21 @@ public sealed class ContractGeneratorTests
         var partial = Assert.Single(diagnostics, diagnostic => diagnostic.Id == "MISE006");
         var unsupported = Assert.Single(diagnostics, diagnostic => diagnostic.Id == "MISE010");
 
-        Assert.Equal("Mapped target 'Bad' and each containing type must be partial", partial.GetMessage());
-        Assert.Equal("Row target 'Bad' cannot be ref-like, static, or abstract", unsupported.GetMessage());
-        Assert.Equal("Bad", source.Substring(unsupported.Location.SourceSpan.Start, unsupported.Location.SourceSpan.Length));
+        Assert.Equal(
+            "Mapped target 'Bad' and each containing type must be partial",
+            partial.GetMessage()
+        );
+        Assert.Equal(
+            "Row target 'Bad' cannot be ref-like, static, or abstract",
+            unsupported.GetMessage()
+        );
+        Assert.Equal(
+            "Bad",
+            source.Substring(
+                unsupported.Location.SourceSpan.Start,
+                unsupported.Location.SourceSpan.Length
+            )
+        );
     }
 
     [Fact]
@@ -243,7 +278,10 @@ public sealed class ContractGeneratorTests
         var diagnostic = Assert.Single(GeneratorTestHost.Run(source).Run.Diagnostics);
 
         Assert.Equal("MISE008", diagnostic.Id);
-        Assert.Equal("Row target 'Bad' has 2 valid materialization constructors; exactly one is required", diagnostic.GetMessage());
+        Assert.Equal(
+            "Row target 'Bad' has 2 valid materialization constructors; exactly one is required",
+            diagnostic.GetMessage()
+        );
     }
 
     [Fact]
@@ -252,7 +290,7 @@ public sealed class ContractGeneratorTests
         const string source = """
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
-            [SqlServerTable("targets")]
+            [SqlServerTable("targets"), Alias("target")]
             static partial class Target { [Column("id")] private static int Id { get; } }
             [SqlServerTable("sources"), Alias("source alias")]
             static partial class Source { [Column("target_id"), Relationship(Target.IdCol)] private static int TargetId { get; } }
@@ -261,10 +299,18 @@ public sealed class ContractGeneratorTests
         var result = GeneratorTestHost.Run(source);
 
         Assert.Empty(result.Run.Diagnostics);
-        Assert.DoesNotContain(result.CompilationDiagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
-        var generated = string.Join("\n", result.Run.Results.Single().GeneratedSources.Select(item => item.SourceText.ToString()));
+        Assert.DoesNotContain(
+            result.CompilationDiagnostics,
+            diagnostic => diagnostic.Severity == DiagnosticSeverity.Error
+        );
+        var generated = string.Join(
+            "\n",
+            result.Run.Results.Single().GeneratedSources.Select(item => item.SourceText.ToString())
+        );
         Assert.Contains("class source_0020alias", generated);
         Assert.Contains("[source alias].[target_id] = [targets].[id]", generated);
+        Assert.Contains("[targets] AS [target] ON [source alias].[target_id] = [target].[id]", generated);
+        Assert.Contains("[sources] ON [sources].[target_id] = [target].[id]", generated);
         Assert.DoesNotContain("INNER", generated);
     }
 
@@ -302,7 +348,10 @@ public sealed class ContractGeneratorTests
         var result = GeneratorTestHost.Run(source);
 
         Assert.Empty(result.Run.Diagnostics);
-        Assert.DoesNotContain(result.CompilationDiagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.DoesNotContain(
+            result.CompilationDiagnostics,
+            diagnostic => diagnostic.Severity == DiagnosticSeverity.Error
+        );
     }
 
     [Fact]
@@ -319,10 +368,16 @@ public sealed class ContractGeneratorTests
         var diagnostic = Assert.Single(GeneratorTestHost.Run(source).Run.Diagnostics);
 
         Assert.Equal("MISE011", diagnostic.Id);
-        Assert.Equal("Relationship 'TargetIdJoin' target must have the active engine's table attribute", diagnostic.GetMessage());
+        Assert.Equal(
+            "Relationship 'TargetIdJoin' target must have the active engine's table attribute",
+            diagnostic.GetMessage()
+        );
         Assert.StartsWith(
             "Relationship(Target.IdCol)",
-            source.Substring(diagnostic.Location.SourceSpan.Start, diagnostic.Location.SourceSpan.Length),
+            source.Substring(
+                diagnostic.Location.SourceSpan.Start,
+                diagnostic.Location.SourceSpan.Length
+            ),
             StringComparison.Ordinal
         );
     }
@@ -358,9 +413,18 @@ public sealed class ContractGeneratorTests
         var result = GeneratorTestHost.Run(source);
 
         Assert.Empty(result.Run.Diagnostics);
-        Assert.DoesNotContain(result.CompilationDiagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
-        var generated = string.Join("\n", result.Run.Results.Single().GeneratedSources.Select(item => item.SourceText.ToString()));
-        Assert.Contains("[sales].[targets] ON [sources].[target_id] = [sales].[targets].[id]", generated);
+        Assert.DoesNotContain(
+            result.CompilationDiagnostics,
+            diagnostic => diagnostic.Severity == DiagnosticSeverity.Error
+        );
+        var generated = string.Join(
+            "\n",
+            result.Run.Results.Single().GeneratedSources.Select(item => item.SourceText.ToString())
+        );
+        Assert.Contains(
+            "[sales].[targets] ON [sources].[target_id] = [sales].[targets].[id]",
+            generated
+        );
     }
 
     [Fact]
@@ -398,8 +462,17 @@ public sealed class ContractGeneratorTests
         var diagnostic = Assert.Single(GeneratorTestHost.Run(source).Run.Diagnostics);
 
         Assert.Equal("MISE007", diagnostic.Id);
-        Assert.Equal("Mapped property 'Id' cannot be assigned by the selected materialization path", diagnostic.GetMessage());
-        Assert.Equal("Id", source.Substring(diagnostic.Location.SourceSpan.Start, diagnostic.Location.SourceSpan.Length));
+        Assert.Equal(
+            "Mapped property 'Id' cannot be assigned by the selected materialization path",
+            diagnostic.GetMessage()
+        );
+        Assert.Equal(
+            "Id",
+            source.Substring(
+                diagnostic.Location.SourceSpan.Start,
+                diagnostic.Location.SourceSpan.Length
+            )
+        );
     }
 
     [Fact]
@@ -415,7 +488,13 @@ public sealed class ContractGeneratorTests
         var diagnostic = Assert.Single(GeneratorTestHost.Run(source).Run.Diagnostics);
 
         Assert.Equal("MISE007", diagnostic.Id);
-        Assert.Equal("Id", source.Substring(diagnostic.Location.SourceSpan.Start, diagnostic.Location.SourceSpan.Length));
+        Assert.Equal(
+            "Id",
+            source.Substring(
+                diagnostic.Location.SourceSpan.Start,
+                diagnostic.Location.SourceSpan.Length
+            )
+        );
     }
 
     [Fact]
@@ -453,7 +532,10 @@ public sealed class ContractGeneratorTests
 
         Assert.Equal("MISE006", diagnostic.Id);
         Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
-        Assert.Equal("Mapped target 'Bad' and each containing type must be partial", diagnostic.GetMessage());
+        Assert.Equal(
+            "Mapped target 'Bad' and each containing type must be partial",
+            diagnostic.GetMessage()
+        );
         Assert.Empty(result.Run.Results.Single().GeneratedSources);
     }
 
@@ -474,7 +556,10 @@ public sealed class ContractGeneratorTests
         var result = GeneratorTestHost.Run(source);
 
         Assert.Empty(result.Run.Diagnostics);
-        Assert.DoesNotContain(result.CompilationDiagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.DoesNotContain(
+            result.CompilationDiagnostics,
+            diagnostic => diagnostic.Severity == DiagnosticSeverity.Error
+        );
         var generated = result.Run.Results.Single().GeneratedSources.Single().SourceText.ToString();
         Assert.Contains("static partial class @class", generated);
         Assert.Contains("public const string eventCol = \"[odd]]table].[first]]key]\";", generated);
@@ -499,8 +584,17 @@ public sealed class ContractGeneratorTests
 
         Assert.Equal("MISE008", diagnostic.Id);
         Assert.Equal(DiagnosticSeverity.Error, diagnostic.Severity);
-        Assert.Equal("Row target 'Bad' has 0 valid materialization constructors; exactly one is required", diagnostic.GetMessage());
-        Assert.Equal("Bad", source.Substring(diagnostic.Location.SourceSpan.Start, diagnostic.Location.SourceSpan.Length));
+        Assert.Equal(
+            "Row target 'Bad' has 0 valid materialization constructors; exactly one is required",
+            diagnostic.GetMessage()
+        );
+        Assert.Equal(
+            "Bad",
+            source.Substring(
+                diagnostic.Location.SourceSpan.Start,
+                diagnostic.Location.SourceSpan.Length
+            )
+        );
     }
 
     [Fact]
@@ -521,7 +615,10 @@ public sealed class ContractGeneratorTests
         var result = GeneratorTestHost.Run(source);
 
         Assert.Empty(result.Run.Diagnostics);
-        Assert.DoesNotContain(result.CompilationDiagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.DoesNotContain(
+            result.CompilationDiagnostics,
+            diagnostic => diagnostic.Severity == DiagnosticSeverity.Error
+        );
         var generated = result.Run.Results.Single().GeneratedSources.Single().SourceText.ToString();
         Assert.Contains("return new Good(valueId, valueScore);", generated);
         Assert.Contains("valueScore = null;", generated);
@@ -542,7 +639,13 @@ public sealed class ContractGeneratorTests
 
         Assert.Equal("MISE001", diagnostic.Id);
         Assert.Equal("Alias name must not be null, empty, or whitespace", diagnostic.GetMessage());
-        Assert.Equal("Alias(\" \")", source.Substring(diagnostic.Location.SourceSpan.Start, diagnostic.Location.SourceSpan.Length));
+        Assert.Equal(
+            "Alias(\" \")",
+            source.Substring(
+                diagnostic.Location.SourceSpan.Start,
+                diagnostic.Location.SourceSpan.Length
+            )
+        );
         Assert.Empty(result.Run.Results.Single().GeneratedSources);
     }
 
@@ -579,7 +682,8 @@ public sealed class ContractGeneratorTests
     [Fact]
     public void IncompleteRelationshipMetadataIsDiagnosed()
     {
-        // Deliberately invalid compiler input: the source generator must survive a half-written attribute.
+        // Deliberately invalid compiler input: the source generator must survive a
+        // half-written attribute.
         const string source = """
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
@@ -632,7 +736,10 @@ public sealed class ContractGeneratorTests
         var diagnostic = Assert.Single(GeneratorTestHost.Run(source).Run.Diagnostics);
 
         Assert.Equal("MISE001", diagnostic.Id);
-        Assert.Equal($"{expectedKind} must not be null, empty, or whitespace", diagnostic.GetMessage());
+        Assert.Equal(
+            $"{expectedKind} must not be null, empty, or whitespace",
+            diagnostic.GetMessage()
+        );
     }
 
     [Fact]
@@ -655,7 +762,8 @@ public sealed class ContractGeneratorTests
     [InlineData("ref partial struct Bad { [Column(\"id\")] public int Id { get; set; } }")]
     public void StaticAndRefLikeRowsAreUnsupported(string declaration)
     {
-        var source = "using Brigade.Net.Mise; using Brigade.Net.Mise.SqlServer; [Mise] " + declaration;
+        var source =
+            "using Brigade.Net.Mise; using Brigade.Net.Mise.SqlServer; [Mise] " + declaration;
 
         var result = GeneratorTestHost.Run(source);
 

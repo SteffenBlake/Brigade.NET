@@ -3,10 +3,14 @@ using Brigade.Net.Core.Transactions;
 
 namespace Brigade.Net.Partie;
 
-/// <summary>Transactions supplied to the unit-of-work step.</summary>
+/// <summary>
+/// Transactions supplied to the unit-of-work step.
+/// </summary>
 public sealed record UnitOfWorkContext([Provide] IEnumerable<ITxn> Transactions);
 
-/// <summary>Commits successful downstream work and rolls back failed downstream work.</summary>
+/// <summary>
+/// Commits successful downstream work and rolls back failed downstream work.
+/// </summary>
 public sealed class UnitOfWorkPartie<TCommand, TResult> :
     ICommandPartie<UnitOfWork, UnitOfWorkContext, TCommand, TResult>
 {
@@ -54,6 +58,7 @@ public sealed class UnitOfWorkPartie<TCommand, TResult> :
             {
                 exception.Data["UnitOfWork.RollbackException"] = rollbackFault;
             }
+
             throw;
         }
         finally

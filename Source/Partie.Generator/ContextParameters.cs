@@ -20,7 +20,11 @@ public static class ContextParameters
             .Select((parameter, index) => new { Parameter = parameter, Index = index })
             .Where(item => item.Parameter.GetAttributes().Any(marker =>
                 marker.AttributeClass?.ToDisplayString() == "Brigade.Net.Partie.ParameterAttribute"))
-            .Select(item => new { item.Parameter.Name, Value = SymbolEmission.Constant(attribute.ConstructorArguments[item.Index]) })
+            .Select(item => new
+            {
+                item.Parameter.Name,
+                Value = SymbolEmission.Constant(attribute.ConstructorArguments[item.Index])
+            })
             .ToImmutableDictionary(parameter => parameter.Name, parameter => parameter.Value);
     }
 
@@ -30,30 +34,43 @@ public static class ContextParameters
         {
             return ImmutableArray<IParameterSymbol>.Empty;
         }
-        var constructors = named.InstanceConstructors.Where(ctor =>
-            compilation.IsSymbolAccessibleWithin(ctor, compilation.Assembly)
-            && !(named.IsRecord && ctor.Parameters.Length == 1
-                && SymbolEqualityComparer.Default.Equals(ctor.Parameters[0].Type, context))).ToArray();
+        var constructors = named.InstanceConstructors
+            .Where(ctor =>
+                compilation.IsSymbolAccessibleWithin(ctor, compilation.Assembly)
+                && !(named.IsRecord && ctor.Parameters.Length == 1
+                    && SymbolEqualityComparer.Default.Equals(ctor.Parameters[0].Type, context))
+            )
+            .ToArray();
         if (constructors.Length != 1)
         {
             return ImmutableArray<IParameterSymbol>.Empty;
         }
 
-        return constructors[0].Parameters.Where(parameter => parameter.GetAttributes().Any(attribute =>
-            attribute.AttributeClass?.ToDisplayString() == "Brigade.Net.Partie.ParameterAttribute")).ToImmutableArray();
+        return constructors[0].Parameters
+            .Where(parameter => parameter.GetAttributes().Any(attribute =>
+                attribute.AttributeClass?.ToDisplayString()
+                    == "Brigade.Net.Partie.ParameterAttribute"
+            ))
+            .ToImmutableArray();
     }
 
-    public static string Declaration(IParameterSymbol parameter) =>
-        "[global::Brigade.Net.Partie.Parameter] " + (parameter.IsParams ? "params " : "")
-        + SymbolEmission.TypeName(parameter.Type) + " @" + parameter.Name
-        + (parameter.HasExplicitDefaultValue ? " = " + DefaultValue(parameter) : "");
+    public static string Declaration(IParameterSymbol parameter)
+    {
+        return "[global::Brigade.Net.Partie.Parameter] "
+            + (parameter.IsParams ? "params " : "")
+            + SymbolEmission.TypeName(parameter.Type)
+            + " @" + parameter.Name
+            + (parameter.HasExplicitDefaultValue ? " = " + DefaultValue(parameter) : "");
+    }
 
     public static string DefaultValue(IParameterSymbol parameter)
     {
         if (parameter.ExplicitDefaultValue is null)
         {
-            return parameter.Type.IsReferenceType || parameter.Type.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T
-                ? "null" : "default";
+            return parameter.Type.IsReferenceType
+                || parameter.Type.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T
+                    ? "null"
+                    : "default";
         }
         var literal = SymbolDisplay.FormatPrimitive(parameter.ExplicitDefaultValue, true, false)!;
         if (parameter.Type.TypeKind == TypeKind.Enum)

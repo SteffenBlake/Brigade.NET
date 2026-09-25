@@ -468,17 +468,30 @@ public class RoutePoliciesTests
         Assert.DoesNotContain("MapMethods", Adapter(result));
     }
 
-    private static (GeneratorDriver Driver, Compilation Output, GeneratorDriverRunResult Result) Generate(string source)
+    private static (
+        GeneratorDriver Driver,
+        Compilation Output,
+        GeneratorDriverRunResult Result
+    ) Generate(string source)
     {
         GeneratorDriver driver = CSharpGeneratorDriver.Create(new AspNetCorePartieGenerator());
-        driver = driver.RunGeneratorsAndUpdateCompilation(Compile("using Microsoft.AspNetCore.Builder;\n" + source), out var output, out _);
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            Compile("using Microsoft.AspNetCore.Builder;\n" + source),
+            out var output,
+            out _
+        );
         Assert.Empty(
-            output.GetDiagnostics().Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            output.GetDiagnostics()
+                .Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
         );
         return (driver, output, driver.GetRunResult());
     }
 
-    private static string Adapter(GeneratorDriverRunResult result) => result.Results.Single().GeneratedSources.Single(source => source.HintName == "PartieEngine.g.cs").SourceText.ToString();
+    private static string Adapter(GeneratorDriverRunResult result) => result.Results
+        .Single()
+        .GeneratedSources
+        .Single(source => source.HintName == "PartieEngine.g.cs")
+        .SourceText.ToString();
     private static CSharpCompilation Compile(string source) => CSharpCompilation.Create(
         "Routes_" + Guid.NewGuid().ToString("N"),
         [CSharpSyntaxTree.ParseText(source)],

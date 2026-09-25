@@ -51,12 +51,17 @@ public class ResultJsonConverterTests
 
     [Theory]
     [MemberData(nameof(Cases))]
-    public void Serialize_RuntimeResultTypesAlsoWriteOnlyThePayload(Result<string> result, object? expected)
+    public void Serialize_RuntimeResultTypesAlsoWriteOnlyThePayload(
+        Result<string> result,
+        object? expected
+    )
     {
-        Assert.Equal(JsonSerializer.Serialize(expected, expected!.GetType(), WebOptions),
+        Assert.Equal(
+            JsonSerializer.Serialize(expected, expected!.GetType(), WebOptions),
             JsonSerializer.Serialize(result, result.GetType(), WebOptions)
         );
-        Assert.Equal(JsonSerializer.Serialize(expected, expected.GetType(), WebOptions),
+        Assert.Equal(
+            JsonSerializer.Serialize(expected, expected.GetType(), WebOptions),
             JsonSerializer.Serialize<object>(result, WebOptions)
         );
     }
@@ -101,12 +106,27 @@ public class ResultJsonConverterTests
     }
 
     public record BasePayload(string Name);
+
     public sealed record DerivedPayload(string Name, int Count) : BasePayload(Name);
 
     private sealed class PayloadConverter : JsonConverter<DerivedPayload>
     {
-        public override DerivedPayload? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => throw new NotSupportedException();
+        public override DerivedPayload? Read(
+            ref Utf8JsonReader reader,
+            Type typeToConvert,
+            JsonSerializerOptions options
+        )
+        {
+            throw new NotSupportedException();
+        }
 
-        public override void Write(Utf8JsonWriter writer, DerivedPayload value, JsonSerializerOptions options) => writer.WriteStringValue("custom");
+        public override void Write(
+            Utf8JsonWriter writer,
+            DerivedPayload value,
+            JsonSerializerOptions options
+        )
+        {
+            writer.WriteStringValue("custom");
+        }
     }
 }

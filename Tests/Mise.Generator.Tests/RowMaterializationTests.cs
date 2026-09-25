@@ -148,9 +148,16 @@ public sealed class RowMaterializationTests
             """;
         var result = GeneratorTestHost.Run(source, engine);
         Assert.Empty(result.Run.Diagnostics);
-        Assert.DoesNotContain(result.CompilationDiagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
-        var generatedSource = result.Run.Results.Single().GeneratedSources.Single().SourceText.ToString();
-        Assert.Equal(engine != "PostgreSQL", generatedSource.Contains("StringComparison.OrdinalIgnoreCase", StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            result.CompilationDiagnostics,
+            diagnostic => diagnostic.Severity == DiagnosticSeverity.Error
+        );
+        var generatedSource = result.Run.Results.Single().GeneratedSources.Single()
+            .SourceText.ToString();
+        Assert.Equal(
+            engine != "PostgreSQL",
+            generatedSource.Contains("StringComparison.OrdinalIgnoreCase", StringComparison.Ordinal)
+        );
         var parseOptions = CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Preview);
         var trees = new[] { CSharpSyntaxTree.ParseText(source, parseOptions) }
             .Concat(result.Run.Results.Single().GeneratedSources.Select(generated =>
@@ -159,12 +166,34 @@ public sealed class RowMaterializationTests
             .Split(Path.PathSeparator)
             .Select(path => MetadataReference.CreateFromFile(path))
             .Append(MetadataReference.CreateFromFile(typeof(IRow<>).Assembly.Location))
-            .Append(MetadataReference.CreateFromFile(typeof(OrdinalTrackingReader).Assembly.Location))
-            .Append(MetadataReference.CreateFromFile(typeof(Brigade.Net.Mise.SqlServer.MiseAttribute).Assembly.Location))
-            .Append(MetadataReference.CreateFromFile(typeof(Brigade.Net.Mise.PostgreSQL.MiseAttribute).Assembly.Location))
-            .Append(MetadataReference.CreateFromFile(typeof(Brigade.Net.Mise.SQLite.MiseAttribute).Assembly.Location))
-            .Append(MetadataReference.CreateFromFile(typeof(Brigade.Net.Mise.MySQL.MiseAttribute).Assembly.Location))
-            .Append(MetadataReference.CreateFromFile(typeof(Brigade.Net.Mise.MariaDb.MiseAttribute).Assembly.Location));
+            .Append(
+                MetadataReference.CreateFromFile(typeof(OrdinalTrackingReader).Assembly.Location)
+            )
+            .Append(
+                MetadataReference.CreateFromFile(
+                    typeof(Brigade.Net.Mise.SqlServer.MiseAttribute).Assembly.Location
+                )
+            )
+            .Append(
+                MetadataReference.CreateFromFile(
+                    typeof(Brigade.Net.Mise.PostgreSQL.MiseAttribute).Assembly.Location
+                )
+            )
+            .Append(
+                MetadataReference.CreateFromFile(
+                    typeof(Brigade.Net.Mise.SQLite.MiseAttribute).Assembly.Location
+                )
+            )
+            .Append(
+                MetadataReference.CreateFromFile(
+                    typeof(Brigade.Net.Mise.MySQL.MiseAttribute).Assembly.Location
+                )
+            )
+            .Append(
+                MetadataReference.CreateFromFile(
+                    typeof(Brigade.Net.Mise.MariaDb.MiseAttribute).Assembly.Location
+                )
+            );
         var compilation = CSharpCompilation.Create(
             "MiseRowExecution_" + Guid.NewGuid().ToString("N"),
             trees,

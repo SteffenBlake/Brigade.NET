@@ -56,7 +56,10 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
                 cancellationToken
             )
         );
-        context.RegisterSourceOutput(models.Collect(), static (output, items) => Emit(output, items));
+        context.RegisterSourceOutput(
+            models.Collect(),
+            static (output, items) => Emit(output, items)
+        );
     }
 
     private static (string Path, string Source, Diagnostic? Diagnostic) CreateModel(
@@ -70,13 +73,19 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
             return (
                 declaration.SyntaxTree.FilePath,
                 string.Empty,
-                Diagnostic.Create(MustBePartial, declaration.Identifier.GetLocation(), model.Name)
+                Diagnostic.Create(
+                    MustBePartial,
+                    declaration.Identifier.GetLocation(),
+                    model.Name
+                )
             );
         }
 
         var properties = model.GetMembers().OfType<IPropertySymbol>()
             .Where(static property => !property.IsStatic && !property.IsIndexer)
-            .OrderBy(static property => property.Locations.FirstOrDefault()?.SourceSpan.Start ?? int.MaxValue)
+            .OrderBy(
+                static property => property.Locations.FirstOrDefault()?.SourceSpan.Start ?? int.MaxValue
+            )
             .ToArray();
         return (declaration.SyntaxTree.FilePath, BuildModel(model, properties), null);
     }
@@ -153,7 +162,9 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
                 foreach (var comparison in Comparisons)
                 {
                     source.Append("private sealed class ")
-                        .Append(comparison.Name).Append(property.Name).Append("Attribute(string? message = null) : ")
+                        .Append(comparison.Name)
+                        .Append(property.Name)
+                        .Append("Attribute(string? message = null) : ")
                         .Append("global::Brigade.Net.Expo.").Append(comparison.BaseType).Append('(')
                         .Append(Literal(property.Name)).Append(", message);\n");
                 }
@@ -168,7 +179,9 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
         }
         foreach (var regex in regexes)
         {
-            source.Append("[global::System.AttributeUsage(global::System.AttributeTargets.Property, Inherited = true)]\n")
+            source.Append(
+                    "[global::System.AttributeUsage(global::System.AttributeTargets.Property, Inherited = true)]\n"
+                )
                 .Append("private sealed class StringMatches").Append(regex.Name)
                 .Append("Attribute(string? message = null) : global::System.Attribute\n{")
                 .Append("public const string Pattern = ").Append(Literal(regex.Pattern)).Append(";\n")
@@ -186,7 +199,9 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
             .Append("new global::Brigade.Net.Expo.ExpoPropertyMetadata[]\n{\n");
         foreach (var property in properties)
         {
-            source.Append("new(").Append(Literal(property.Name)).Append(", ")
+            source.Append("new(")
+                .Append(Literal(property.Name))
+                .Append(", ")
                 .Append(Literal(Pointer(property.Name)))
                 .Append(", new global::Brigade.Net.Expo.ExpoRuleMetadata[]\n{\n");
             foreach (var rule in GetRules(property, regexes))
@@ -199,7 +214,9 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
                     .Append(", ").Append(NullableLiteral(rule.Pattern))
                     .Append(", ").Append(NullableLiteral(rule.Format)).Append("),\n");
             }
-            source.Append("}, ").Append(IsNestedValidatable(property.Type) ? "true" : "false").Append("),\n");
+            source.Append("}, ")
+                .Append(IsNestedValidatable(property.Type) ? "true" : "false")
+                .Append("),\n");
         }
         source.Append("});\n");
     }
@@ -210,7 +227,9 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
         IReadOnlyCollection<GeneratedRegex> regexes
     )
     {
-        source.Append("public bool TryValidate(out global::System.Collections.Generic.IEnumerable<global::Brigade.Net.Core.Results.ErrorDetail> errors)\n")
+        source.Append(
+                "public bool TryValidate(out global::System.Collections.Generic.IEnumerable<global::Brigade.Net.Core.Results.ErrorDetail> errors)\n"
+            )
             .Append("{\nvar validationErrors = new global::System.Collections.Generic.List<global::Brigade.Net.Core.Results.ErrorDetail>();\n");
         foreach (var property in properties)
         {
@@ -233,8 +252,12 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
             var message = Literal(rule.Message ?? DefaultMessage(property.Name, rule));
             if (rule.Kind == "CustomPartial")
             {
-                source.Append("foreach (var validationMessage in Validate").Append(property.Name).Append("())\n{")
-                    .Append("validationErrors.Add(new(validationMessage, ").Append(pointer).Append("));\n}\n");
+                source.Append("foreach (var validationMessage in Validate")
+                    .Append(property.Name)
+                    .Append("())\n{")
+                    .Append("validationErrors.Add(new(validationMessage, ")
+                    .Append(pointer)
+                    .Append("));\n}\n");
                 continue;
             }
 
@@ -365,8 +388,13 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
         {
             invalidExpression = ComparisonExpression(valueType, valueAccess, rule.Constant, rule.Kind);
         }
-        source.Append("if (").Append(invalidExpression).Append(")\n{")
-            .Append("validationErrors.Add(new(").Append(message).Append(", ").Append(pointer)
+        source.Append("if (")
+            .Append(invalidExpression)
+            .Append(")\n{")
+            .Append("validationErrors.Add(new(")
+            .Append(message)
+            .Append(", ")
+            .Append(pointer)
             .Append("));\n}\n");
     }
 
@@ -596,7 +624,11 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
             "StringMatchesIpv4AddressAttribute" => ("Format", null, "ipv4"),
             "StringMatchesIpv6AddressAttribute" => ("Format", null, "ipv6"),
             "StringMatchesBase64Attribute" => ("Format", null, "byte"),
-            "StringMatchesHexColorAttribute" => ("Pattern", @"^#?(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$", null),
+            "StringMatchesHexColorAttribute" => (
+                "Pattern",
+                @"^#?(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
+                null
+            ),
             "StringMatchesSlugAttribute" => ("Pattern", @"^[a-z0-9]+(?:-[a-z0-9]+)*$", null),
             "StringMatchesAlphaAttribute" => ("Pattern", @"^\p{L}+$", null),
             "StringMatchesAlphaNumericAttribute" => ("Pattern", @"^[\p{L}\p{Nd}]+$", null),
@@ -810,8 +842,11 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
             && named.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T;
     }
 
-    private static bool HasAttribute(IPropertySymbol property, string metadataName) =>
-        property.GetAttributes().Any(attribute => attribute.AttributeClass?.ToDisplayString() == metadataName);
+    private static bool HasAttribute(IPropertySymbol property, string metadataName)
+    {
+        return property.GetAttributes()
+            .Any(attribute => attribute.AttributeClass?.ToDisplayString() == metadataName);
+    }
 
     private static List<INamedTypeSymbol> GetHierarchy(INamedTypeSymbol model)
     {
@@ -866,7 +901,8 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
         }
         foreach (var group in items.Where(item => item.Source.Length != 0).GroupBy(item => item.Path))
         {
-            var source = "// <auto-generated />\n#nullable enable\n" + string.Concat(group.Select(item => item.Source));
+            var source = "// <auto-generated />\n#nullable enable\n"
+                + string.Concat(group.Select(item => item.Source));
             output.AddSource(HintName(group.Key), SourceText.From(source, Encoding.UTF8));
         }
     }

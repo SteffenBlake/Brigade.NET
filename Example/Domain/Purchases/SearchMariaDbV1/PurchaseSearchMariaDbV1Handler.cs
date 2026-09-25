@@ -11,27 +11,37 @@ namespace Brigade.Net.Example.Domain.Purchases.SearchMariaDbV1;
 
 public sealed record PurchaseSearchMariaDbV1Context([Provide] DbReader Reader);
 
-public sealed class PurchaseSearchMariaDbV1Handler : IQueryHandler<Unit, IReadOnlyList<PurchaseSearchMariaDbV1Result>, PurchaseSearchMariaDbV1Context>
+public sealed class PurchaseSearchMariaDbV1Handler
+    : IQueryHandler<Unit, IReadOnlyList<PurchaseSearchMariaDbV1Result>, PurchaseSearchMariaDbV1Context>
 {
     public static Task<Result<IReadOnlyList<PurchaseSearchMariaDbV1Result>>> RunAsync(
         PurchaseSearchMariaDbV1Context ctx,
         Unit request,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         var rootId = 100;
         var minAmount = 10;
+
         var tag = "safe";
+
         var quotedName = "O'Reilly";
+
         var excludedGroup = "idle";
+
         var deliveredAfter = "2026-01-01";
+
+
         var anchor = new MariaDbQueryBuilder()
             .Select($"{CategoryTblMariaDb.IdCol:raw}")
             .From($"{CategoryTblMariaDb.Table:raw}")
             .Where($"{CategoryTblMariaDb.IdCol:raw} = {rootId}");
+
         var recursive = new MariaDbQueryBuilder()
             .Select($"{CategoryTblMariaDb.IdCol:raw}")
             .From($"{CategoryTblMariaDb.Table:raw}")
-            .InnerJoin($"{TreeTblMariaDb.Table:raw} ON {CategoryTblMariaDb.ParentIdCol:raw} = {TreeTblMariaDb.IdCol:raw}");
+            .InnerJoin($"{CategoryTblMariaDb.ParentIdJoin:raw}");
+
         var categories = new MariaDbQueryBuilder()
             .Select($"{TreeTblMariaDb.IdCol:raw}")
             .From($"{TreeTblMariaDb.Table:raw}")
@@ -39,11 +49,13 @@ public sealed class PurchaseSearchMariaDbV1Handler : IQueryHandler<Unit, IReadOn
                 .Select($"{CategoryTblMariaDb.IdCol:raw}")
                 .From($"{CategoryTblMariaDb.Table:raw}")
                 .Where($"{CategoryTblMariaDb.IdCol:raw} = {rootId}"));
+
         var taggedPurchase = new MariaDbQueryBuilder()
             .Select($"1")
             .From($"{PurchaseTagTblMariaDb.Table:raw}")
             .Where($"{PurchaseTagTblMariaDb.PurchaseIdCol:raw} = {PurchaseTblMariaDb.Purchase.IdCol:raw}")
             .Where($"{PurchaseTagTblMariaDb.TagCol:raw} = {tag}");
+
         var query = new MariaDbQueryBuilder()
             .WithRecursive(TreeTblMariaDb.Name, anchor, recursive)
             .Select($"{PurchaseTblMariaDb.Purchase.IdCol:raw}")
@@ -55,11 +67,19 @@ public sealed class PurchaseSearchMariaDbV1Handler : IQueryHandler<Unit, IReadOn
             .Select($"{PurchaseTblMariaDb.Purchase.StatusCol:raw}")
             .From($"{PurchaseTblMariaDb.Purchase.Table:raw}")
             .InnerJoin($"{PurchaseTblMariaDb.Purchase.BuyerIdJoin:raw}")
-            .InnerJoin($"{AccountTblMariaDb.Buyer.Table:raw} ON {AccountTblMariaDb.Buyer.IdCol:raw} = {PurchaseTblMariaDb.Purchase.BuyerIdCol:raw}")
-            .LeftJoin($"{AccountTblMariaDb.Seller.Table:raw} ON {AccountTblMariaDb.Seller.IdCol:raw} = {PurchaseTblMariaDb.Purchase.SellerIdCol:raw}")
+            .InnerJoin(
+                $"{PurchaseTblMariaDb.Purchase.BuyerIdJoinBuyer:raw}"
+            )
+            .LeftJoin(
+                $"{PurchaseTblMariaDb.Purchase.SellerIdJoinSeller:raw}"
+            )
             .CrossJoin(new MariaDbQueryBuilder().Select($"{42} AS marker"), "marker")
-            .LeftJoin($"{ShipmentTblMariaDb.Table:raw} ON {ShipmentTblMariaDb.PurchaseIdCol:raw} = {PurchaseTblMariaDb.Purchase.IdCol:raw}")
-            .InnerJoin($"{PurchaseTagTblMariaDb.Table:raw} ON {PurchaseTagTblMariaDb.PurchaseIdCol:raw} = {PurchaseTblMariaDb.Purchase.IdCol:raw} AND {PurchaseTagTblMariaDb.TagCol:raw} = {tag}")
+            .LeftJoin(
+                $"{ShipmentTblMariaDb.PurchaseIdJoinReversePurchase:raw}"
+            )
+            .InnerJoin(
+                $"{PurchaseTagTblMariaDb.PurchaseIdJoinReversePurchase:raw} AND {PurchaseTagTblMariaDb.TagCol:raw} = {tag}"
+            )
             .WhereIn($"{PurchaseTblMariaDb.Purchase.CategoryIdCol:raw}", categories)
             .WhereExists(taggedPurchase)
             .Where($"({AccountTblMariaDb.Buyer.NameCol:raw} = {quotedName} OR {AccountTblMariaDb.Buyer.GroupCol:raw} <> {excludedGroup})")
@@ -78,6 +98,7 @@ public sealed class PurchaseSearchMariaDbV1Handler : IQueryHandler<Unit, IReadOn
             .OrderBy($"{PurchaseTblMariaDb.Purchase.IdCol:raw} DESC")
             .Offset(1)
             .Limit(3);
+
         return ctx.Reader.ListAsync<PurchaseSearchMariaDbV1Result>(query, ct);
     }
 }

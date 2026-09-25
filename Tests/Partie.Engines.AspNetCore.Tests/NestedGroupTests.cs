@@ -10,7 +10,9 @@ public class NestedGroupTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Engine_OverloadedRoutesHaveDistinctStableNamesAndWorkingLinks(bool reverseDeclarations)
+    public async Task Engine_OverloadedRoutesHaveDistinctStableNamesAndWorkingLinks(
+        bool reverseDeclarations
+    )
     {
         const string basic = """
             [SimpleSearchV1HandlerRoute.Get("basic")]
@@ -20,7 +22,9 @@ public class NestedGroupTests
             [SimpleSearchV1HandlerRoute.Get("configured")]
             static void Read(RouteHandlerBuilder route) => route.WithMetadata("configured");
             """;
-        var declarations = reverseDeclarations ? configured + "\n" + basic : basic + "\n" + configured;
+        var declarations = reverseDeclarations
+            ? configured + "\n" + basic
+            : basic + "\n" + configured;
         var (output, result) = EngineCompilation.Generate($$"""
             using System.Linq;
             using Microsoft.AspNetCore.Http;
@@ -37,13 +41,18 @@ public class NestedGroupTests
             }
             public sealed class SimpleSearchV1Handler : IQueryHandler<Unit, string, Unit>
             {
-                public static Task<Result<string>> RunAsync(Unit ctx, Unit query, CancellationToken ct)
+                public static Task<Result<string>> RunAsync(
+                    Unit ctx,
+                    Unit query,
+                    CancellationToken ct
+                )
                     => Task.FromResult<Result<string>>("ok");
             }
             public sealed class NamesEngine : IPartieEngine
             {
                 public List<string> Names { get; } = new();
-                public void Map<TInputs, TResult>(PartieRoute<TInputs, TResult> route) => Names.Add(route.Name);
+                public void Map<TInputs, TResult>(PartieRoute<TInputs, TResult> route) =>
+                    Names.Add(route.Name);
             }
             public static class Harness
             {
@@ -55,9 +64,14 @@ public class NestedGroupTests
                     await using var app = builder.Build();
                     app.UsePartieRoutes();
                     await app.StartAsync();
-                    var endpoints = ((IEndpointRouteBuilder)app).DataSources.SelectMany(source => source.Endpoints)
-                        .Cast<RouteEndpoint>().OrderBy(endpoint => endpoint.RoutePattern.RawText).ToArray();
-                    var names = endpoints.Select(endpoint => endpoint.Metadata.GetMetadata<IEndpointNameMetadata>()!.EndpointName)
+                    var endpoints = ((IEndpointRouteBuilder)app).DataSources
+                        .SelectMany(source => source.Endpoints)
+                        .Cast<RouteEndpoint>()
+                        .OrderBy(endpoint => endpoint.RoutePattern.RawText)
+                        .ToArray();
+                    var names = endpoints
+                        .Select(endpoint => endpoint.Metadata
+                            .GetMetadata<IEndpointNameMetadata>()!.EndpointName)
                         .ToArray();
                     var links = app.Services.GetRequiredService<LinkGenerator>();
                     var basicPath = links.GetPathByName(names[0], new { });
@@ -68,44 +82,73 @@ public class NestedGroupTests
                     return new[]
                     {
                         names[0], names[1], basicPath!, configuredPath!,
-                        await client.GetStringAsync(basicPath), await client.GetStringAsync(configuredPath),
+                        await client.GetStringAsync(basicPath),
+                        await client.GetStringAsync(configuredPath),
                         string.Join(",", endpoints[0].Metadata.GetOrderedMetadata<string>()),
                         string.Join(",", endpoints[1].Metadata.GetOrderedMetadata<string>()),
-                        engine.Names.OrderBy(name => name).SequenceEqual(names.OrderBy(name => name)).ToString()
+                        engine.Names.OrderBy(name => name)
+                            .SequenceEqual(names.OrderBy(name => name))
+                            .ToString()
                     };
                 }
             }
             """);
         Assert.Empty(result.Diagnostics);
-        Assert.Empty(output.GetDiagnostics().Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error));
-        Assert.Equal(new[]
+        Assert.Empty(
+            output.GetDiagnostics()
+                .Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+        );
+        Assert.Equal(
+            new[]
         {
             "Nested.Routes.Read()", "Nested.Routes.Read(Microsoft.AspNetCore.Builder.RouteHandlerBuilder)",
             "/overloads/basic", "/overloads/configured", "\"ok\"", "\"ok\"", "", "configured", "True"
-        }, await Run(output));
+            },
+            await Run(output)
+        );
     }
 
     [Theory]
     [InlineData("static void Read(RouteHandlerBuilder route) => route.WithMetadata(\"inline\");", false)]
     [InlineData("static partial void Read(RouteHandlerBuilder route) => route.WithMetadata(\"inline\");", true)]
-    public async Task Engine_MapsNestedGroupsAndAppliesPoliciesInScopeOrder(string declaration, bool multipleComponents)
+    public async Task Engine_MapsNestedGroupsAndAppliesPoliciesInScopeOrder(
+        string declaration,
+        bool multipleComponents
+    )
     {
         var source = Source(declaration);
         if (multipleComponents)
         {
-            source = source.Replace("BrigadeGroup(\"/api/{tenant}/\")", "BrigadeGroup(\"/api/\", \"/{tenant}/\")")
+            source = source
+                .Replace(
+                    "BrigadeGroup(\"/api/{tenant}/\")",
+                    "BrigadeGroup(\"/api/\", \"/{tenant}/\")"
+                )
                 .Replace("[BrigadeGroup(\"\")]", "[BrigadeGroup]");
         }
         var (output, result) = EngineCompilation.Generate(source);
         Assert.Empty(result.Diagnostics);
-        Assert.Empty(output.GetDiagnostics().Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error));
-        var adapter = result.Results.Single().GeneratedSources.Single(source => source.HintName == "PartieEngine.g.cs")
+        Assert.Empty(
+            output.GetDiagnostics()
+                .Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+        );
+        var adapter = result.Results.Single().GeneratedSources
+            .Single(source => source.HintName == "PartieEngine.g.cs")
             .SourceText.ToString();
-        var groups = Regex.Matches(adapter, "var (Group_[A-Za-z0-9_]+) = .*?MapGroup\\(([^,]+), \"([^\"]*)\"\\)");
+        var groups = Regex.Matches(
+            adapter,
+            "var (Group_[A-Za-z0-9_]+) = .*?MapGroup\\(([^,]+), \"([^\"]*)\"\\)"
+        );
         Assert.Equal(5, groups.Count);
-        var root = Assert.Single(groups, group => group.Groups[3].Value == "/api/{tenant}");
+        var root = Assert.Single(
+            groups,
+            group => group.Groups[3].Value == "/api/{tenant}"
+        );
         Assert.Equal("app", root.Groups[2].Value);
-        var items = Assert.Single(groups, group => group.Groups[3].Value == "/items/{itemId:int}");
+        var items = Assert.Single(
+            groups,
+            group => group.Groups[3].Value == "/items/{itemId:int}"
+        );
         Assert.Equal(root.Groups[1].Value, items.Groups[2].Value);
         var empty = Assert.Single(groups, group => group.Groups[3].Value == "");
         Assert.Equal(items.Groups[1].Value, empty.Groups[2].Value);
@@ -124,12 +167,19 @@ public class NestedGroupTests
     [Fact]
     public void Engine_ReportsInvalidInheritedPolicyAtDescendantRoute()
     {
-        var (_, result) = EngineCompilation.Generate(Source("static partial void Read();")
-            .Replace("public static void Query<TParams>(RouteHandlerBuilder route) => route.WithMetadata(\"inner\");",
-                "public static int Query<TParams>(RouteHandlerBuilder route) => 1;"));
+        var source = Regex.Replace(
+            Source("static partial void Read();"),
+            @"(public static class InnerRoutePolicy\s*\{\s*)public static void Query<TParams>\(RouteHandlerBuilder route\) =>\s*route.WithMetadata\(""inner""\);",
+            "$1public static int Query<TParams>(RouteHandlerBuilder route) => 1;"
+        );
+        var (_, result) = EngineCompilation.Generate(source);
         Assert.Equal("BRG005", Assert.Single(result.Diagnostics).Id);
-        Assert.DoesNotContain("Details.Read", result.Results.Single().GeneratedSources
-            .Single(source => source.HintName == "PartieEngine.g.cs").SourceText.ToString());
+        Assert.DoesNotContain(
+            "Details.Read",
+            result.Results.Single().GeneratedSources
+                .Single(source => source.HintName == "PartieEngine.g.cs")
+                .SourceText.ToString()
+        );
     }
 
     private static string Source(string declaration) => $$"""
@@ -148,7 +198,11 @@ public class NestedGroupTests
         }
         public sealed class ItemSearchV1Handler : IQueryHandler<ItemSearchV1Query, string, Unit>
         {
-            public static Task<Result<string>> RunAsync(Unit ctx, ItemSearchV1Query query, CancellationToken ct)
+                public static Task<Result<string>> RunAsync(
+                    Unit ctx,
+                    ItemSearchV1Query query,
+                    CancellationToken ct
+                )
                 => Task.FromResult<Result<string>>(query.Tenant + ":" + query.Id);
         }
         public sealed class SimpleSearchV1Handler : IQueryHandler<Unit, string, Unit>
@@ -158,15 +212,18 @@ public class NestedGroupTests
         }
         public static class OuterRoutePolicy
         {
-            public static void Query<TParams>(RouteHandlerBuilder route) => route.WithMetadata("outer");
+            public static void Query<TParams>(RouteHandlerBuilder route) =>
+                route.WithMetadata("outer");
         }
         public static class InnerRoutePolicy
         {
-            public static void Query<TParams>(RouteHandlerBuilder route) => route.WithMetadata("inner");
+            public static void Query<TParams>(RouteHandlerBuilder route) =>
+                route.WithMetadata("inner");
         }
         public static class MethodRoutePolicy
         {
-            public static void Query<TParams>(RouteHandlerBuilder route) => route.WithMetadata("method");
+            public static void Query<TParams>(RouteHandlerBuilder route) =>
+                route.WithMetadata("method");
         }
         [BrigadeGroup("/api/{tenant}/"), RoutePolicy(typeof(OuterRoutePolicy))]
         public static partial class Routes
@@ -212,12 +269,22 @@ public class NestedGroupTests
                 await app.StartAsync();
                 using var client = app.GetTestClient();
                 using var invalid = await client.GetAsync("/api/acme/items/not-an-int");
-                var endpoints = ((IEndpointRouteBuilder)app).DataSources.SelectMany(source => source.Endpoints)
-                    .Cast<RouteEndpoint>().ToArray();
-                var item = endpoints.Single(endpoint => endpoint.RoutePattern.RawText!.Contains("items"));
-                var sibling = endpoints.Single(endpoint => endpoint.RoutePattern.RawText!.Contains("sibling"));
-                var other = endpoints.Single(endpoint => endpoint.RoutePattern.RawText!.Contains("/other"));
-                var status = endpoints.Single(endpoint => endpoint.RoutePattern.RawText!.EndsWith("status"));
+                var endpoints = ((IEndpointRouteBuilder)app).DataSources
+                    .SelectMany(source => source.Endpoints)
+                    .Cast<RouteEndpoint>()
+                    .ToArray();
+                var item = endpoints.Single(
+                    endpoint => endpoint.RoutePattern.RawText!.Contains("items")
+                );
+                var sibling = endpoints.Single(
+                    endpoint => endpoint.RoutePattern.RawText!.Contains("sibling")
+                );
+                var other = endpoints.Single(
+                    endpoint => endpoint.RoutePattern.RawText!.Contains("/other")
+                );
+                var status = endpoints.Single(
+                    endpoint => endpoint.RoutePattern.RawText!.EndsWith("status")
+                );
                 return new[]
                 {
                     await client.GetStringAsync("/api/acme/items/42"),
@@ -248,7 +315,8 @@ public class NestedGroupTests
         try
         {
             var assembly = context.LoadFromStream(stream);
-            return await (Task<string[]>)assembly.GetType("Nested.Harness")!.GetMethod("Run", BindingFlags.Public | BindingFlags.Static)!
+            return await (Task<string[]>)assembly.GetType("Nested.Harness")!
+                .GetMethod("Run", BindingFlags.Public | BindingFlags.Static)!
                 .Invoke(null, null)!;
         }
         finally

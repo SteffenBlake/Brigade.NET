@@ -21,7 +21,10 @@ public sealed class GeneratorCoreTests
             .OrderBy(descriptor => descriptor.Id, StringComparer.Ordinal)
             .ToArray();
 
-        Assert.Equal(Enumerable.Range(1, 18).Select(number => $"MISE{number:000}"), descriptors.Select(item => item.Id));
+        Assert.Equal(
+            Enumerable.Range(1, 18).Select(number => $"MISE{number:000}"),
+            descriptors.Select(item => item.Id)
+        );
         Assert.All(descriptors, descriptor =>
         {
             Assert.Equal("Mise", descriptor.Category);
@@ -46,7 +49,10 @@ public sealed class GeneratorCoreTests
         var generated = GeneratorTestHost.Run(source).Run.Results.Single().GeneratedSources;
 
         Assert.Equal(2, generated.Length);
-        Assert.Equal(2, generated.Select(item => item.HintName).Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(
+            2,
+            generated.Select(item => item.HintName).Distinct(StringComparer.Ordinal).Count()
+        );
         Assert.All(generated, item =>
         {
             var text = item.SourceText.ToString();
@@ -72,8 +78,12 @@ public sealed class GeneratorCoreTests
             [SqlServerTable("same")] static partial class Item { [Column("id")] private static int Id { get; } }
             """;
 
-        var normal = GeneratedOutput(GeneratorTestHost.RunSources(("One.cs", first), ("Two.cs", second)));
-        var shuffled = GeneratedOutput(GeneratorTestHost.RunSources(("Two.cs", second), ("One.cs", first)));
+        var normal = GeneratedOutput(
+            GeneratorTestHost.RunSources(("One.cs", first), ("Two.cs", second))
+        );
+        var shuffled = GeneratedOutput(
+            GeneratorTestHost.RunSources(("Two.cs", second), ("One.cs", first))
+        );
 
         Assert.Equal(normal, shuffled);
         Assert.Equal(2, normal.Length);
@@ -98,8 +108,12 @@ public sealed class GeneratorCoreTests
             static partial class Person { [Column("name")] private static string Name => string.Empty; }
             """;
 
-        var normal = GeneratedOutput(GeneratorTestHost.RunSources(("First.cs", first), ("Second.cs", second)));
-        var shuffled = GeneratedOutput(GeneratorTestHost.RunSources(("Second.cs", second), ("First.cs", first)));
+        var normal = GeneratedOutput(
+            GeneratorTestHost.RunSources(("First.cs", first), ("Second.cs", second))
+        );
+        var shuffled = GeneratedOutput(
+            GeneratorTestHost.RunSources(("Second.cs", second), ("First.cs", first))
+        );
 
         Assert.Equal(normal, shuffled);
         Assert.Single(normal);
@@ -114,7 +128,11 @@ public sealed class GeneratorCoreTests
             [SqlServerTable("people")] static partial class Person { [Column("id")] private static int Id { get; } }
             [SqlServerTable("purchases")] static partial class Order { [Column("id")] private static int Id { get; } }
             """;
-        var updated = original.Replace("SqlServerTable(\"people\")", "SqlServerTable(\"persons\")", StringComparison.Ordinal);
+        var updated = original.Replace(
+            "SqlServerTable(\"people\")",
+            "SqlServerTable(\"persons\")",
+            StringComparison.Ordinal
+        );
 
         var result = GeneratorTestHost.RunIncrementally(original, updated);
         var reasons = result.Results.Single().TrackedSteps["MiseTableTargets"]
@@ -123,7 +141,11 @@ public sealed class GeneratorCoreTests
             .ToArray();
 
         Assert.Contains(IncrementalStepRunReason.Modified, reasons);
-        Assert.Contains(reasons, reason => reason is IncrementalStepRunReason.Cached or IncrementalStepRunReason.Unchanged);
+        Assert.Contains(
+            reasons,
+            reason =>
+                reason is IncrementalStepRunReason.Cached or IncrementalStepRunReason.Unchanged
+        );
     }
 
     [Fact]
@@ -133,7 +155,11 @@ public sealed class GeneratorCoreTests
         var first = new GeneratedTarget("Person.g.cs", "source", [diagnostic]);
         var same = new GeneratedTarget("Person.g.cs", "source", [diagnostic]);
         var changedSource = new GeneratedTarget("Person.g.cs", "changed", [diagnostic]);
-        var changedDiagnostics = new GeneratedTarget("Person.g.cs", "source", ImmutableArray<Diagnostic>.Empty);
+        var changedDiagnostics = new GeneratedTarget(
+            "Person.g.cs",
+            "source",
+            ImmutableArray<Diagnostic>.Empty
+        );
 
         Assert.Equal(first, same);
         Assert.Equal(first.GetHashCode(), same.GetHashCode());
@@ -144,7 +170,9 @@ public sealed class GeneratorCoreTests
         Assert.NotEqual(first, changedDiagnostics);
     }
 
-    private static (string HintName, string Source)[] GeneratedOutput(GeneratorDriverRunResult result)
+    private static (string HintName, string Source)[] GeneratedOutput(
+        GeneratorDriverRunResult result
+    )
     {
         return result.Results.Single().GeneratedSources
             .Select(item => (item.HintName, item.SourceText.ToString()))

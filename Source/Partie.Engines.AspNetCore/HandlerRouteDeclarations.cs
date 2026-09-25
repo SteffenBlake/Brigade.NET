@@ -33,8 +33,12 @@ internal static class HandlerRouteDeclarations
 
         // Deduplicate partial declarations and preserve a stable order before source output.
         return local.Collect().Combine(referenced.Collect()).SelectMany((pair, _) =>
-            pair.Left.Concat(pair.Right).Distinct().OrderBy(source => source.HintName, StringComparer.Ordinal)
-                .ToImmutableArray()).WithTrackingName("HandlerRouteDeclarations");
+            pair.Left
+                .Concat(pair.Right)
+                .Distinct()
+                .OrderBy(source => source.HintName, StringComparer.Ordinal)
+                .ToImmutableArray()
+        ).WithTrackingName("HandlerRouteDeclarations");
     }
 
     private static ImmutableArray<GeneratedDeclaration> DiscoverReference(

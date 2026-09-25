@@ -9,7 +9,9 @@ public sealed class RoutePolicyTests(AppHostFixture host)
     [Fact]
     public async Task OrdinaryEndpoint_AllowsAnonymous()
     {
-        using var response = await host.WebClient.GetAsync("/api/v1/orders?customer=anonymous-policy-test");
+        using var response = await host.WebClient.GetAsync(
+            "/api/v1/orders?customer=anonymous-policy-test"
+        );
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -19,7 +21,11 @@ public sealed class RoutePolicyTests(AppHostFixture host)
     [InlineData("b", "Authorization", "X-Fake")]
     [InlineData("c", "X-Fake", "Authorization")]
     [InlineData("d", "Authorization", "X-Fake")]
-    public async Task ProtectedEndpoint_RequiresItsOwnHeader(string endpoint, string header, string wrongHeader)
+    public async Task ProtectedEndpoint_RequiresItsOwnHeader(
+        string endpoint,
+        string header,
+        string wrongHeader
+    )
     {
         var path = "/api/v1/policy-test/" + endpoint;
         using var missing = await host.WebClient.GetAsync(path);
@@ -34,6 +40,9 @@ public sealed class RoutePolicyTests(AppHostFixture host)
         request.Headers.TryAddWithoutValidation(header, "arbitrary text, no token needed");
         using var accepted = await host.WebClient.SendAsync(request);
         Assert.Equal(HttpStatusCode.OK, accepted.StatusCode);
-        Assert.Equal("success", JsonSerializer.Deserialize<string>(await accepted.Content.ReadAsStringAsync()));
+        Assert.Equal(
+            "success",
+            JsonSerializer.Deserialize<string>(await accepted.Content.ReadAsStringAsync())
+        );
     }
 }

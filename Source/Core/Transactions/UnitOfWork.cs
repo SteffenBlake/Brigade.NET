@@ -23,6 +23,7 @@ public sealed class UnitOfWork(IEnumerable<ITxn> txns) : IAsyncDisposable
     )
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+
         if (_isFinished)
         {
             throw new InvalidOperationException("UnitOfWork has already completed.");
@@ -41,6 +42,7 @@ public sealed class UnitOfWork(IEnumerable<ITxn> txns) : IAsyncDisposable
     public async Task CommitAsync(CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+
         if (_isFinished)
         {
             throw new InvalidOperationException("UnitOfWork has already completed.");
@@ -66,6 +68,7 @@ public sealed class UnitOfWork(IEnumerable<ITxn> txns) : IAsyncDisposable
             {
                 primary.Data["UnitOfWork.RollbackException"] = rollbackFault;
             }
+
             throw;
         }
     }
@@ -79,6 +82,7 @@ public sealed class UnitOfWork(IEnumerable<ITxn> txns) : IAsyncDisposable
     public async Task RollbackAsync(CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+
         if (_isFinished)
         {
             return;
@@ -117,6 +121,7 @@ public sealed class UnitOfWork(IEnumerable<ITxn> txns) : IAsyncDisposable
 
         _disposed = true;
         List<Exception>? errors = null;
+
         foreach (var txn in _txns)
         {
             try

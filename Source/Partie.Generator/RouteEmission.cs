@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 
 namespace Brigade.Net.Partie.Generator;
 
-public sealed class RouteEmission(
+public sealed record RouteEmission(
     string name,
     ImmutableArray<string> path,
     string operation,
@@ -17,15 +17,25 @@ public sealed class RouteEmission(
 )
 {
     public RequestEmission? Request { get; } = request;
+
     public string Name { get; } = name;
+
     /// <summary>Gets the full path, from outer groups through the route, without transport formatting.</summary>
     public ImmutableArray<string> Path { get; } = path;
+
     public ImmutableArray<RouteGroupEmission> Groups { get; } = groups;
+
     public ImmutableArray<string> LocalPath { get; } = localPath;
+
     public string Operation { get; } = operation;
+
     public string DescriptorExpression { get; } = descriptorExpression;
+
     public string InputTypeName { get; } = inputTypeName;
+
     public ImmutableArray<RouteInputEmission> Inputs { get; } = inputs;
+
     public ImmutableArray<RoutePolicyEmission> Policies { get; } = policies;
+
     public ImmutableArray<string> PolicyFunctions { get; } = policyFunctions;
 }

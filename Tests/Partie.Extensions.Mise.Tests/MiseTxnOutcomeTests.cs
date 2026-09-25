@@ -67,7 +67,9 @@ public sealed class MiseTxnOutcomeTests
                 Unit.Default,
                 async _ =>
                 {
-                    await transaction.Writer.ExecuteAsync(new SqlText("UPDATE items SET value = 1"));
+                    await transaction.Writer.ExecuteAsync(
+                        new SqlText("UPDATE items SET value = 1")
+                    );
                     throw expected;
                 },
                 default
@@ -93,7 +95,9 @@ public sealed class MiseTxnOutcomeTests
                 Unit.Default,
                 async _ =>
                 {
-                    await transaction.Writer.ExecuteAsync(new SqlText("UPDATE items SET value = 1"));
+                    await transaction.Writer.ExecuteAsync(
+                        new SqlText("UPDATE items SET value = 1")
+                    );
                     connection.LastTransaction!.CommitException = expected;
                     return Unit.Default;
                 },

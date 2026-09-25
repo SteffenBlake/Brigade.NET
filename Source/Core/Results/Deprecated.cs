@@ -8,7 +8,11 @@ namespace Brigade.Net.Core.Results;
 /// <param name="deprecatedAfterUtc">The UTC date and time after which this value is no longer supported.</param>
 /// <param name="message">An optional human-readable explanation.</param>
 [System.Text.Json.Serialization.JsonConverter(typeof(ResultJsonConverterFactory))]
-public sealed class Deprecated<T>(T value, DateTime deprecatedAfterUtc, string? message = null) : Success<T>(value)
+public sealed class Deprecated<T>(
+    T value,
+    DateTime deprecatedAfterUtc,
+    string? message = null
+) : Success<T>(value)
 {
     /// <summary>
     /// The UTC date and time after which this value is no longer supported.
@@ -37,9 +41,14 @@ public sealed class Deprecated<T>(T value, DateTime deprecatedAfterUtc, string? 
     }
 
     /// <inheritdoc />
-    public override Result<TOut> Map<TOut>(Func<T, TOut> mapper) => new Deprecated<TOut>(mapper(Value), DeprecatedAfterUtc, Message);
+    public override Result<TOut> Map<TOut>(Func<T, TOut> mapper)
+    {
+        return new Deprecated<TOut>(mapper(Value), DeprecatedAfterUtc, Message);
+    }
 
     /// <inheritdoc />
-    public override async Task<Result<TOut>> MapAsync<TOut>(Func<T, Task<TOut>> mapper) =>
-        new Deprecated<TOut>(await mapper(Value), DeprecatedAfterUtc, Message);
+    public override async Task<Result<TOut>> MapAsync<TOut>(Func<T, Task<TOut>> mapper)
+    {
+        return new Deprecated<TOut>(await mapper(Value), DeprecatedAfterUtc, Message);
+    }
 }

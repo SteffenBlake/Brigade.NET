@@ -26,7 +26,8 @@ public sealed record DbConfigProviderContext(
 }
 
 /// <summary>Provides a named connection string with the registered ADO.NET factory.</summary>
-public sealed class DbConfigProvider<TRequest, TResult> :
+public sealed class DbConfigProvider<TRequest, TResult>
+    :
     IQueryProvider<IDbConfig, DbConfigProviderContext, TRequest, TResult>,
     ICommandProvider<IDbConfig, DbConfigProviderContext, TRequest, TResult>
 {

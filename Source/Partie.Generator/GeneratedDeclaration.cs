@@ -6,8 +6,21 @@ namespace Brigade.Net.Partie.Generator;
 public readonly struct GeneratedDeclaration(string hintName, string source) : IEquatable<GeneratedDeclaration>
 {
     public string HintName { get; } = hintName;
+
     public string Source { get; } = source;
-    public bool Equals(GeneratedDeclaration other) => HintName == other.HintName && Source == other.Source;
-    public override bool Equals(object? obj) => obj is GeneratedDeclaration other && Equals(other);
-    public override int GetHashCode() => HintName.GetHashCode() ^ Source.GetHashCode();
+
+    public bool Equals(GeneratedDeclaration other)
+    {
+        return HintName == other.HintName && Source == other.Source;
+    }
+
+    public override bool Equals(object? obj)
+    {
+        return obj is GeneratedDeclaration other && Equals(other);
+    }
+
+    public override int GetHashCode()
+    {
+        return HintName.GetHashCode() ^ Source.GetHashCode();
+    }
 }

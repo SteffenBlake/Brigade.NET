@@ -47,14 +47,20 @@ public sealed class HandlerRouteTests
         var source = EngineCompilation.Valid("""
             public sealed class SaveHandler : ICommandHandler<Unit, int, Unit>
             {
-                public static Task<Result<int>> RunAsync(UnitOfWork uow, Unit ctx, Unit cmd, CancellationToken ct)
+                public static Task<Result<int>> RunAsync(
+                    UnitOfWork uow,
+                    Unit ctx,
+                    Unit cmd,
+                    CancellationToken ct
+                )
                     => Task.FromResult<Result<int>>(42);
             }
             """ + $$"""
             [BrigadeGroup("/commands")]
             public static partial class Routes
             {
-                [SaveHandlerRoute.{{verb}}, global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie<,>))]
+                [SaveHandlerRoute.{{verb}},
+                    global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie<,>))]
                 static partial void Write();
             }
             """);
@@ -66,8 +72,10 @@ public sealed class HandlerRouteTests
     public void QueryDoesNotExposeCommandVerbs()
     {
         var (_, result) = EngineCompilation.Generate(Query);
-        var source = Assert.Single(result.Results.Single().GeneratedSources,
-            source => source.SourceText.ToString().Contains("class @FetchRoute")).SourceText.ToString();
+        var source = Assert.Single(
+            result.Results.Single().GeneratedSources,
+            source => source.SourceText.ToString().Contains("class @FetchRoute")
+        ).SourceText.ToString();
         Assert.Contains("class GetAttribute", source);
         Assert.DoesNotContain("class PostAttribute", source);
         Assert.DoesNotContain("class DeleteAttribute", source);
@@ -85,7 +93,10 @@ public sealed class HandlerRouteTests
             }
             """);
         Assert.Empty(result.Diagnostics);
-        Assert.DoesNotContain(output.GetDiagnostics(), diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.DoesNotContain(
+            output.GetDiagnostics(),
+            diagnostic => diagnostic.Severity == DiagnosticSeverity.Error
+        );
         var dto = Assert.Single(result.Results.Single().GeneratedSources,
             source => source.HintName.EndsWith("UnitDto.g.cs", StringComparison.Ordinal));
         Assert.Contains("public sealed class UnitDto", dto.SourceText.ToString());
@@ -99,7 +110,10 @@ public sealed class HandlerRouteTests
     [Fact]
     public void ConflictingNestedHandlerNamesReportDiagnosticInsteadOfGeneratorCrash()
     {
-        EngineCompilation.Invalid("public class First { " + Query + " } public class Second { " + Query + " }", "BRG005");
+        EngineCompilation.Invalid(
+            "public class First { " + Query + " } public class Second { " + Query + " }",
+            "BRG005"
+        );
     }
 
     [Fact]
@@ -108,7 +122,13 @@ public sealed class HandlerRouteTests
         var source = EngineCompilation.Valid(Query + """
             public sealed partial class Fetch : IDisposable { public void Dispose() { } }
             public interface Ignored : IDisposable { }
-            public sealed class Outer<T> { public sealed class Nested : IDisposable { public void Dispose() { } } }
+            public sealed class Outer<T>
+            {
+                public sealed class Nested : IDisposable
+                {
+                    public void Dispose() { }
+                }
+            }
             public sealed class Generic<T> : IDisposable { public void Dispose() { } }
             file sealed class Local : IDisposable { public void Dispose() { } }
             """);
@@ -128,7 +148,10 @@ public sealed class HandlerRouteTests
             public static partial class Routes { [{{attributes}}] static partial void Run(); }
             """);
         Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Id == "CS8785");
-        Assert.Contains(output.GetDiagnostics(), diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.Contains(
+            output.GetDiagnostics(),
+            diagnostic => diagnostic.Severity == DiagnosticSeverity.Error
+        );
     }
 
     [Fact]
@@ -144,10 +167,15 @@ public sealed class HandlerRouteTests
             driverOptions: new GeneratorDriverOptions(IncrementalGeneratorOutputKind.None, true)
         );
         driver = driver.RunGenerators(compilation);
-        driver = driver.RunGenerators(compilation.AddSyntaxTrees(CSharpSyntaxTree.ParseText("class Unrelated { }")));
-        foreach (var stage in new[] { "BrigadeGroups", "BrigadeRouteSources", "BrigadeTypeDeclarations" })
+        driver = driver.RunGenerators(
+            compilation.AddSyntaxTrees(CSharpSyntaxTree.ParseText("class Unrelated { }"))
+        );
+        var stages = new[] { "BrigadeGroups", "BrigadeRouteSources", "BrigadeTypeDeclarations" };
+        foreach (var stage in stages)
         {
-            var outputs = driver.GetRunResult().Results.Single().TrackedSteps[stage].SelectMany(step => step.Outputs).ToArray();
+            var outputs = driver.GetRunResult().Results.Single().TrackedSteps[stage]
+                .SelectMany(step => step.Outputs)
+                .ToArray();
             Assert.NotEmpty(outputs);
             Assert.All(outputs, output => Assert.Contains(output.Reason,
                 new[] { IncrementalStepRunReason.Unchanged, IncrementalStepRunReason.Cached }));
@@ -187,7 +215,10 @@ public sealed class HandlerRouteTests
             using Brigade.Net.Core.Results;
             namespace Domain;
             """ + Query.Replace("sealed partial class Fetch", "class Fetch"));
-        var domain = EngineCompilation.Reference("namespace OtherDomain; public sealed class Derived : Domain.Fetch { }", [contract]);
+        var domain = EngineCompilation.Reference(
+            "namespace OtherDomain; public sealed class Derived : Domain.Fetch { }",
+            [contract]
+        );
         var source = EngineCompilation.Valid("""
             [BrigadeGroup]
             public static partial class Routes
@@ -209,18 +240,33 @@ public sealed class HandlerRouteTests
             driverOptions: new GeneratorDriverOptions(IncrementalGeneratorOutputKind.None, true)
         );
         driver = driver.RunGenerators(compilation);
-        driver = driver.RunGenerators(compilation.AddSyntaxTrees(CSharpSyntaxTree.ParseText("class Unrelated { }")));
-        var outputs = driver.GetRunResult().Results.Single().TrackedSteps["HandlerRouteDeclarations"]
+        driver = driver.RunGenerators(
+            compilation.AddSyntaxTrees(CSharpSyntaxTree.ParseText("class Unrelated { }"))
+        );
+        var outputs = driver.GetRunResult().Results.Single()
+            .TrackedSteps["HandlerRouteDeclarations"]
             .SelectMany(step => step.Outputs).ToArray();
         Assert.NotEmpty(outputs);
-        Assert.All(outputs, output => Assert.Contains(output.Reason,
-            new[] { IncrementalStepRunReason.Unchanged, IncrementalStepRunReason.Cached }));
+        Assert.All(
+            outputs,
+            output => Assert.Contains(
+                output.Reason,
+                new[] { IncrementalStepRunReason.Unchanged, IncrementalStepRunReason.Cached }
+            )
+        );
 
-        var changed = compilation.ReplaceSyntaxTree(compilation.SyntaxTrees.Single(),
-            CSharpSyntaxTree.ParseText(compilation.SyntaxTrees.Single().ToString().Replace("Fetch", "FetchRenamed")));
+        var changed = compilation.ReplaceSyntaxTree(
+            compilation.SyntaxTrees.Single(),
+            CSharpSyntaxTree.ParseText(
+                compilation.SyntaxTrees.Single().ToString().Replace("Fetch", "FetchRenamed")
+            )
+        );
         driver = driver.RunGenerators(changed);
-        Assert.Contains(driver.GetRunResult().Results.Single().TrackedSteps["HandlerRouteDeclarations"]
-            .SelectMany(step => step.Outputs), output => output.Reason == IncrementalStepRunReason.Modified);
+        Assert.Contains(
+            driver.GetRunResult().Results.Single().TrackedSteps["HandlerRouteDeclarations"]
+                .SelectMany(step => step.Outputs),
+            output => output.Reason == IncrementalStepRunReason.Modified
+        );
     }
 
     [Fact]
@@ -233,8 +279,12 @@ public sealed class HandlerRouteTests
             using Brigade.Net.Core.Results;
             namespace Domain;
             """;
-        var original = EngineCompilation.Reference(imports + Query + Query.Replace("Fetch", "Stable"));
-        var updated = EngineCompilation.Reference(imports + Query.Replace("Fetch", "Renamed") + Query.Replace("Fetch", "Stable"));
+        var original = EngineCompilation.Reference(
+            imports + Query + Query.Replace("Fetch", "Stable")
+        );
+        var updated = EngineCompilation.Reference(
+            imports + Query.Replace("Fetch", "Renamed") + Query.Replace("Fetch", "Stable")
+        );
         var compilation = EngineCompilation.Generate("class Unrelated { }", [original]).Output;
         compilation = compilation.RemoveSyntaxTrees(compilation.SyntaxTrees.Skip(1));
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
@@ -245,11 +295,22 @@ public sealed class HandlerRouteTests
         driver = driver.RunGenerators(compilation.ReplaceReference(original, updated));
         var result = driver.GetRunResult().Results.Single();
         Assert.Empty(result.Diagnostics);
-        Assert.Contains(result.GeneratedSources, source => source.HintName == "Domain/RenamedRoute.g.cs");
-        Assert.DoesNotContain(result.GeneratedSources, source => source.HintName == "Domain/FetchRoute.g.cs");
-        var stable = Assert.Single(result.TrackedSteps["HandlerRouteDeclarations"].SelectMany(step => step.Outputs),
-            output => ((GeneratedDeclaration)output.Value).HintName == "Domain/StableRoute.g.cs");
-        Assert.Contains(stable.Reason, new[] { IncrementalStepRunReason.Unchanged, IncrementalStepRunReason.Cached });
+        Assert.Contains(
+            result.GeneratedSources,
+            source => source.HintName == "Domain/RenamedRoute.g.cs"
+        );
+        Assert.DoesNotContain(
+            result.GeneratedSources,
+            source => source.HintName == "Domain/FetchRoute.g.cs"
+        );
+        var stable = Assert.Single(
+            result.TrackedSteps["HandlerRouteDeclarations"].SelectMany(step => step.Outputs),
+            output => ((GeneratedDeclaration)output.Value).HintName == "Domain/StableRoute.g.cs"
+        );
+        Assert.Contains(
+            stable.Reason,
+            new[] { IncrementalStepRunReason.Unchanged, IncrementalStepRunReason.Cached }
+        );
     }
 
     [Fact]

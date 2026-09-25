@@ -19,7 +19,10 @@ public sealed class PackageFixtureTests
     public void PackedRuntimeAndAnalyzerCompileCleanFixture(string projectSuffix)
     {
         var repositoryRoot = FindRepositoryRoot();
-        var fixtureRoot = Path.Combine(Path.GetTempPath(), $"mise-package-fixture-{Guid.NewGuid():N}");
+        var fixtureRoot = Path.Combine(
+            Path.GetTempPath(),
+            $"mise-package-fixture-{Guid.NewGuid():N}"
+        );
         var packages = Path.Combine(fixtureRoot, "packages");
         Directory.CreateDirectory(packages);
 
@@ -27,8 +30,17 @@ public sealed class PackageFixtureTests
         {
             Pack(repositoryRoot, packages, "Source/Core/Brigade.Net.Core.csproj");
             Pack(repositoryRoot, packages, "Source/Mise/Brigade.Net.Mise.csproj");
-            Pack(repositoryRoot, packages, $"Source/Mise.{projectSuffix}/Brigade.Net.Mise.{projectSuffix}.csproj");
-            Pack(repositoryRoot, packages, $"Source/Mise.Engines.{projectSuffix}/Brigade.Net.Mise.Engines.{projectSuffix}.csproj");
+            Pack(
+                repositoryRoot,
+                packages,
+                $"Source/Mise.{projectSuffix}/Brigade.Net.Mise.{projectSuffix}.csproj"
+            );
+            Pack(
+                repositoryRoot,
+                packages,
+                $"Source/Mise.Engines.{projectSuffix}/"
+                    + $"Brigade.Net.Mise.Engines.{projectSuffix}.csproj"
+            );
             AssertAnalyzerPackageContents(packages, projectSuffix);
             var tableAttribute = projectSuffix switch
             {
@@ -94,7 +106,10 @@ public sealed class PackageFixtureTests
     public void TwoPackedEnginePairsCompileInOneConsumer()
     {
         var repositoryRoot = FindRepositoryRoot();
-        var fixtureRoot = Path.Combine(Path.GetTempPath(), $"mise-multi-engine-fixture-{Guid.NewGuid():N}");
+        var fixtureRoot = Path.Combine(
+            Path.GetTempPath(),
+            $"mise-multi-engine-fixture-{Guid.NewGuid():N}"
+        );
         var packages = Path.Combine(fixtureRoot, "packages");
         Directory.CreateDirectory(packages);
 
@@ -104,8 +119,16 @@ public sealed class PackageFixtureTests
             Pack(repositoryRoot, packages, "Source/Mise/Brigade.Net.Mise.csproj");
             foreach (var suffix in new[] { "SqlServer", "PostgreSQL" })
             {
-                Pack(repositoryRoot, packages, $"Source/Mise.{suffix}/Brigade.Net.Mise.{suffix}.csproj");
-                Pack(repositoryRoot, packages, $"Source/Mise.Engines.{suffix}/Brigade.Net.Mise.Engines.{suffix}.csproj");
+                Pack(
+                    repositoryRoot,
+                    packages,
+                    $"Source/Mise.{suffix}/Brigade.Net.Mise.{suffix}.csproj"
+                );
+                Pack(
+                    repositoryRoot,
+                    packages,
+                    $"Source/Mise.Engines.{suffix}/Brigade.Net.Mise.Engines.{suffix}.csproj"
+                );
             }
 
             File.WriteAllText(Path.Combine(fixtureRoot, "Fixture.csproj"), $$"""
@@ -217,7 +240,8 @@ public sealed class PackageFixtureTests
             startInfo.ArgumentList.Add(argument);
         }
 
-        using var process = Process.Start(startInfo) ?? throw new InvalidOperationException("Could not start dotnet.");
+        using var process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException("Could not start dotnet.");
         var standardOutputTask = process.StandardOutput.ReadToEndAsync();
         var standardErrorTask = process.StandardError.ReadToEndAsync();
         process.WaitForExit();
@@ -225,18 +249,23 @@ public sealed class PackageFixtureTests
         var standardError = standardErrorTask.GetAwaiter().GetResult();
         Assert.True(
             process.ExitCode == 0,
-            $"dotnet {string.Join(' ', arguments)} failed.{Environment.NewLine}{standardOutput}{Environment.NewLine}{standardError}"
+            $"dotnet {string.Join(' ', arguments)} failed.{Environment.NewLine}"
+                + $"{standardOutput}{Environment.NewLine}{standardError}"
         );
     }
 
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Brigade.NET.slnx")))
+        while (
+            directory is not null
+            && !File.Exists(Path.Combine(directory.FullName, "Brigade.NET.slnx"))
+        )
         {
             directory = directory.Parent;
         }
 
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not find repository root.");
+        return directory?.FullName
+            ?? throw new DirectoryNotFoundException("Could not find repository root.");
     }
 }

@@ -29,7 +29,10 @@ public sealed class DependencyDirectionTests
     public void MiseCoreHasNoEngineDependency()
     {
         var project = Path.Combine(RepositoryRoot, "Source", "Mise", "Brigade.Net.Mise.csproj");
-        Assert.DoesNotContain(LoadReferences(project), reference => reference.Contains("Mise.", StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            LoadReferences(project),
+            reference => reference.Contains("Mise.", StringComparison.Ordinal)
+        );
     }
 
     [Fact]
@@ -46,7 +49,10 @@ public sealed class DependencyDirectionTests
             var projectReferences = document.Descendants("ProjectReference").ToArray();
             var packageReferences = document.Descendants("PackageReference").ToArray();
             Assert.Single(projectReferences);
-            Assert.EndsWith("Mise/Brigade.Net.Mise.csproj", Normalize(projectReferences[0].Attribute("Include")!.Value));
+            Assert.EndsWith(
+                "Mise/Brigade.Net.Mise.csproj",
+                Normalize(projectReferences[0].Attribute("Include")!.Value)
+            );
             Assert.Single(packageReferences);
         }
     }
@@ -63,12 +69,16 @@ public sealed class DependencyDirectionTests
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Brigade.NET.slnx")))
+        while (
+            directory is not null
+            && !File.Exists(Path.Combine(directory.FullName, "Brigade.NET.slnx"))
+        )
         {
             directory = directory.Parent;
         }
 
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not find repository root.");
+        return directory?.FullName
+            ?? throw new DirectoryNotFoundException("Could not find repository root.");
     }
 
     private static string Normalize(string path) => path.Replace('\\', '/');

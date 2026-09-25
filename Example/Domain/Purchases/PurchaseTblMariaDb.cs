@@ -16,6 +16,7 @@ public static partial class PurchaseTblMariaDb
     private static int BuyerId { get; }
 
     [Column("seller_id")]
+    [Relationship(AccountTblMariaDb.IdCol)]
     private static int SellerId { get; }
 
     [Column("purchase")]

@@ -11,9 +11,9 @@ public static partial class ShipmentTblSqlite
     private static int Id { get; }
 
     [Column("purchase_id")]
+    [Relationship(Brigade.Net.Example.Domain.Purchases.PurchaseTblSqlite.IdCol)]
     private static int PurchaseId { get; }
 
     [Column("delivered_at")]
     private static string? DeliveredAt { get; }
-
 }

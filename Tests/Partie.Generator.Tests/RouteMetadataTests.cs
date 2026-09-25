@@ -23,10 +23,22 @@ public class RouteMetadataTests
         Assert.Single(new HashSet<RouteGroupEmission> { group, equal });
         Assert.False(group.Equals(null));
         Assert.False(group.Equals("items"));
-        Assert.False(group.Equals(new RouteGroupEmission("other", "Commands.Items", "commands", group.Path)));
-        Assert.False(group.Equals(new RouteGroupEmission("items", "Commands.Other", "commands", group.Path)));
-        Assert.False(group.Equals(new RouteGroupEmission("items", "Commands.Items", null, group.Path)));
-        Assert.False(group.Equals(new RouteGroupEmission("items", "Commands.Items", "commands", ["list", "items"])));
-        Assert.False(group.Equals(new RouteGroupEmission("items", "Commands.Items", "commands", ImmutableArray<string>.Empty)));
+        Assert.False(
+            group.Equals(new RouteGroupEmission("other", "Commands.Items", "commands", group.Path))
+        );
+        Assert.False(
+            group.Equals(new RouteGroupEmission("items", "Commands.Other", "commands", group.Path))
+        );
+        Assert.False(
+            group.Equals(new RouteGroupEmission("items", "Commands.Items", null, group.Path))
+        );
+        Assert.False(
+            group.Equals(new RouteGroupEmission("items", "Commands.Items", "commands", ["list", "items"]))
+        );
+        Assert.False(
+            group.Equals(
+                new RouteGroupEmission("items", "Commands.Items", "commands", ImmutableArray<string>.Empty)
+            )
+        );
     }
 }

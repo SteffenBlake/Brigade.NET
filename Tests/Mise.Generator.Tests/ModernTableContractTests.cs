@@ -35,7 +35,10 @@ public sealed class ModernTableContractTests
         var result = GeneratorTestHost.Run(source);
 
         Assert.Empty(result.Run.Diagnostics);
-        Assert.DoesNotContain(result.CompilationDiagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.DoesNotContain(
+            result.CompilationDiagnostics,
+            diagnostic => diagnostic.Severity == DiagnosticSeverity.Error
+        );
         var generated = result.Run.Results.Single().GeneratedSources.Single().SourceText.ToString();
         Assert.Contains("public const string Name = \"tree\";", generated);
         Assert.Contains("public const string Table = \"[tree]\";", generated);
@@ -64,9 +67,15 @@ public sealed class ModernTableContractTests
         var result = GeneratorTestHost.Run(source);
 
         Assert.Empty(result.Run.Diagnostics);
-        Assert.DoesNotContain(result.CompilationDiagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.DoesNotContain(
+            result.CompilationDiagnostics,
+            diagnostic => diagnostic.Severity == DiagnosticSeverity.Error
+        );
         var generated = result.Run.Results.Single().GeneratedSources
-            .Single(item => item.SourceText.ToString().Contains("partial class Source", StringComparison.Ordinal))
+            .Single(item =>
+                item.SourceText.ToString()
+                    .Contains("partial class Source", StringComparison.Ordinal)
+            )
             .SourceText.ToString();
         Assert.True(generated.IndexOf("TargetIdCol", StringComparison.Ordinal)
             < generated.IndexOf("TargetIdJoin", StringComparison.Ordinal));
@@ -95,7 +104,10 @@ public sealed class ModernTableContractTests
         var result = GeneratorTestHost.Run(source);
 
         Assert.Empty(result.Run.Diagnostics);
-        Assert.DoesNotContain(result.CompilationDiagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.DoesNotContain(
+            result.CompilationDiagnostics,
+            diagnostic => diagnostic.Severity == DiagnosticSeverity.Error
+        );
         var generated = string.Join("\n", result.Run.Results.Single().GeneratedSources
             .Select(item => item.SourceText.ToString()));
         Assert.Contains("[tree] ON [nodes].[parent_id] = [tree].[id]", generated);
@@ -119,13 +131,17 @@ public sealed class ModernTableContractTests
 
         var result = GeneratorTestHost.Run(source);
         Assert.Empty(result.Run.Diagnostics);
-        Assert.DoesNotContain(result.CompilationDiagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.DoesNotContain(
+            result.CompilationDiagnostics,
+            diagnostic => diagnostic.Severity == DiagnosticSeverity.Error
+        );
     }
 
     [Fact]
     public void AmbiguousStaticImportsDoNotGuessRelationshipTarget()
     {
-        // Deliberately invalid compiler input: two imported tables expose the same generated constant.
+        // Deliberately invalid compiler input: two imported tables expose the same
+        // generated constant.
         const string source = """
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
@@ -193,7 +209,8 @@ public sealed class ModernTableContractTests
     [Fact]
     public void ExplicitColumnConstantStillResolvesItsDeclaringTable()
     {
-        // Deliberately invalid compiler input: the handwritten constant clashes with generated output.
+        // Deliberately invalid compiler input: the handwritten constant clashes with
+        // generated output.
         const string source = """
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
@@ -218,7 +235,8 @@ public sealed class ModernTableContractTests
     [Fact]
     public void ImportedExplicitColumnConstantResolvesItsDeclaringTable()
     {
-        // Deliberately invalid compiler input: the handwritten constant clashes with generated output.
+        // Deliberately invalid compiler input: the handwritten constant clashes with
+        // generated output.
         const string source = """
             using Brigade.Net.Mise;
             using Brigade.Net.Mise.SqlServer;
@@ -258,7 +276,10 @@ public sealed class ModernTableContractTests
 
         var result = GeneratorTestHost.Run(source);
         Assert.Empty(result.Run.Diagnostics);
-        Assert.DoesNotContain(result.CompilationDiagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.DoesNotContain(
+            result.CompilationDiagnostics,
+            diagnostic => diagnostic.Severity == DiagnosticSeverity.Error
+        );
     }
 
     [Fact]
@@ -277,8 +298,14 @@ public sealed class ModernTableContractTests
 
         var result = GeneratorTestHost.Run(source);
         Assert.Empty(result.Run.Diagnostics);
-        Assert.DoesNotContain(result.CompilationDiagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
-        Assert.Contains("Row<T>", result.Run.Results.Single().GeneratedSources.Single().SourceText.ToString());
+        Assert.DoesNotContain(
+            result.CompilationDiagnostics,
+            diagnostic => diagnostic.Severity == DiagnosticSeverity.Error
+        );
+        Assert.Contains(
+            "Row<T>",
+            result.Run.Results.Single().GeneratedSources.Single().SourceText.ToString()
+        );
     }
 
     [Fact]
@@ -306,13 +333,18 @@ public sealed class ModernTableContractTests
     [InlineData("[PrimaryKey(\"wrong\")]")]
     public void IncompleteKeyMetadataDoesNotCrashGenerator(string keyAttribute)
     {
-        // Deliberately invalid compiler input: an attribute argument is missing or has the wrong type.
+        // Deliberately invalid compiler input: an attribute argument is missing or has
+        // the wrong type.
         var source = "using Brigade.Net.Mise; using Brigade.Net.Mise.SqlServer; "
             + "[SqlServerTable(\"items\")] static partial class Item { "
             + $"[Column(\"id\"), {keyAttribute}] private static int Id {{ get; }} }}";
 
         var result = GeneratorTestHost.Run(source);
-        Assert.NotEmpty(result.CompilationDiagnostics.Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error));
+        Assert.NotEmpty(
+            result.CompilationDiagnostics.Where(diagnostic =>
+                diagnostic.Severity == DiagnosticSeverity.Error
+            )
+        );
     }
 
     [Fact]
@@ -378,7 +410,10 @@ public sealed class ModernTableContractTests
 
         var result = GeneratorTestHost.Run(source);
         Assert.Empty(result.Run.Diagnostics);
-        Assert.DoesNotContain(result.CompilationDiagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.DoesNotContain(
+            result.CompilationDiagnostics,
+            diagnostic => diagnostic.Severity == DiagnosticSeverity.Error
+        );
     }
 
     [Fact]

@@ -19,7 +19,10 @@ public sealed class MisePurchaseQueryTests(AppHostFixture host)
         using var document = JsonDocument.Parse(body);
         var rows = document.RootElement;
         Assert.Equal(JsonValueKind.Array, rows.ValueKind);
-        Assert.Equal([11, 13, 14], rows.EnumerateArray().Select(row => row.GetProperty("id").GetInt32()).ToArray());
+        Assert.Equal(
+            [11, 13, 14],
+            rows.EnumerateArray().Select(row => row.GetProperty("id").GetInt32()).ToArray()
+        );
         Assert.Equal("O'Reilly's deal", rows[2].GetProperty("label").GetString());
     }
 
@@ -36,7 +39,10 @@ public sealed class MisePurchaseQueryTests(AppHostFixture host)
         Assert.True(response.IsSuccessStatusCode, $"{engine}: {(int)response.StatusCode}: {body}");
         using var document = JsonDocument.Parse(body);
         var rows = document.RootElement;
-        Assert.Equal([1, 2, 3, 4, 5], rows.EnumerateArray().Select(row => row.GetProperty("id").GetInt32()).ToArray());
+        Assert.Equal(
+            [1, 2, 3, 4, 5],
+            rows.EnumerateArray().Select(row => row.GetProperty("id").GetInt32()).ToArray()
+        );
         Assert.Equal("O'Reilly", rows[0].GetProperty("name").GetString());
         Assert.Equal(JsonValueKind.Null, rows[0].GetProperty("note").ValueKind);
         Assert.Equal("idle", rows[4].GetProperty("group").GetString());
@@ -46,7 +52,9 @@ public sealed class MisePurchaseQueryTests(AppHostFixture host)
     [Fact]
     public async Task AccountUpdateCommitsOnlyToItsSelectedDatabase()
     {
-        await using var snapshot = await SqliteDatabaseSnapshot.CaptureAsync(host.SqliteConnectionString);
+        await using var snapshot = await SqliteDatabaseSnapshot.CaptureAsync(
+            host.SqliteConnectionString
+        );
         var note = "changed-'" + Guid.NewGuid().ToString("N");
         await UpdateSqliteAsync(note);
         foreach (var engine in new[] { "sqlserver", "postgresql", "sqlite", "mysql", "mariadb" })
@@ -54,7 +62,9 @@ public sealed class MisePurchaseQueryTests(AppHostFixture host)
             using var response = await host.WebClient.GetAsync($"/api/v1/mise/{engine}/accounts");
             response.EnsureSuccessStatusCode();
             using var rows = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-            var account = rows.RootElement.EnumerateArray().Single(row => row.GetProperty("id").GetInt32() == 5);
+            var account = rows.RootElement
+                .EnumerateArray()
+                .Single(row => row.GetProperty("id").GetInt32() == 5);
             Assert.Equal(engine == "sqlite" ? note : null, account.GetProperty("note").GetString());
         }
     }
@@ -69,7 +79,10 @@ public sealed class MisePurchaseQueryTests(AppHostFixture host)
 
         using var response = await host.WebClient.PostAsync(url, content: null);
         var body = await response.Content.ReadAsStringAsync();
-        Assert.True(response.IsSuccessStatusCode, $"SQLite update: {(int)response.StatusCode}: {body}");
+        Assert.True(
+            response.IsSuccessStatusCode,
+            $"SQLite update: {(int)response.StatusCode}: {body}"
+        );
         using var result = JsonDocument.Parse(body);
         Assert.Equal(1, result.RootElement.GetInt32());
     }

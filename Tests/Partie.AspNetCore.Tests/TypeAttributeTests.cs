@@ -19,6 +19,7 @@ public class TypeAttributeTests
     {
         var group = new BrigadeGroupAttribute("/items");
         var route = new TestHandlerRouteAttribute("{itemId}");
+
         Assert.Equal("/items", group.Prefix);
         Assert.Equal("{itemId}", route.Path);
         Assert.Equal("POST", route.Method);

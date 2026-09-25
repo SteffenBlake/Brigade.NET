@@ -12,13 +12,27 @@ namespace Brigade.Net.Partie.Generator;
 
 public static class BrigadeGeneratorCore
 {
-    private static readonly DiagnosticDescriptor InvalidRoute = new("BRG005", "Invalid Brigade route", "{0}", "Brigade.Routing", DiagnosticSeverity.Error, true);
+    private static readonly DiagnosticDescriptor InvalidRoute = new(
+        "BRG005",
+        "Invalid Brigade route",
+        "{0}",
+        "Brigade.Routing",
+        DiagnosticSeverity.Error,
+        true
+    );
     public static void Initialize(
         IncrementalGeneratorInitializationContext context,
         Func<RouteEmission, string>? emitRoute = null,
         Func<string, string>? emitAdapter = null,
         Func<AttributeData, RouteDeclaration?>? discoverRoute = null,
-        Func<IMethodSymbol, string, RequestEmission, Compilation, Action<ISymbol, string>, ImmutableArray<RoutePolicyEmission>>? discoverPolicies = null,
+        Func<
+            IMethodSymbol,
+            string,
+            RequestEmission,
+            Compilation,
+            Action<ISymbol, string>,
+            ImmutableArray<RoutePolicyEmission>
+        >? discoverPolicies = null,
         Func<IMethodSymbol, bool>? discoverPolicyFunctions = null,
         Func<RouteEmission, GeneratedDeclaration>? emitTypes = null,
         Func<RouteGroupEmission, string>? emitGroup = null,
@@ -29,15 +43,30 @@ public static class BrigadeGeneratorCore
         if (declarations is { } generatedDeclarations)
         {
             var declarationsByName = generatedDeclarations.Collect().SelectMany((items, _) =>
-                items.Distinct().GroupBy(item => item.HintName).Select(group =>
-                    (Declaration: new GeneratedDeclaration(group.Key, group.Skip(1).Any() ? "" : group.First().Source),
-                        Collision: group.Skip(1).Any())).ToImmutableArray());
+                items.Distinct()
+                    .GroupBy(item => item.HintName)
+                    .Select(group => (
+                        Declaration: new GeneratedDeclaration(
+                            group.Key,
+                            group.Skip(1).Any() ? "" : group.First().Source
+                        ),
+                        Collision: group.Skip(1).Any()
+                    ))
+                    .ToImmutableArray()
+            );
             context.RegisterSourceOutput(declarationsByName, (output, items) =>
             {
                 if (items.Collision)
                 {
-                    output.ReportDiagnostic(Diagnostic.Create(InvalidRoute, Location.None,
-                        "Generated attribute name collision: '" + items.Declaration.HintName + "'. Use distinct type names or namespaces."));
+                    output.ReportDiagnostic(
+                        Diagnostic.Create(
+                            InvalidRoute,
+                            Location.None,
+                            "Generated attribute name collision: '"
+                                + items.Declaration.HintName
+                                + "'. Use distinct type names or namespaces."
+                        )
+                    );
                 }
             });
             generatedDeclarations = declarationsByName.Where(items => !items.Collision)
@@ -74,7 +103,10 @@ public static class BrigadeGeneratorCore
             var symbol = (INamedTypeSymbol)pair.Right.GetSemanticModel(pair.Left.SyntaxTree)
                 .GetDeclaredSymbol(pair.Left, cancellationToken)!;
             return BuildGroup(symbol, pair.Left, pair.Right, cancellationToken, emitRoute, discoverRoute,
-                discoverPolicies, discoverPolicyFunctions, emitTypes);
+                discoverPolicies,
+                discoverPolicyFunctions,
+                emitTypes
+            );
         });
         groups = groups.WithTrackingName("BrigadeGroups");
         context.RegisterSourceOutput(
@@ -150,7 +182,14 @@ public static class BrigadeGeneratorCore
         CancellationToken cancellationToken,
         Func<RouteEmission, string>? emitRoute,
         Func<AttributeData, RouteDeclaration?>? discoverRoute,
-        Func<IMethodSymbol, string, RequestEmission, Compilation, Action<ISymbol, string>, ImmutableArray<RoutePolicyEmission>>? discoverPolicies,
+        Func<
+            IMethodSymbol,
+            string,
+            RequestEmission,
+            Compilation,
+            Action<ISymbol, string>,
+            ImmutableArray<RoutePolicyEmission>
+        >? discoverPolicies,
         Func<IMethodSymbol, bool>? discoverPolicyFunctions,
         Func<RouteEmission, GeneratedDeclaration>? emitTypes
     )
@@ -215,9 +254,22 @@ public static class BrigadeGeneratorCore
 
             var syntax = route.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(cancellationToken) as MethodDeclarationSyntax;
             var hasPolicyFunction = emitRoute is not null && discoverPolicyFunctions?.Invoke(route) == true;
-            var isValidPolicyFunction = hasPolicyFunction && syntax is not null && (syntax.Body is not null || syntax.ExpressionBody is not null) && route.PartialImplementationPart is null;
-            var isValidBasicRoute = route.Parameters.Length == 0 && syntax is not null && syntax.Modifiers.Any(SyntaxKind.PartialKeyword) && syntax.Body is null && syntax.ExpressionBody is null && route.PartialImplementationPart is null;
-            if (!route.IsStatic || route.IsAsync || route.Arity != 0 || !route.ReturnsVoid || syntax is null || (!isValidBasicRoute && !isValidPolicyFunction))
+            var isValidPolicyFunction = hasPolicyFunction
+                && syntax is not null
+                && (syntax.Body is not null || syntax.ExpressionBody is not null)
+                && route.PartialImplementationPart is null;
+            var isValidBasicRoute = route.Parameters.Length == 0
+                && syntax is not null
+                && syntax.Modifiers.Any(SyntaxKind.PartialKeyword)
+                && syntax.Body is null
+                && syntax.ExpressionBody is null
+                && route.PartialImplementationPart is null;
+            if (!route.IsStatic
+                || route.IsAsync
+                || route.Arity != 0
+                || !route.ReturnsVoid
+                || syntax is null
+                || (!isValidBasicRoute && !isValidPolicyFunction))
             {
                 Report(
                     route,
@@ -234,9 +286,17 @@ public static class BrigadeGeneratorCore
             }
             else if (syntax.Modifiers.Any(SyntaxKind.PartialKeyword) && route.PartialDefinitionPart is null)
             {
-                var parameter = syntax.ParameterList.Parameters[0].WithAttributeLists(default).WithType(SyntaxFactory.ParseTypeName(TypeName(route.Parameters[0].Type)));
+                var parameter = syntax.ParameterList.Parameters[0]
+                    .WithAttributeLists(default)
+                    .WithType(SyntaxFactory.ParseTypeName(TypeName(route.Parameters[0].Type)));
                 stubs.Add(
-                    syntax.WithAttributeLists(default).WithBody(null).WithExpressionBody(null).WithParameterList(SyntaxFactory.ParameterList(SyntaxFactory.SingletonSeparatedList(parameter))).WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken))
+                    syntax.WithAttributeLists(default)
+                        .WithBody(null)
+                        .WithExpressionBody(null)
+                        .WithParameterList(
+                            SyntaxFactory.ParameterList(SyntaxFactory.SingletonSeparatedList(parameter))
+                        )
+                        .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken))
                 );
             }
 
@@ -247,8 +307,12 @@ public static class BrigadeGeneratorCore
             }
 
             var handler = routes[0]!.Handler;
-            var orderedRegistrations = groupRegistrations.Concat(attributes.Where(attribute =>
-                IsRegistration(attribute, false) || IsRegistration(attribute, true))).Select(Registration).ToArray();
+            var orderedRegistrations = groupRegistrations
+                .Concat(attributes.Where(attribute =>
+                    IsRegistration(attribute, false) || IsRegistration(attribute, true)
+                ))
+                .Select(Registration)
+                .ToArray();
             if (handler is null || orderedRegistrations.Any(registration => registration is null))
             {
                 Report(route, "Route types must resolve to named Handler, Partie and Provider types");
@@ -304,7 +368,11 @@ public static class BrigadeGeneratorCore
             }
 
             var payloads = graph.Request.Properties.Where(property => property.Source is "Body" or "Form").ToArray();
-            if (payloads.Count(property => property.Source == "Body") > 1 || (payloads.Any(property => property.Source == "Body") && payloads.Any(property => property.Source == "Form")) || (payloads.Length != 0 && operation.Equals("GET", StringComparison.OrdinalIgnoreCase)))
+            if (payloads.Count(property => property.Source == "Body") > 1
+                || (payloads.Any(property => property.Source == "Body")
+                    && payloads.Any(property => property.Source == "Form"))
+                || (payloads.Length != 0
+                    && operation.Equals("GET", StringComparison.OrdinalIgnoreCase)))
             {
                 Report(
                     route,
@@ -320,12 +388,20 @@ public static class BrigadeGeneratorCore
             var inputName = "Inputs_" + suffix;
             var executeName = "Execute_" + suffix;
             var descriptorName = "Route_" + suffix;
-            var inputParameters = graph.Inputs.Select(input => input.TypeName + " " + input.MemberName).ToArray();
+            var inputParameters = graph.Inputs
+                .Select(input => input.TypeName + " " + input.MemberName)
+                .ToArray();
             var inputSource = new StringBuilder("// <auto-generated />\n#nullable enable\nnamespace Brigade.Net.Partie.Generated;\n");
             inputSource.Append("internal sealed class ").Append(inputName).Append('(').Append(string.Join(", ", inputParameters)).Append(") {\n");
             foreach (var input in graph.Inputs)
             {
-                inputSource.Append("public ").Append(input.TypeName).Append(' ').Append(input.MemberName).Append(" { get; } = ").Append(input.MemberName).Append(";\n");
+                inputSource.Append("public ")
+                    .Append(input.TypeName)
+                    .Append(' ')
+                    .Append(input.MemberName)
+                    .Append(" { get; } = ")
+                    .Append(input.MemberName)
+                    .Append(";\n");
             }
 
             inputSource.Append("}\n");
@@ -376,7 +452,10 @@ public static class BrigadeGeneratorCore
             }
         }
 
-        var stubClass = declaration.WithAttributeLists(default).WithBaseList(null).WithParameterList(null).WithMembers(SyntaxFactory.List(stubs));
+        var stubClass = declaration.WithAttributeLists(default)
+            .WithBaseList(null)
+            .WithParameterList(null)
+            .WithMembers(SyntaxFactory.List(stubs));
         foreach (var parent in declaration.Ancestors().OfType<ClassDeclarationSyntax>())
         {
             var childName = stubClass.Identifier.Text;
@@ -395,7 +474,13 @@ public static class BrigadeGeneratorCore
         }
 
         return Finish("// <auto-generated />\n#nullable enable\n" + stubSource);
-        void Report(ISymbol symbol, string message) => diagnostics.Add(Diagnostic.Create(InvalidRoute, symbol.Locations.FirstOrDefault(), message));
+        void Report(ISymbol symbol, string message)
+        {
+            diagnostics.Add(
+                Diagnostic.Create(InvalidRoute, symbol.Locations.FirstOrDefault(), message)
+            );
+        }
+
         GroupOutput Finish(string stubSource) => new(
             stubSource,
             new GroupSource(key, registrations.ToString(), members.ToString(), adapter.ToString(), hierarchy, declarations.ToImmutable()),
@@ -403,11 +488,22 @@ public static class BrigadeGeneratorCore
         );
     }
 
-    private static bool IsAttribute(AttributeData attribute, string name) => attribute.AttributeClass?.ContainingNamespace.ToDisplayString() == "Brigade.Net.Partie" && attribute.AttributeClass.Name == name;
-    private static string GroupKey(INamedTypeSymbol group) => "Group_" + string.Concat(
-        group.ToDisplayString().Select(character => character is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or >= '0' and <= '9'
-            ? character.ToString() : "_" + ((int)character).ToString("x4"))
-    );
+    private static bool IsAttribute(AttributeData attribute, string name)
+    {
+        return attribute.AttributeClass?.ContainingNamespace.ToDisplayString() == "Brigade.Net.Partie"
+            && attribute.AttributeClass.Name == name;
+    }
+
+    private static string GroupKey(INamedTypeSymbol group)
+    {
+        return "Group_" + string.Concat(
+            group.ToDisplayString().Select(character =>
+                character is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or >= '0' and <= '9'
+                    ? character.ToString()
+                    : "_" + ((int)character).ToString("x4")
+            )
+        );
+    }
     private static AttributeData? RegistrationMetadata(AttributeData attribute) =>
         attribute.AttributeClass?.GetAttributes().FirstOrDefault(marker => IsAttribute(marker, "RegistrationAttribute"));
 
@@ -420,9 +516,14 @@ public static class BrigadeGeneratorCore
         var type = (RegistrationMetadata(attribute) ?? attribute).ConstructorArguments.FirstOrDefault().Value as INamedTypeSymbol;
         return type is null ? null : new RegistrationModel(type, attribute, IsRegistration(attribute, true));
     }
-    private static string TypeName(ITypeSymbol type) => type.ToDisplayString(
-        SymbolDisplayFormat.FullyQualifiedFormat.AddMiscellaneousOptions(SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier)
-    );
+    private static string TypeName(ITypeSymbol type)
+    {
+        return type.ToDisplayString(
+            SymbolDisplayFormat.FullyQualifiedFormat.AddMiscellaneousOptions(
+                SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier
+            )
+        );
+    }
     private static string Literal(string value) => SymbolDisplay.FormatLiteral(value, true);
     private static string Format(string source) => CSharpSyntaxTree.ParseText(source).GetRoot()
         .NormalizeWhitespace(indentation: "    ", eol: "\n").ToFullString() + "\n";

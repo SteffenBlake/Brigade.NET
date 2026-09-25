@@ -43,9 +43,20 @@ public sealed class StepConstraintTests
     {
         // A skipped step must not resolve its dependencies, inject services, or require parameters.
         var context = matches ? "Unit" : "PoisonContext";
-        var source = Source(command, provider, Step(command, provider, constraint, context), request, result);
+        var source = Source(
+            command,
+            provider,
+            Step(command, provider, constraint, context),
+            request,
+            result
+        );
         var generated = EngineCompilation.Valid(source);
-        Assert.Equal(matches, generated.Contains("RouteDispatch." + Operation(command) + Role(provider) + "<global::Step<"));
+        Assert.Equal(
+            matches,
+            generated.Contains(
+                "RouteDispatch." + Operation(command) + Role(provider) + "<global::Step<"
+            )
+        );
         Assert.DoesNotContain("new global::PoisonContext", generated);
         Assert.DoesNotContain("PartieInputSource.Service", generated);
     }
@@ -68,7 +79,8 @@ public sealed class StepConstraintTests
     public void SkippedProvidersDoNotCountTowardsAmbiguity(bool command)
     {
         var steps = Step(command, true)
-            + Step(command, true, "where TResult : class", "PoisonContext").Replace("class Step<", "class Other<");
+            + Step(command, true, "where TResult : class", "PoisonContext")
+                .Replace("class Step<", "class Other<");
         var source = Source(command, true, steps)
             .Replace("IEnumerable<string> Values", "string Value")
             .Replace("[Step]", "[Step, Other]");
@@ -83,7 +95,8 @@ public sealed class StepConstraintTests
     public void LatestEligibleProviderWins(bool command)
     {
         var steps = Step(command, true)
-            + Step(command, true, "where TRequest : BaseRequest").Replace("class Step<", "class Other<");
+            + Step(command, true, "where TRequest : BaseRequest")
+                .Replace("class Step<", "class Other<");
         var source = Source(command, true, steps)
             .Replace("IEnumerable<string> Values", "string Value")
             .Replace("[Step]", "[Step, Other]");
@@ -139,7 +152,10 @@ public sealed class StepConstraintTests
     public void UndemandedMatchingProviderDoesNotResolveItsContext()
     {
         var source = Source(false, true, Step(false, true, context: "PoisonContext"))
-            .Replace("public record HandlerContext([Provide] IEnumerable<string> Values);", "public record HandlerContext;");
+            .Replace(
+                "public record HandlerContext([Provide] IEnumerable<string> Values);",
+                "public record HandlerContext;"
+            );
         var generated = EngineCompilation.Valid(source);
         Assert.DoesNotContain("<global::Step<", generated);
     }
@@ -148,20 +164,28 @@ public sealed class StepConstraintTests
     public void BindsOutputRequestAndResultTogether()
     {
         var step = """
-            public class Step<TValue, TRequest, TResult> : IQueryProvider<TValue[], Unit, TRequest, TResult>
+            public class Step<TValue, TRequest, TResult> :
+                IQueryProvider<TValue[], Unit, TRequest, TResult>
                 where TRequest : BaseRequest
                 where TResult : IEnumerable<TValue>
             {
                 public static ValueTask<Result<TResult>> OnQueryAsync(
-                    Unit ctx, TRequest query, Next<TValue[], TResult> next, CancellationToken ct)
+                        Unit ctx,
+                        TRequest query,
+                        Next<TValue[], TResult> next,
+                        CancellationToken ct
+                    )
                     => next([]);
             }
             """;
         var source = Source(false, true, step, result: "int[]")
             .Replace("IEnumerable<string> Values", "int[] Values");
         Assert.Contains("Step<int, global::Request, int[]>", EngineCompilation.Valid(source));
-        EngineCompilation.Invalid(source.Replace("IQueryHandler<Request, int[]", "IQueryHandler<Request, string[]")
-            .Replace("Result<int[]>", "Result<string[]>"), "BRG001");
+        EngineCompilation.Invalid(
+            source.Replace("IQueryHandler<Request, int[]", "IQueryHandler<Request, string[]")
+                .Replace("Result<int[]>", "Result<string[]>"),
+            "BRG001"
+        );
     }
 
     [Theory]
@@ -179,8 +203,11 @@ public sealed class StepConstraintTests
     public void MatchingPartiesKeepTheirDeclaredOrder()
     {
         var steps = Step(false, false) + Step(false, false).Replace("class Step<", "class Last<")
-            + Step(false, false, "where TResult : class", "PoisonContext").Replace("class Step<", "class Skipped<");
-        var generated = EngineCompilation.Valid(Source(false, false, steps).Replace("[Step]", "[Step, Skipped, Last]"));
+            + Step(false, false, "where TResult : class", "PoisonContext")
+                .Replace("class Step<", "class Skipped<");
+        var generated = EngineCompilation.Valid(
+            Source(false, false, steps).Replace("[Step]", "[Step, Skipped, Last]")
+        );
         Assert.True(generated.IndexOf("Partie<global::Step<", StringComparison.Ordinal)
             < generated.IndexOf("Partie<global::Last<", StringComparison.Ordinal));
         Assert.DoesNotContain("Partie<global::Skipped<", generated);
@@ -223,7 +250,10 @@ public sealed class StepConstraintTests
             public sealed class Step<TRequest, TResult> : BaseStep<TRequest, TResult>
                 where TRequest : BaseRequest { }
             """;
-        Assert.Contains("Provider<global::Step<", EngineCompilation.Valid(Source(command, true, step)));
+        Assert.Contains(
+            "Provider<global::Step<",
+            EngineCompilation.Valid(Source(command, true, step))
+        );
     }
 
     [Fact]
@@ -236,12 +266,19 @@ public sealed class StepConstraintTests
                     where TResult : struct
                 {
                     public static ValueTask<Result<TResult>> OnQueryAsync(
-                        Unit ctx, TRequest request, Next<string, TResult> next, CancellationToken ct)
+                        Unit ctx,
+                        TRequest request,
+                        Next<string, TResult> next,
+                        CancellationToken ct
+                    )
                         => next("value");
                 }
             }
             """;
-        Assert.Contains("Outer<global::Request>.Step<int>", EngineCompilation.Valid(Source(false, true, step)));
+        Assert.Contains(
+            "Outer<global::Request>.Step<int>",
+            EngineCompilation.Valid(Source(false, true, step))
+        );
     }
 
     [Theory]
@@ -265,11 +302,16 @@ public sealed class StepConstraintTests
         string constraint = "",
         string context = "Unit"
     ) => $$"""
-        public class Step<TRequest, TResult> : I{{Operation(command)}}{{Role(provider)}}<string, {{context}}, TRequest, TResult>
+        public class Step<TRequest, TResult> :
+            I{{Operation(command)}}{{Role(provider)}}<string, {{context}}, TRequest, TResult>
             {{constraint}}
         {
             public static ValueTask<Result<TResult>> On{{Operation(command)}}Async(
-                {{context}} ctx, TRequest request, Next<string, TResult> next, CancellationToken ct)
+                {{context}} ctx,
+                TRequest request,
+                Next<string, TResult> next,
+                CancellationToken ct
+            )
                 => next("value");
         }
 
@@ -286,13 +328,21 @@ public sealed class StepConstraintTests
         public class BaseRequest { }
         public sealed class Request : BaseRequest, ITagged { }
         public sealed class OtherRequest { }
-        public record PoisonContext([Inject] Uri Service, [Provide] DateTime Missing, [Parameter] string Required = "unused");
+        public record PoisonContext(
+            [Inject] Uri Service,
+            [Provide] DateTime Missing,
+            [Parameter] string Required = "unused"
+        );
         {{steps}}
         public record HandlerContext([Provide] IEnumerable<string> Values);
-        public class Handler : I{{Operation(command)}}Handler<{{request}}, {{result}}, HandlerContext>
+        public class Handler :
+            I{{Operation(command)}}Handler<{{request}}, {{result}}, HandlerContext>
         {
             public static Task<Result<{{result}}>> RunAsync(
-                {{(command ? "UnitOfWork work," : "")}} HandlerContext ctx, {{request}} request, CancellationToken ct)
+                {{(command ? "UnitOfWork work," : "")}} HandlerContext ctx,
+                {{request}} request,
+                CancellationToken ct
+            )
                 => Task.FromResult<Result<{{result}}>>(default({{result}})!);
         }
         [BrigadeGroup]

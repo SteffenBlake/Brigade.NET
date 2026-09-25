@@ -19,7 +19,10 @@ public sealed class ContractTests
 
         AssertUsage<TableAttributeBase>(AttributeTargets.Class | AttributeTargets.Struct);
         AssertUsage<ColumnAttribute>(AttributeTargets.Property, inherited: true);
-        AssertUsage<AliasAttribute>(AttributeTargets.Class | AttributeTargets.Struct, allowMultiple: true);
+        AssertUsage<AliasAttribute>(
+            AttributeTargets.Class | AttributeTargets.Struct,
+            allowMultiple: true
+        );
         AssertUsage<RelationshipAttribute>(AttributeTargets.Property);
     }
 
@@ -86,7 +89,10 @@ public sealed class ContractTests
     [Fact]
     public void InvalidGeneratedMappingFaultNamesResultType()
     {
-        var exception = new InvalidMappingException(typeof(ContractTests), "column was not projected");
+        var exception = new InvalidMappingException(
+            typeof(ContractTests),
+            "column was not projected"
+        );
 
         Assert.Equal(typeof(ContractTests), exception.ResultType);
         Assert.Contains(typeof(ContractTests).FullName!, exception.Message);
@@ -124,14 +130,21 @@ public sealed class ContractTests
 
         Assert.DoesNotContain(methods, method => method.Name is "First" or "Single"
             || method.Name.Contains("OrDefault", StringComparison.Ordinal));
-        foreach (var method in methods.Where(method => method.Name.EndsWith("Async", StringComparison.Ordinal)
-            && method.Name != nameof(IAsyncDisposable.DisposeAsync)
-            && method.Name != nameof(DbWriter.BeginTransactionAsync)))
+        foreach (
+            var method in methods.Where(method =>
+                method.Name.EndsWith("Async", StringComparison.Ordinal)
+                && method.Name != nameof(IAsyncDisposable.DisposeAsync)
+                && method.Name != nameof(DbWriter.BeginTransactionAsync)
+            )
+        )
         {
             Assert.True(method.ReturnType.IsGenericType);
             if (method.Name == nameof(DbReader.StreamAsync))
             {
-                Assert.Equal(typeof(IAsyncEnumerable<>), method.ReturnType.GetGenericTypeDefinition());
+                Assert.Equal(
+                    typeof(IAsyncEnumerable<>),
+                    method.ReturnType.GetGenericTypeDefinition()
+                );
                 continue;
             }
             Assert.Equal(typeof(Task<>), method.ReturnType.GetGenericTypeDefinition());
@@ -150,18 +163,38 @@ public sealed class ContractTests
         Assert.DoesNotContain(typeof(ICommandBuilder), typeof(QueryBuilder).GetInterfaces());
         Assert.DoesNotContain(typeof(IQueryBuilder), typeof(CommandBuilder).GetInterfaces());
 
-        Assert.All(typeof(DbWriter).GetMethods(BindingFlags.Public | BindingFlags.Instance)
-            .Where(method => method.DeclaringType == typeof(DbWriter)
-                && method.Name is nameof(DbWriter.ExecuteAsync)
-                    or nameof(DbWriter.ExecuteScalarAsync)
-                    or nameof(DbWriter.ReturningListAsync)
-                    or nameof(DbWriter.ReturningFirstOrNotFoundAsync)),
-            method => Assert.Equal(typeof(ICommandBuilder), method.GetParameters()[0].ParameterType));
-        Assert.All(typeof(DbReader).GetMethods(BindingFlags.Public | BindingFlags.Instance)
-            .Where(method => method.Name is nameof(DbReader.ListAsync) or nameof(DbReader.FirstOrNotFoundAsync)
-                or nameof(DbReader.ScalarAsync) or nameof(DbReader.ExistsAsync)
-                or nameof(DbReader.StreamAsync)),
-            method => Assert.Equal(typeof(IQueryBuilder), method.GetParameters()[0].ParameterType));
+        Assert.All(
+            typeof(DbWriter)
+                .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                .Where(method =>
+                    method.DeclaringType == typeof(DbWriter)
+                    && method.Name
+                        is nameof(DbWriter.ExecuteAsync)
+                            or nameof(DbWriter.ExecuteScalarAsync)
+                            or nameof(DbWriter.ReturningListAsync)
+                            or nameof(DbWriter.ReturningFirstOrNotFoundAsync)
+                ),
+            method => Assert.Equal(
+                typeof(ICommandBuilder),
+                method.GetParameters()[0].ParameterType
+            )
+        );
+        Assert.All(
+            typeof(DbReader)
+                .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                .Where(method =>
+                    method.Name
+                        is nameof(DbReader.ListAsync)
+                            or nameof(DbReader.FirstOrNotFoundAsync)
+                            or nameof(DbReader.ScalarAsync)
+                            or nameof(DbReader.ExistsAsync)
+                            or nameof(DbReader.StreamAsync)
+                ),
+            method => Assert.Equal(
+                typeof(IQueryBuilder),
+                method.GetParameters()[0].ParameterType
+            )
+        );
     }
 
     private static void AssertUsage<TAttribute>(
@@ -182,7 +215,10 @@ public sealed class ContractTests
     private static string RepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Brigade.NET.slnx")))
+        while (
+            directory is not null
+            && !File.Exists(Path.Combine(directory.FullName, "Brigade.NET.slnx"))
+        )
         {
             directory = directory.Parent;
         }

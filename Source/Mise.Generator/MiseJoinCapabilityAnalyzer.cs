@@ -46,12 +46,14 @@ public sealed class MiseJoinCapabilityAnalyzer : DiagnosticAnalyzer
         var engine = FindEngine(member.Expression, context.SemanticModel, context.CancellationToken);
         if (engine is "MySQL" or "MariaDB")
         {
-            context.ReportDiagnostic(Diagnostic.Create(
-                MiseDiagnostics.UnsupportedJoin,
-                member.Name.GetLocation(),
-                engine,
-                "FULL JOIN"
-            ));
+            context.ReportDiagnostic(
+                Diagnostic.Create(
+                    MiseDiagnostics.UnsupportedJoin,
+                    member.Name.GetLocation(),
+                    engine,
+                    "FULL JOIN"
+                )
+            );
         }
     }
 

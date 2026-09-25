@@ -15,7 +15,8 @@ public class EngineRouteValidationTests
             [BrigadeGroup("")]
             public static partial class Routes
             {
-                [Route<Handler>("", "GET"), global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie<,>))]
+                [Route<Handler>("", "GET"),
+                    global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie<,>))]
                 static partial void Go();
             }
             """
@@ -28,7 +29,8 @@ public class EngineRouteValidationTests
     [InlineData("[BrigadeGroup(\"\")] partial class Routes<T> { }")]
     [InlineData("[BrigadeGroup(\"\")] file partial class Routes { }")]
     [InlineData("class Outer { [BrigadeGroup(\"\")] partial class Routes { } }")]
-    public void Engine_RejectsInvalidGroups(string source) => EngineCompilation.Invalid(source, "BRG005");
+    public void Engine_RejectsInvalidGroups(string source) =>
+        EngineCompilation.Invalid(source, "BRG005");
     [Theory]
     [InlineData("partial void Go();")]
     [InlineData("static partial void Go<T>();")]
@@ -41,7 +43,8 @@ public class EngineRouteValidationTests
     [InlineData("static async void Go(RouteHandlerBuilder route) { await Task.Yield(); }")]
     [InlineData("static void Go(ref RouteHandlerBuilder route) { }")]
     [InlineData("static partial void Go(RouteHandlerBuilder route);")]
-    public void Engine_RejectsInvalidRouteMethods(string method) => EngineCompilation.Invalid(Route(method), "BRG005");
+    public void Engine_RejectsInvalidRouteMethods(string method) =>
+        EngineCompilation.Invalid(Route(method), "BRG005");
     [Theory]
     [InlineData("[Route(\"\", \"GET\")]")]
     [InlineData("[HandlerRoute.Get, HandlerRoute.Get]")]
@@ -49,10 +52,16 @@ public class EngineRouteValidationTests
     [InlineData("[HandlerRoute.Get, global::Brigade.Net.Partie.Provider(typeof(int[]))]")]
     [InlineData("[HandlerRoute.Get, global::Brigade.Net.Partie.Provider(null)]")]
     [InlineData("[HandlerRoute.Get, global::Brigade.Net.Partie.Partie(null)]")]
-    public void Engine_RejectsInvalidRegistrations(string attributes) => EngineCompilation.Invalid(Route("static partial void Go();", attributes), "BRG005");
+    public void Engine_RejectsInvalidRegistrations(string attributes) =>
+        EngineCompilation.Invalid(Route("static partial void Go();", attributes), "BRG005");
     [Theory]
     [InlineData("[FromPayload] public string Value { get; set; }", "GET", "BRG005")]
-    [InlineData("[FromPayload] public string First { get; set; } [FromPayload] public int Second { get; set; }", "POST", "BRG005")]
+    [InlineData(
+        "[FromPayload] public string First { get; set; } "
+            + "[FromPayload] public int Second { get; set; }",
+        "POST",
+        "BRG005"
+    )]
     [InlineData("", " ", "BRG005")]
     [InlineData("[FromPath, FromParams] public string Value { get; set; }", "POST", "BRG001")]
     [InlineData("public string Value { get; set; }", "GET", "BRG001")]
@@ -70,12 +79,20 @@ public class EngineRouteValidationTests
             [BrigadeGroup("")]
             public static partial class Routes
             {
-                [Route<Handler>("", "{{operation}}"){{(command ? ", global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie<,>))" : "")}}]
+                [Route<Handler>("", "{{operation}}")
+                    {{(command
+                        ? ", global::Brigade.Net.Partie.Partie(typeof(UnitOfWorkPartie<,>))"
+                        : "")}}]
                 static partial void Go();
             }
-            public sealed class Handler : {{(command ? "ICommandHandler" : "IQueryHandler")}}<Request, int, Unit>
+            public sealed class Handler :
+                {{(command ? "ICommandHandler" : "IQueryHandler")}}<Request, int, Unit>
             {
-                public static Task<Result<int>> RunAsync({{(command ? "UnitOfWork uow, " : "")}}Unit ctx, Request request, CancellationToken ct) => Task.FromResult<Result<int>>(1);
+                public static Task<Result<int>> RunAsync(
+                    {{(command ? "UnitOfWork uow, " : "")}}Unit ctx,
+                    Request request,
+                    CancellationToken ct
+                ) => Task.FromResult<Result<int>>(1);
             }
             """,
             diagnosticId
@@ -88,11 +105,25 @@ public class EngineRouteValidationTests
     [InlineData("public static Result<int> InvokeAsync<T>() => 1;")]
     [InlineData("public static Result<int> InvokeAsync(ref int input) => 1;")]
     [InlineData("private static Result<int> InvokeAsync() => 1;")]
-    public void Engine_RejectsInvalidHandlers(string handlerMethod) => EngineCompilation.Invalid(Route("static partial void Go();", handlerMethod: handlerMethod), "BRG001");
+    public void Engine_RejectsInvalidHandlers(string handlerMethod) =>
+        EngineCompilation.Invalid(
+            Route("static partial void Go();", handlerMethod: handlerMethod),
+            "BRG001"
+        );
     [Theory]
-    [InlineData("Handler<>", "public static class Handler<T> { public static Result<int> InvokeAsync() => 1; }")]
-    [InlineData("Handler", "public static class Handler { public static Result<int> InvokeAsync() => 1; public static Result<int> InvokeAsync(int value) => value; }")]
-    public void Engine_RejectsOpenOrOverloadedHandlers(string handlerType, string declaration) => EngineCompilation.Invalid(
+    [InlineData(
+        "Handler<>",
+        "public static class Handler<T> { public static Result<int> InvokeAsync() => 1; }"
+    )]
+    [InlineData(
+        "Handler",
+        "public static class Handler { public static Result<int> InvokeAsync() => 1; "
+            + "public static Result<int> InvokeAsync(int value) => value; }"
+    )]
+    public void Engine_RejectsOpenOrOverloadedHandlers(
+        string handlerType,
+        string declaration
+    ) => EngineCompilation.Invalid(
         $$"""
         [BrigadeGroup("")]
         public static partial class Routes
@@ -115,9 +146,13 @@ public class EngineRouteValidationTests
             {{attributes}}
             {{method}}
         }
-        public sealed class Handler {{(handlerMethod is null ? ": IQueryHandler<Unit, int, Unit>" : "")}}
+        public sealed class Handler
+            {{(handlerMethod is null ? ": IQueryHandler<Unit, int, Unit>" : "")}}
         {
-            {{handlerMethod ?? "public static Task<Result<int>> RunAsync(Unit ctx, Unit query, CancellationToken ct) => Task.FromResult<Result<int>>(1);"}}
+            {{handlerMethod ?? (
+                "public static Task<Result<int>> RunAsync(Unit ctx, Unit query, "
+                + "CancellationToken ct) "
+                + "=> Task.FromResult<Result<int>>(1);")}}
         }
         """;
 }
