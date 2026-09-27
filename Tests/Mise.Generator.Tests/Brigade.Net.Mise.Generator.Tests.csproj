@@ -15,6 +15,11 @@
   <ItemGroup>
     <Using Include="Xunit" />
     <ProjectReference Include="../../Source/Mise.Generator/Brigade.Net.Mise.Generator.csproj" />
+    <ProjectReference Include="../../Source/Mise.Engines.SqlServer/Brigade.Net.Mise.Engines.SqlServer.csproj" />
+    <ProjectReference Include="../../Source/Mise.Engines.PostgreSQL/Brigade.Net.Mise.Engines.PostgreSQL.csproj" />
+    <ProjectReference Include="../../Source/Mise.Engines.SQLite/Brigade.Net.Mise.Engines.SQLite.csproj" />
+    <ProjectReference Include="../../Source/Mise.Engines.MySQL/Brigade.Net.Mise.Engines.MySQL.csproj" />
+    <ProjectReference Include="../../Source/Mise.Engines.MariaDb/Brigade.Net.Mise.Engines.MariaDb.csproj" />
     <ProjectReference Include="../../Source/Mise/Brigade.Net.Mise.csproj" />
     <ProjectReference Include="../../Source/Mise.PostgreSQL/Brigade.Net.Mise.PostgreSQL.csproj" />
     <ProjectReference Include="../../Source/Mise.SQLite/Brigade.Net.Mise.SQLite.csproj" />

@@ -12,6 +12,10 @@ internal sealed class TrackingTxn : ITxn
 
     public Exception? CommitException { get; set; }
 
+    public Exception? RollbackException { get; set; }
+
+    public Exception? DisposeException { get; set; }
+
     public Task CommitAsync(CancellationToken cancellationToken = default)
     {
         CommitToken = cancellationToken;
@@ -21,12 +25,12 @@ internal sealed class TrackingTxn : ITxn
     public Task RollbackAsync(CancellationToken cancellationToken = default)
     {
         RollbackToken = cancellationToken;
-        return Task.CompletedTask;
+        return RollbackException is null ? Task.CompletedTask : Task.FromException(RollbackException);
     }
 
     public ValueTask DisposeAsync()
     {
         DisposeCount++;
-        return ValueTask.CompletedTask;
+        return DisposeException is null ? ValueTask.CompletedTask : ValueTask.FromException(DisposeException);
     }
 }

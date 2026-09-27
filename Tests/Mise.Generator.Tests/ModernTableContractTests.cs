@@ -5,6 +5,33 @@ namespace Brigade.Net.Mise.Generator.Tests;
 public sealed class ModernTableContractTests
 {
     [Fact]
+    public void RelationshipRejectsInstanceColumnOnInvalidTableTarget()
+    {
+        // Deliberately invalid compiler input: table columns are static. An
+        // instance property with the matching name must not satisfy the join.
+        const string source = """
+            using Brigade.Net.Mise;
+            using Brigade.Net.Mise.SqlServer;
+            [SqlServerTable("targets")]
+            partial class Target
+            {
+                public const string IdCol = "[targets].[id]";
+                [Column("id")] public int Id { get; }
+            }
+            [SqlServerTable("sources")]
+            static partial class Source
+            {
+                [Column("target_id"), Relationship(Target.IdCol)]
+                private static int TargetId { get; }
+            }
+            """;
+
+        var result = GeneratorTestHost.Run(source);
+
+        Assert.Contains(result.Run.Diagnostics, item => item.Id == "MISE009");
+    }
+
+    [Fact]
     public void TableRequiresStaticPartialClass()
     {
         const string source = """

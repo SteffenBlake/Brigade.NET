@@ -5,6 +5,71 @@ namespace Brigade.Net.Core.Tests;
 public class TransactionsTests
 {
     [Fact]
+    public async Task CompletedWorkRejectsNewTransactionsAndCommitButAllowsRepeatedRollback()
+    {
+        var child = new TrackingTxn();
+        var work = new UnitOfWork([child]);
+        await work.CommitAsync();
+
+        Assert.Throws<InvalidOperationException>(() => work.AddTxn());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => work.CommitAsync());
+        await work.RollbackAsync();
+        await work.DisposeAsync();
+
+        Assert.Throws<ObjectDisposedException>(() => work.AddTxn());
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => work.CommitAsync());
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => work.RollbackAsync());
+        Assert.Equal(1, child.DisposeCount);
+    }
+
+    [Fact]
+    public async Task CommitFailurePreservesRollbackFaultForInspection()
+    {
+        var primary = new InvalidOperationException("commit");
+        var rollback = new InvalidOperationException("rollback");
+        var child = new TrackingTxn { CommitException = primary, RollbackException = rollback };
+        var work = new UnitOfWork([child]);
+
+        var actual = await Assert.ThrowsAsync<InvalidOperationException>(() => work.CommitAsync());
+
+        Assert.Same(primary, actual);
+        var cleanup = Assert.IsType<AggregateException>(actual.Data["UnitOfWork.RollbackException"]);
+        Assert.Same(rollback, Assert.Single(cleanup.InnerExceptions));
+        await work.DisposeAsync();
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task DisposalAttemptsEveryChildAndPreservesFaults(int faultCount)
+    {
+        var first = new InvalidOperationException("first");
+        var second = new InvalidOperationException("second");
+        var children = new[]
+        {
+            new TrackingTxn { DisposeException = first },
+            new TrackingTxn(),
+            new TrackingTxn { DisposeException = faultCount == 2 ? second : null }
+        };
+        var work = new UnitOfWork(children);
+        await work.RollbackAsync();
+
+        if (faultCount == 1)
+        {
+            var actual = await Assert.ThrowsAsync<InvalidOperationException>(() => work.DisposeAsync().AsTask());
+            Assert.Same(first, actual);
+        }
+        else
+        {
+            var actual = await Assert.ThrowsAsync<AggregateException>(() => work.DisposeAsync().AsTask());
+            Assert.Equal(new Exception[] { first, second }, actual.InnerExceptions);
+        }
+
+        await work.DisposeAsync();
+        Assert.All(children, child => Assert.Equal(1, child.DisposeCount));
+    }
+
+    [Fact]
     public async Task UnitOfWorkPassesCommitTokenAndDisposesChildOnce()
     {
         using var source = new CancellationTokenSource();

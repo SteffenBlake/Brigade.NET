@@ -5,6 +5,12 @@ namespace Brigade.Net.Partie.Generator.Tests;
 public class RouteMetadataTests
 {
     [Fact]
+    public void Literal_EscapesSourceText()
+    {
+        Assert.Equal("\"line\\nnext\"", SymbolEmission.Literal("line\nnext"));
+    }
+
+    [Fact]
     public void RouteDeclaration_SnapshotsEnumerablePath()
     {
         var path = new List<string> { "show", "details" };

@@ -5,6 +5,35 @@ namespace Brigade.Net.Partie.Tests;
 
 public sealed class UnitOfWorkPartieTests
 {
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task DisposalFaultKeepsDownstreamExceptionOrBecomesPrimary(bool downstreamFails)
+    {
+        var downstream = new InvalidOperationException("downstream");
+        var disposal = new InvalidOperationException("dispose");
+        var transaction = new DisposalFaultTxn(disposal);
+
+        var actual = await Record.ExceptionAsync(() => UnitOfWorkPartie<Unit, int>.OnCommandAsync(
+            new UnitOfWorkContext([transaction]),
+            Unit.Default,
+            _ => downstreamFails
+                ? ValueTask.FromException<Result<int>>(downstream)
+                : ValueTask.FromResult<Result<int>>(1),
+            CancellationToken.None
+        ).AsTask());
+
+        Assert.Same(downstreamFails ? downstream : disposal, actual);
+        if (downstreamFails)
+        {
+            Assert.Same(disposal, actual!.Data["UnitOfWork.DisposeException"]);
+        }
+
+        Assert.Equal(downstreamFails ? 0 : 1, transaction.CommitCount);
+        Assert.Equal(downstreamFails ? 1 : 0, transaction.RollbackCount);
+        Assert.Equal(1, transaction.DisposeCount);
+    }
+
     [Fact]
     public async Task DownstreamFaultRemainsPrimaryWhenRollbackFails()
     {

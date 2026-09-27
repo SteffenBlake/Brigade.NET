@@ -11,6 +11,15 @@ namespace Brigade.Net.Mise.Tests;
 public sealed class QueryApiEdgeTests
 {
     [Fact]
+    public void DefaultBuilderUsesAnsiDialectAndQuotesEmbeddedDoubleQuotes()
+    {
+        var query = new QueryBuilder().Select($"1");
+
+        Assert.Equal("ANSI", query.Dialect.Name);
+        Assert.Equal("\"some\"\"name\"", query.Dialect.QuoteIdentifier("some\"name"));
+    }
+
+    [Fact]
     public void DistinctGroupingHavingAndSetKindsRenderInSqlOrder()
     {
         var child = new QueryBuilder().Select($"{7}");

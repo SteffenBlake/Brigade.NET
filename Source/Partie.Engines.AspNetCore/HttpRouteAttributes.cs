@@ -147,7 +147,10 @@ internal static class HttpRouteAttributes
         var metadataName = isQuery
             ? AttributeNamespace + ".IQueryRoutePolicy`1"
             : AttributeNamespace + ".ICommandRoutePolicy`1";
-        var definition = compilation.GetTypeByMetadataName(metadataName);
+        var prepared = PreparePolicyRequest(request, compilation);
+        // Source symbols must come from the same compilation as the parsed request.
+        policyType = prepared.Compilation.GetTypeByMetadataName(MetadataName(policyType))!;
+        var definition = prepared.Compilation.GetTypeByMetadataName(metadataName);
         var contract = policyType.AllInterfaces.SingleOrDefault(candidate =>
             SymbolEqualityComparer.Default.Equals(candidate.OriginalDefinition, definition));
         if (contract is null)
@@ -155,7 +158,6 @@ internal static class HttpRouteAttributes
             return null;
         }
 
-        var prepared = PreparePolicyRequest(request, compilation);
         ITypeSymbol[] desired = [prepared.Request];
         var bindings = new System.Collections.Generic.Dictionary<ITypeParameterSymbol, ITypeSymbol>(
             SymbolEqualityComparer.Default
@@ -178,6 +180,18 @@ internal static class HttpRouteAttributes
             ? definitionType
             : definitionType.Construct(definitionType.TypeParameters.Select(parameter => bindings[parameter]).ToArray());
         return HasValidConstraints(closed, prepared.Compilation) ? closed : null;
+    }
+
+    private static string MetadataName(INamedTypeSymbol type)
+    {
+        var names = new System.Collections.Generic.Stack<string>();
+        for (var current = type; current is not null; current = current.ContainingType)
+        {
+            names.Push(current.MetadataName);
+        }
+
+        var ns = type.ContainingNamespace;
+        return (ns.IsGlobalNamespace ? "" : ns.ToDisplayString() + ".") + string.Join("+", names);
     }
 
     private static (Compilation Compilation, ITypeSymbol Request) PreparePolicyRequest(

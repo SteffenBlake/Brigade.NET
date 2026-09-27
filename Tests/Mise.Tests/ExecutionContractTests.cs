@@ -7,6 +7,83 @@ namespace Brigade.Net.Mise.Tests;
 public sealed class ExecutionContractTests
 {
     [Fact]
+    public void WriterRejectsDetachedProviderTransaction()
+    {
+        using var transaction = new DetachedDbTransaction();
+
+        var error = Assert.Throws<ArgumentException>(() => new DbWriter(transaction: transaction));
+
+        Assert.Equal("transaction", error.ParamName);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task WriterScalarMapsBothProviderNullFormsToSuccessfulNull(bool databaseNull)
+    {
+        var connection = new FakeDbConnection { ScalarValue = databaseNull ? DBNull.Value : null };
+        await using var writer = new DbWriter(connection: connection);
+
+        var result = await writer.ExecuteScalarAsync<string>(Query());
+
+        Assert.True(result.IsSuccess(out var value));
+        Assert.Null(value);
+        Assert.True(connection.LastCommand!.IsDisposed);
+    }
+
+    [Fact]
+    public async Task ReturningFirstWithoutRowsReturnsNotFoundAndDisposesResources()
+    {
+        var connection = new FakeDbConnection();
+        await using var writer = new DbWriter(connection: connection);
+
+        var result = await writer.ReturningFirstOrNotFoundAsync<TestRow>(Query());
+
+        Assert.True(result.IsNotFound(out _));
+        Assert.True(connection.LastCommand!.IsDisposed);
+        Assert.Equal(1, connection.LastCommand.LastReader!.DisposeCount);
+    }
+
+    [Fact]
+    public async Task CompletedTransactionRejectsFurtherWritesAndExplicitBegin()
+    {
+        var connection = new FakeDbConnection();
+        await using var writer = new DbWriter(connection: connection);
+        var transaction = await writer.BeginTransactionAsync();
+        await transaction.CommitAsync();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => writer.ExecuteAsync(Query()));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => writer.BeginTransactionAsync());
+        Assert.Equal(1, connection.BeginTransactionCount);
+        Assert.Null(connection.LastCommand);
+        await transaction.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task SuppliedTransactionAcceptsItsConnectionAndRejectsOtherSources()
+    {
+        var connection = new FakeDbConnection();
+        await connection.OpenAsync();
+        var transaction = await connection.BeginTransactionAsync();
+        Assert.Throws<ArgumentException>(() => new DbWriter(
+            connection: new FakeDbConnection(),
+            transaction: transaction
+        ));
+        Assert.Throws<ArgumentException>(() => new DbWriter(
+            config: new TestConfig("fake", new FakeDbProviderFactory(connection)),
+            transaction: transaction
+        ));
+        await using var writer = new DbWriter(connection: connection, transaction: transaction);
+
+        await writer.ExecuteAsync(Query());
+
+        Assert.Same(transaction, connection.LastCommand!.AttachedTransaction);
+        await writer.Transaction.RollbackAsync();
+        await writer.Transaction.DisposeAsync();
+        Assert.Equal(0, connection.DisposeCount);
+    }
+
+    [Fact]
     public async Task WriterUsesOneLazyTransactionAndUnitOfWorkDisposesIt()
     {
         var connection = new FakeDbConnection { NonQueryResult = 3 };

@@ -39,6 +39,16 @@ public sealed class ContractValidationTests
         Invalid(Source().Replace("public class Request { }", request), message);
     }
 
+    [Fact]
+    public void RejectsArrayRequestBeforeTryingToBuildARequestModel()
+    {
+        Invalid(
+            Source().Replace("IQueryHandler<Request,", "IQueryHandler<int[],")
+                .Replace("Request query", "int[] query"),
+            "Request must be a class"
+        );
+    }
+
     [Theory]
     [InlineData("public abstract class Context { }", "constructible")]
     [InlineData("public interface Context { }", "constructible")]

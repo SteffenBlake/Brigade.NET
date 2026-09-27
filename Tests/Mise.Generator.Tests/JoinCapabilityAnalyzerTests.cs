@@ -4,6 +4,26 @@ namespace Brigade.Net.Mise.Generator.Tests;
 
 public sealed class JoinCapabilityAnalyzerTests
 {
+    [Fact]
+    public async Task UnassignedLocalStillIdentifiesUnsupportedJoinEngine()
+    {
+        // Deliberately invalid compiler input: the local is unassigned, but its
+        // declared builder type is enough to detect the unsupported FULL JOIN.
+        const string source = """
+            using Brigade.Net.Mise.MySQL;
+            class Example
+            {
+                void Run()
+                {
+                    MySqlQueryBuilder query;
+                    query.FullJoin($"other ON 1 = 1");
+                }
+            }
+            """;
+
+        Assert.Equal("MISE017", Assert.Single(await GeneratorTestHost.AnalyzeJoinAsync(source)).Id);
+    }
+
     [Theory]
     [InlineData("MySQL", "MySqlQueryBuilder", "MySQL")]
     [InlineData("MariaDb", "MariaDbQueryBuilder", "MariaDB")]

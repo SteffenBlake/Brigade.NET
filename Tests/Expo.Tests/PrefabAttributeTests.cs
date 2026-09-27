@@ -37,6 +37,18 @@ public sealed class PrefabAttributeTests
     public void PrefabAttributesExposeConfiguration()
     {
         Assert.Equal("message", new StringMatchesEmailAttribute("message").Message);
+        Assert.Equal("message", new StringMatchesPhoneNumberAttribute("message").Message);
+        Assert.Equal("message", new StringMatchesUuidAttribute("message").Message);
+        Assert.Equal("message", new StringMatchesHexColorAttribute("message").Message);
+        Assert.Equal("message", new StringMatchesSlugAttribute("message").Message);
+        Assert.Equal("message", new StringMatchesAlphaAttribute("message").Message);
+        Assert.Equal("message", new StringMatchesAlphaNumericAttribute("message").Message);
+        Assert.Equal("message", new StringMatchesDigitsAttribute("message").Message);
+        Assert.Equal("message", new StringMatchesUrlAttribute("message").Message);
+        Assert.Equal("message", new StringMatchesIpAddressAttribute("message").Message);
+        Assert.Equal("message", new StringMatchesIpv4AddressAttribute("message").Message);
+        Assert.Equal("message", new StringMatchesIpv6AddressAttribute("message").Message);
+        Assert.Equal("message", new StringMatchesBase64Attribute("message").Message);
         Assert.Equal("message", new StringIsNotEmptyAttribute("message").Message);
         Assert.Equal("message", new ItemsIsNotEmptyAttribute("message").Message);
         Assert.Equal("message", new StringIsNotWhiteSpaceAttribute("message").Message);

@@ -796,7 +796,7 @@ public sealed class ExpoDomainGenerator : IIncrementalGenerator
     private static bool IsValidatable(ITypeSymbol type)
     {
         var namedType = type as INamedTypeSymbol;
-        return type.ToDisplayString() == ValidatableName
+        return type.WithNullableAnnotation(NullableAnnotation.None).ToDisplayString() == ValidatableName
             || type.AllInterfaces.Any(item => item.ToDisplayString() == ValidatableName)
             || namedType?.OriginalDefinition.GetAttributes().Any(item =>
                 item.AttributeClass?.ToDisplayString() == ExpoAttributeName) == true

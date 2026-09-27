@@ -8,6 +8,25 @@ namespace Brigade.Net.Partie.Generator.Tests;
 
 public class BrigadeRoutingGeneratorTests
 {
+    [Fact]
+    public void IncrementalDriverUpdatesRouteOutputWhenGroupPathChanges()
+    {
+        var first = Source("");
+        var second = first.Replace("[BrigadeGroup(\"\")]", "[BrigadeGroup(\"updated\")]");
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(new BrigadeRoutingGenerator());
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(Compile(first), out var firstOutput, out _);
+        AssertNoErrors(firstOutput);
+        var initial = AllSource(driver.GetRunResult());
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(Compile(second), out var secondOutput, out _);
+        AssertNoErrors(secondOutput);
+        var updated = AllSource(driver.GetRunResult());
+
+        Assert.NotEqual(initial, updated);
+        Assert.Contains("updated", updated);
+    }
+
     private const string Usings = """
         using System;
         using System.Linq;
@@ -536,7 +555,7 @@ public class BrigadeRoutingGeneratorTests
     [InlineData("[Route<Handler>(\"\", \"run\"), Provider(null)]")]
     public void Generator_RejectsMissingAndInvalidTypeRegistrations(string attributes) => Invalid(Source("").Replace("[Route<Handler>(\"\", \"run\")]", attributes), "BRG005");
     [Fact]
-    public void Generator_ReusesEqualSourceAfterUnrelatedEdit()
+    public void Generator_CachesUnchangedGroupAndUpdatesChangedGroup()
     {
         var original = Compile(Source(""));
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
@@ -544,13 +563,33 @@ public class BrigadeRoutingGeneratorTests
             driverOptions: new GeneratorDriverOptions(IncrementalGeneratorOutputKind.None, true)
         );
         driver = driver.RunGenerators(original);
+        var initialSource = AllSource(driver.GetRunResult());
         driver = driver.RunGenerators(original.AddSyntaxTrees(CSharpSyntaxTree.ParseText("class Unrelated { }")));
-        Assert.All(
-            driver.GetRunResult().Results.Single().TrackedSteps["BrigadeRouteSources"].SelectMany(step => step.Outputs),
-            output => Assert.Contains(
-                output.Reason,
-                new[] { IncrementalStepRunReason.Cached, IncrementalStepRunReason.Unchanged }
-            )
+        var unchanged = driver.GetRunResult();
+        Assert.Equal(initialSource, AllSource(unchanged));
+        foreach (var stage in new[] { "BrigadeGroups", "BrigadeRouteSources" })
+        {
+            Assert.All(
+                unchanged.Results.Single().TrackedSteps[stage].SelectMany(step => step.Outputs),
+                output => Assert.Contains(
+                    output.Reason,
+                    new[] { IncrementalStepRunReason.Cached, IncrementalStepRunReason.Unchanged }
+                )
+            );
+        }
+
+        var changedSource = Source("").Replace("[BrigadeGroup(\"\")]", "[BrigadeGroup(\"updated\")]");
+        var changed = original.ReplaceSyntaxTree(
+            original.SyntaxTrees.Single(),
+            CSharpSyntaxTree.ParseText(Usings + "\n" + changedSource)
+        );
+        driver = driver.RunGenerators(changed);
+        var updated = driver.GetRunResult();
+        Assert.Contains("updated", AllSource(updated));
+        Assert.NotEqual(initialSource, AllSource(updated));
+        Assert.Contains(
+            updated.Results.Single().TrackedSteps["BrigadeRouteSources"].SelectMany(step => step.Outputs),
+            output => output.Reason == IncrementalStepRunReason.Modified
         );
     }
 

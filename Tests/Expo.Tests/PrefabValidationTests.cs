@@ -3,6 +3,25 @@ namespace Brigade.Net.Expo.Tests;
 public sealed class PrefabValidationTests
 {
     [Fact]
+    public void PublicMetadataRecordsPreserveSchemaDetailsWhenCopied()
+    {
+        var source = PrefabValidationModel.Metadata.Properties.Single(item => item.Name == "Email");
+        var property = source with { Pointer = "/contact" };
+        var rule = Assert.Single(property.Rules) with { Message = "A valid address is required." };
+
+        Assert.Equal("Email", property.Name);
+        Assert.Equal("/contact", property.Pointer);
+        Assert.False(property.IsNestedValidatable);
+        Assert.Equal(ExpoRuleKind.Format, rule.Kind);
+        Assert.Equal("A valid address is required.", rule.Message);
+        Assert.Equal("email", rule.Format);
+        Assert.Null(rule.ConstantValue);
+        Assert.Null(rule.ComparedPropertyName);
+        Assert.Equal("StringMatchesEmailAttribute", rule.CustomRuleName);
+        Assert.NotNull(rule.Pattern);
+    }
+
+    [Fact]
     public void AcceptsValidPrefabValues()
     {
         var model = ValidModel();
