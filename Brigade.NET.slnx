@@ -102,6 +102,7 @@
   <Folder Name="/Source/Partie.Extensions.Mise/" />
   <Folder Name="/Source/Partie/" />
   <Folder Name="/Tests/">
+    <Project Path="Tests/Architecture.Tests/Brigade.Net.Architecture.Tests.csproj" />
     <Project Path="Tests/Core.Tests/Brigade.Net.Core.Tests.csproj" />
     <Project Path="Tests/Example.IntegrationTests/Brigade.Net.Example.IntegrationTests.csproj" />
     <Project Path="Tests/Partie.Tests/Brigade.Net.Partie.Tests.csproj" />
