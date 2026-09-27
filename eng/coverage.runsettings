@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat Code Coverage">
+        <Configuration>
+          <Format>json,cobertura</Format>
+          <Include>[Brigade.Net.*]*</Include>
+          <IncludeTestAssembly>false</IncludeTestAssembly>
+          <ExcludeByFile>**/obj/**,**/.generated/**</ExcludeByFile>
+          <UseSourceLink>false</UseSourceLink>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

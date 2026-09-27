@@ -1,0 +1,11 @@
+<Project>
+  <PropertyGroup Condition="'$(IsRoslynComponent)' == 'true'">
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+  </PropertyGroup>
+  <Target Name="PackAnalyzerAssemblies" BeforeTargets="_GetPackageFiles" Condition="'$(IsRoslynComponent)' == 'true'">
+    <ItemGroup>
+      <None Include="$(TargetPath)" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+      <None Include="$(TargetDir)$(GeneratorSupportAssembly)" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" Condition="'$(GeneratorSupportAssembly)' != ''" />
+    </ItemGroup>
+  </Target>
+</Project>

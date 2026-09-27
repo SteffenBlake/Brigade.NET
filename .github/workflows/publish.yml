@@ -1,0 +1,44 @@
+name: Publish package group
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+      group:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    if: github.event_name == 'release' && github.event.action == 'published'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment: release
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          global-json-file: global.json
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release-packages
+          path: artifacts/packages
+      - name: Authenticate to NuGet with GitHub OIDC
+        id: login
+        uses: NuGet/login@ebc737b6fc418a6ca0073cf116ec8dc156d8b81e # v1
+        with:
+          user: SteffenBlake
+      - name: Publish validated packages and wait for feed availability
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          PACKAGE_GROUP: ${{ inputs.group }}
+        run: python3 eng/release.py publish --version "$RELEASE_VERSION" --group "$PACKAGE_GROUP"

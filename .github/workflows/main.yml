@@ -1,0 +1,59 @@
+name: Main
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    uses: ./.github/workflows/checks.yml
+    with:
+      report-only: true
+
+  coverage:
+    name: Update coverage badge
+    needs: checks
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    continue-on-error: true
+    permissions:
+      contents: write
+    concurrency:
+      group: coverage-badge
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: test-and-coverage-reports
+          path: artifacts/pr-checks
+      - name: Update the SVG on the coverage branch
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          git fetch origin main
+          if [[ "$SOURCE_SHA" != "$(git rev-parse origin/main)" ]]; then
+            echo "A newer main commit exists; keep its badge run authoritative."
+            exit 0
+          fi
+          if git ls-remote --exit-code --heads origin coverage > /dev/null; then
+            git fetch origin coverage:refs/remotes/origin/coverage
+            git switch --force-create coverage origin/coverage
+          else
+            git switch --orphan coverage
+          fi
+          cp artifacts/pr-checks/coverage.svg coverage.svg
+          git add -- coverage.svg
+          if git diff --cached --quiet; then
+            echo "Coverage badge is unchanged."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "Update coverage badge for ${SOURCE_SHA:0:7}"
+          git push origin HEAD:coverage

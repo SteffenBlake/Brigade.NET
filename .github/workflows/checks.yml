@@ -1,0 +1,59 @@
+name: Build, tests and coverage
+
+on:
+  workflow_call:
+    inputs:
+      report-only:
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Build, tests and coverage
+    continue-on-error: ${{ inputs.report-only }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      DOTNET_NOLOGO: '1'
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          global-json-file: global.json
+      - name: Check Docker
+        continue-on-error: ${{ inputs.report-only }}
+        run: docker info
+      - name: Test pipeline tooling
+        continue-on-error: ${{ inputs.report-only }}
+        run: python3 -m unittest discover -s eng/tests -v
+      - name: Build solution
+        id: build
+        continue-on-error: ${{ inputs.report-only }}
+        run: dotnet build Brigade.NET.slnx -c Release --verbosity minimal
+      - name: Run all test suites and collect coverage
+        if: steps.build.outcome == 'success'
+        continue-on-error: ${{ inputs.report-only }}
+        run: python3 eng/pr_checks.py test
+      - name: Report test results and check coverage
+        if: always()
+        env:
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          REPORT_ONLY: ${{ inputs.report-only }}
+        run: |
+          args=()
+          if [[ "$REPORT_ONLY" == "true" ]]; then
+            args+=(--report-only)
+          fi
+          python3 eng/pr_checks.py report --build-outcome "$BUILD_OUTCOME" "${args[@]}"
+      - name: Retain test and coverage reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: test-and-coverage-reports
+          path: artifacts/pr-checks
+          if-no-files-found: error
+          retention-days: 14

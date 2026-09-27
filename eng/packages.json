@@ -1,0 +1,13 @@
+{
+  "groups": {
+    "core": ["Core"],
+    "mise": [
+      "Mise", "Mise.SqlServer", "Mise.PostgreSQL", "Mise.SQLite", "Mise.MySQL", "Mise.MariaDb",
+      "Mise.Engines.SqlServer", "Mise.Engines.PostgreSQL", "Mise.Engines.SQLite", "Mise.Engines.MySQL", "Mise.Engines.MariaDb"
+    ],
+    "partie": ["Partie", "Partie.AspNetCore", "Partie.Engines.AspNetCore"],
+    "expo": ["Expo", "Expo.Engines.Domain"],
+    "extensions": ["Partie.Extensions.Mise", "Partie.Extensions.Expo", "Partie.Extensions.Expo.Engines.AspNetCore"]
+  },
+  "internal": ["Mise.Generator", "Partie.Generator"]
+}

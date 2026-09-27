@@ -1,0 +1,92 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+# Serialize attempts for a single version. Different suite versions use distinct packages.
+concurrency:
+  group: release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - name: Validate release tag and prerelease status
+        id: release
+        run: python3 eng/release.py event
+
+  validate:
+    needs: plan
+    uses: ./.github/workflows/validate.yml
+    with:
+      version: ${{ needs.plan.outputs.version }}
+
+  core:
+    needs: [plan, validate]
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/publish.yml
+    with:
+      version: ${{ needs.plan.outputs.version }}
+      group: core
+
+  libraries:
+    needs: [plan, core]
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [mise, partie, expo]
+    uses: ./.github/workflows/publish.yml
+    with:
+      version: ${{ needs.plan.outputs.version }}
+      group: ${{ matrix.group }}
+
+  extensions:
+    needs: [plan, libraries]
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/publish.yml
+    with:
+      version: ${{ needs.plan.outputs.version }}
+      group: extensions
+
+  complete:
+    needs: [plan, extensions]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release-packages
+          path: artifacts/packages
+      - name: Verify all published packages
+        env:
+          RELEASE_VERSION: ${{ needs.plan.outputs.version }}
+        run: python3 eng/release.py verify --version "$RELEASE_VERSION"
+      - name: Attach packages and provenance manifest to the GitHub Release
+        if: ${{ github.event.release.immutable != true }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ needs.plan.outputs.version }}
+        run: gh release upload "$RELEASE_VERSION" artifacts/packages/*.nupkg artifacts/packages/release-manifest.json --clobber

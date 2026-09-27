@@ -1,5 +1,9 @@
 # Brigade.NET
 
+[![Pull request](https://github.com/SteffenBlake/Brigade.NET/actions/workflows/pull-request.yml/badge.svg?event=pull_request)](https://github.com/SteffenBlake/Brigade.NET/actions/workflows/pull-request.yml)
+[![Main](https://github.com/SteffenBlake/Brigade.NET/actions/workflows/main.yml/badge.svg?branch=main&event=push)](https://github.com/SteffenBlake/Brigade.NET/actions/workflows/main.yml)
+[![Coverage](https://raw.githubusercontent.com/SteffenBlake/Brigade.NET/coverage/coverage.svg)](https://github.com/SteffenBlake/Brigade.NET/actions/workflows/main.yml)
+
 Providers and ordered Parties use typed query/command contracts:
 
 - `IQueryProvider<TProvided, TContext, TQuery, TResult>`

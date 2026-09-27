@@ -5,9 +5,11 @@
     <Nullable>enable</Nullable>
     <IsRoslynComponent>true</IsRoslynComponent>
     <IncludeBuildOutput>false</IncludeBuildOutput>
+    <GeneratorSupportAssembly>Brigade.Net.Partie.Generator.dll</GeneratorSupportAssembly>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Partie.Generator\Brigade.Net.Partie.Generator.csproj" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" PrivateAssets="all" />
+    <ProjectReference Include="..\Partie.Generator\Brigade.Net.Partie.Generator.csproj" PrivateAssets="all" />
   </ItemGroup>
   <Target Name="IncludeGeneratorCore" AfterTargets="GetTargetPathWithTargetPlatformMoniker">
     <ItemGroup>
