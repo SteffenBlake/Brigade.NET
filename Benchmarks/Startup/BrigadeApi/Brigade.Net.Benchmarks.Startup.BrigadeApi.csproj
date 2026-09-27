@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Common/Brigade.Net.Benchmarks.Startup.Common.csproj" />
+    <ProjectReference Include="../../../Source/Partie.AspNetCore/Brigade.Net.Partie.AspNetCore.csproj" />
+    <ProjectReference Include="../../../Source/Partie.Extensions.Mise/Brigade.Net.Partie.Extensions.Mise.csproj" />
+    <ProjectReference Include="../../../Source/Partie.Extensions.Expo/Brigade.Net.Partie.Extensions.Expo.csproj" />
+    <ProjectReference Include="../../../Source/Mise.SQLite/Brigade.Net.Mise.SQLite.csproj" />
+    <ProjectReference Include="../../../Source/Partie.Engines.AspNetCore/Brigade.Net.Partie.Engines.AspNetCore.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../../../Source/Mise.Engines.SQLite/Brigade.Net.Mise.Engines.SQLite.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../../../Source/Expo.Engines.Domain/Brigade.Net.Expo.Engines.Domain.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+</Project>

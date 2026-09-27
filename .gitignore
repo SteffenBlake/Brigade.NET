@@ -20,6 +20,11 @@ x86/
 bld/
 [Bb]in/
 [Oo]bj/
+/Benchmarks/Api/BrigadeApi/.generated/
+/Benchmarks/Api/Results/
+/Benchmarks/Startup/Results/
+/Benchmarks/.work/
+/Benchmarks/__pycache__/
 [Ll]og/
 [Ll]ogs/
 

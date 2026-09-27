@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1050" height="440" viewBox="0 0 1050 440">
+<rect width="100%" height="100%" fill="white"/>
+<text x="150" y="42" font-size="24" font-family="sans-serif">Point lookup latency matrix</text>
+<text x="150" y="68" font-size="14" fill="#555" font-family="sans-serif">Each cell shows microseconds per operation; darker means slower. Color uses a log scale.</text>
+<text x="232" y="112" text-anchor="middle" font-size="15" font-family="sans-serif">sqlserver</text>
+<rect x="150" y="135" width="165" height="72" rx="8" fill="hsl(215 85% 45.0%)"/>
+<text x="232" y="179" text-anchor="middle" font-size="21" font-family="sans-serif">500 μs</text>
+<rect x="150" y="217" width="165" height="72" rx="8" fill="hsl(215 85% 45.3%)"/>
+<text x="232" y="261" text-anchor="middle" font-size="21" font-family="sans-serif">491 μs</text>
+<rect x="150" y="299" width="165" height="72" rx="8" fill="hsl(215 85% 42.0%)"/>
+<text x="232" y="343" text-anchor="middle" font-size="21" font-family="sans-serif">615 μs</text>
+<text x="407" y="112" text-anchor="middle" font-size="15" font-family="sans-serif">postgresql</text>
+<rect x="325" y="135" width="165" height="72" rx="8" fill="hsl(215 85% 50.9%)"/>
+<text x="407" y="179" text-anchor="middle" font-size="21" font-family="sans-serif">333 μs</text>
+<rect x="325" y="217" width="165" height="72" rx="8" fill="hsl(215 85% 51.5%)"/>
+<text x="407" y="261" text-anchor="middle" font-size="21" font-family="sans-serif">320 μs</text>
+<rect x="325" y="299" width="165" height="72" rx="8" fill="hsl(215 85% 47.1%)"/>
+<text x="407" y="343" text-anchor="middle" font-size="21" font-family="sans-serif">433 μs</text>
+<text x="582" y="112" text-anchor="middle" font-size="15" font-family="sans-serif">mysql</text>
+<rect x="500" y="135" width="165" height="72" rx="8" fill="hsl(215 85% 47.4%)"/>
+<text x="582" y="179" text-anchor="middle" font-size="21" font-family="sans-serif">424 μs</text>
+<rect x="500" y="217" width="165" height="72" rx="8" fill="hsl(215 85% 48.9%)"/>
+<text x="582" y="261" text-anchor="middle" font-size="21" font-family="sans-serif">381 μs</text>
+<rect x="500" y="299" width="165" height="72" rx="8" fill="hsl(215 85% 45.3%)"/>
+<text x="582" y="343" text-anchor="middle" font-size="21" font-family="sans-serif">489 μs</text>
+<text x="757" y="112" text-anchor="middle" font-size="15" font-family="sans-serif">mariadb</text>
+<rect x="675" y="135" width="165" height="72" rx="8" fill="hsl(215 85% 49.7%)"/>
+<text x="757" y="179" text-anchor="middle" font-size="21" font-family="sans-serif">363 μs</text>
+<rect x="675" y="217" width="165" height="72" rx="8" fill="hsl(215 85% 50.5%)"/>
+<text x="757" y="261" text-anchor="middle" font-size="21" font-family="sans-serif">343 μs</text>
+<rect x="675" y="299" width="165" height="72" rx="8" fill="hsl(215 85% 46.4%)"/>
+<text x="757" y="343" text-anchor="middle" font-size="21" font-family="sans-serif">454 μs</text>
+<text x="932" y="112" text-anchor="middle" font-size="15" font-family="sans-serif">sqlite</text>
+<rect x="850" y="135" width="165" height="72" rx="8" fill="hsl(215 85% 93.3%)"/>
+<text x="932" y="179" text-anchor="middle" font-size="21" font-family="sans-serif">18 μs</text>
+<rect x="850" y="217" width="165" height="72" rx="8" fill="hsl(215 85% 94.0%)"/>
+<text x="932" y="261" text-anchor="middle" font-size="21" font-family="sans-serif">17 μs</text>
+<rect x="850" y="299" width="165" height="72" rx="8" fill="hsl(215 85% 81.9%)"/>
+<text x="932" y="343" text-anchor="middle" font-size="21" font-family="sans-serif">40 μs</text>
+<text x="135" y="179" text-anchor="end" font-size="17" font-family="sans-serif">Mise</text>
+<text x="135" y="261" text-anchor="end" font-size="17" font-family="sans-serif">Dapper</text>
+<text x="135" y="343" text-anchor="end" font-size="17" font-family="sans-serif">EF Core</text>
+</svg>

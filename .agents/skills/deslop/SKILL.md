@@ -54,6 +54,10 @@ Mix sentence lengths. Two items beat three. End paragraphs differently. No em da
 
 State facts directly. Skip softening, justification, hand-holding. No "Let's break this down." No "Think of it as..." No pedagogical voice unless the audience genuinely needs it. No fractal summaries (telling the reader what you are about to say, saying it, then summarizing what you said).
 
+Describe what the subject is, does, or measures. When a user excludes something, honor that constraint by omitting it from the output. Announcing the exclusion turns an editing instruction into needless reader-facing content. Delete statements such as "The report does not rank implementations," "This is not a tutorial," and "No claims are made." State the actual purpose directly: "The report records execution time and allocation by implementation."
+
+Apply this across the whole document, including introductions, scope notes, captions, and conclusions. For technical scope, name the measured operation, population, or statistical quantity directly: "Whiskers show the observed range across runs." Retain a negative statement only when that specific fact is needed to understand a result or take an action.
+
 ### 9. Watch formatting tells
 
 No bold-first bullets (every list item starting with a bolded keyword). No unicode arrows. No em dashes. No signposted conclusions ("In conclusion..."). No "Despite these challenges..." formulas. These are strong AI signals.
@@ -71,6 +75,7 @@ Run these before delivering any prose:
 - Inanimate thing doing a human verb? Name the person.
 - Any "here's what/this/that" throat-clearing? Cut to the point.
 - Any "not X, it's Y" contrasts? State Y directly.
+- Any statement about what the subject is not, does not do, or excludes merely echoing a user constraint? Delete it; state the purpose or measured scope directly.
 - Any self-posed rhetorical question answered immediately? Fold into a statement.
 - Three consecutive sentences match length? Break one.
 - Paragraph ends with a punchy one-liner? Vary it.

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Dapper" Version="2.1.89" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.11" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
+    <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
+    <ProjectReference Include="../../../Source/Mise.Engines.SqlServer/Brigade.Net.Mise.Engines.SqlServer.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../../../Source/Mise/Brigade.Net.Mise.csproj" />
+    <ProjectReference Include="../../../Source/Mise.SqlServer/Brigade.Net.Mise.SqlServer.csproj" />
+    <ProjectReference Include="../../../Source/Mise.PostgreSQL/Brigade.Net.Mise.PostgreSQL.csproj" />
+    <ProjectReference Include="../../../Source/Mise.MySQL/Brigade.Net.Mise.MySQL.csproj" />
+    <ProjectReference Include="../../../Source/Mise.MariaDb/Brigade.Net.Mise.MariaDb.csproj" />
+    <ProjectReference Include="../../../Source/Mise.SQLite/Brigade.Net.Mise.SQLite.csproj" />
+  </ItemGroup>
+</Project>

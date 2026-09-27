@@ -1,4 +1,53 @@
 <Solution>
+  <Folder Name="/Benchmarks/" />
+  <Folder Name="/Benchmarks/Api/" />
+  <Folder Name="/Benchmarks/Api/AppHost/">
+    <Project Path="Benchmarks/Api/AppHost/Brigade.Net.Benchmarks.Api.AppHost.csproj" />
+  </Folder>
+  <Folder Name="/Benchmarks/Api/BrigadeApi/">
+    <Project Path="Benchmarks/Api/BrigadeApi/Brigade.Net.Benchmarks.Api.BrigadeApi.csproj" />
+  </Folder>
+  <Folder Name="/Benchmarks/Api/Common/">
+    <Project Path="Benchmarks/Api/Common/Brigade.Net.Benchmarks.Api.Common.csproj" />
+  </Folder>
+  <Folder Name="/Benchmarks/Api/ParityTests/">
+    <Project Path="Benchmarks/Api/ParityTests/Brigade.Net.Benchmarks.Api.ParityTests.csproj" />
+  </Folder>
+  <Folder Name="/Benchmarks/Api/Fixture/">
+    <Project Path="Benchmarks/Api/Fixture/Brigade.Net.Benchmarks.Api.Fixture.csproj" />
+  </Folder>
+  <Folder Name="/Benchmarks/Api/FluentEfMediatr/">
+    <Project Path="Benchmarks/Api/FluentEfMediatr/Brigade.Net.Benchmarks.Api.FluentEfMediatr.csproj" />
+  </Folder>
+  <Folder Name="/Benchmarks/Api/Runner/">
+    <Project Path="Benchmarks/Api/Runner/Brigade.Net.Benchmarks.Api.Runner.csproj" />
+  </Folder>
+  <Folder Name="/Benchmarks/DatabaseQuerying/">
+    <Project Path="Benchmarks/DatabaseQuerying/AppHost/Brigade.Net.Benchmarks.DatabaseQuerying.AppHost.csproj" />
+    <Project Path="Benchmarks/DatabaseQuerying/Compilation/Brigade.Net.Benchmarks.DatabaseQuerying.Compilation.csproj" />
+    <Project Path="Benchmarks/DatabaseQuerying/Common/Brigade.Net.Benchmarks.DatabaseQuerying.Common.csproj" />
+    <Project Path="Benchmarks/DatabaseQuerying/ParityTests/Brigade.Net.Benchmarks.DatabaseQuerying.ParityTests.csproj" />
+    <Project Path="Benchmarks/DatabaseQuerying/Tests/Brigade.Net.Benchmarks.DatabaseQuerying.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Benchmarks/DatabaseQuerying/Common/" />
+  <Folder Name="/Benchmarks/Startup/" />
+  <Folder Name="/Benchmarks/Startup/BrigadeApi/">
+    <Project Path="Benchmarks/Startup/BrigadeApi/Brigade.Net.Benchmarks.Startup.BrigadeApi.csproj" />
+  </Folder>
+  <Folder Name="/Benchmarks/Startup/Common/">
+    <Project Path="Benchmarks/Startup/Common/Brigade.Net.Benchmarks.Startup.Common.csproj" />
+  </Folder>
+  <Folder Name="/Benchmarks/Startup/FluentEfMediatr/">
+    <Project Path="Benchmarks/Startup/FluentEfMediatr/Brigade.Net.Benchmarks.Startup.FluentEfMediatr.csproj" />
+  </Folder>
+  <Folder Name="/Benchmarks/Startup/Runner/">
+    <Project Path="Benchmarks/Startup/Runner/Brigade.Net.Benchmarks.Startup.Runner.csproj" />
+  </Folder>
+  <Folder Name="/Benchmarks/Validation/">
+    <Project Path="Benchmarks/Validation/Common/Brigade.Net.Benchmarks.Validation.Common.csproj" />
+    <Project Path="Benchmarks/Validation/ParityTests/Brigade.Net.Benchmarks.Validation.ParityTests.csproj" />
+    <Project Path="Benchmarks/Validation/Tests/Brigade.Net.Benchmarks.Validation.Tests.csproj" />
+  </Folder>
   <Folder Name="/Example/">
     <Project Path="Example/AppHost/Brigade.Net.Example.AppHost.csproj" />
     <Project Path="Example/Domain/Brigade.Net.Example.Domain.csproj" />
@@ -29,13 +78,28 @@
   <Folder Name="/Source/Expo.Engines.Domain/">
     <Project Path="Source/Expo.Engines.Domain/Brigade.Net.Expo.Engines.Domain.csproj" />
   </Folder>
-  <Folder Name="/Source/Partie.Extensions.Expo.Engines.AspNetCore/" />
+  <Folder Name="/Source/Mise.Engines.MariaDb/" />
+  <Folder Name="/Source/Mise.Engines.MySQL/" />
+  <Folder Name="/Source/Mise.Engines.PostgreSQL/" />
+  <Folder Name="/Source/Mise.Engines.SQLite/" />
+  <Folder Name="/Source/Mise.Engines.SqlServer/" />
+  <Folder Name="/Source/Mise.MariaDb/" />
+  <Folder Name="/Source/Mise.MySQL/" />
+  <Folder Name="/Source/Mise.PostgreSQL/" />
+  <Folder Name="/Source/Mise.SQLite/" />
+  <Folder Name="/Source/Mise.SqlServer/" />
+  <Folder Name="/Source/Partie.AspNetCore/" />
+  <Folder Name="/Source/Partie.Engines.AspNetCore/" />
+  <Folder Name="/Source/Partie.Extensions.Expo.Engines.AspNetCore/">
+    <Project Path="Source/Partie.Extensions.Expo.Engines.AspNetCore/Brigade.Net.Partie.Extensions.Expo.Engines.AspNetCore.csproj" />
+  </Folder>
   <Folder Name="/Source/Expo/">
     <Project Path="Source/Expo/Brigade.Net.Expo.csproj" />
   </Folder>
   <Folder Name="/Source/Partie.Extensions.Expo/">
     <Project Path="Source/Partie.Extensions.Expo/Brigade.Net.Partie.Extensions.Expo.csproj" />
   </Folder>
+  <Folder Name="/Source/Partie.Extensions.Mise/" />
   <Folder Name="/Source/Partie/" />
   <Folder Name="/Tests/">
     <Project Path="Tests/Core.Tests/Brigade.Net.Core.Tests.csproj" />
