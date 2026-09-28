@@ -13,11 +13,11 @@
     <ProjectReference Include="../../../Source/Partie.Extensions.Mise/Brigade.Net.Partie.Extensions.Mise.csproj" />
     <ProjectReference Include="../../../Source/Partie.Extensions.Expo/Brigade.Net.Partie.Extensions.Expo.csproj" />
     <ProjectReference Include="../../../Source/Partie.Engines.AspNetCore/Brigade.Net.Partie.Engines.AspNetCore.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-    <ProjectReference Include="../../../Source/Mise.SqlServer/Brigade.Net.Mise.SqlServer.csproj" />
-    <ProjectReference Include="../../../Source/Mise.PostgreSQL/Brigade.Net.Mise.PostgreSQL.csproj" />
-    <ProjectReference Include="../../../Source/Mise.MySQL/Brigade.Net.Mise.MySQL.csproj" />
-    <ProjectReference Include="../../../Source/Mise.MariaDb/Brigade.Net.Mise.MariaDb.csproj" />
-    <ProjectReference Include="../../../Source/Mise.SQLite/Brigade.Net.Mise.SQLite.csproj" />
+    <ProjectReference Include="../../../Source/Partie.Extensions.Mise.SqlServer/Brigade.Net.Partie.Extensions.Mise.SqlServer.csproj" />
+    <ProjectReference Include="../../../Source/Partie.Extensions.Mise.PostgreSQL/Brigade.Net.Partie.Extensions.Mise.PostgreSQL.csproj" />
+    <ProjectReference Include="../../../Source/Partie.Extensions.Mise.MySQL/Brigade.Net.Partie.Extensions.Mise.MySQL.csproj" />
+    <ProjectReference Include="../../../Source/Partie.Extensions.Mise.MariaDb/Brigade.Net.Partie.Extensions.Mise.MariaDb.csproj" />
+    <ProjectReference Include="../../../Source/Partie.Extensions.Mise.SQLite/Brigade.Net.Partie.Extensions.Mise.SQLite.csproj" />
     <ProjectReference Include="../../../Source/Mise.Engines.SqlServer/Brigade.Net.Mise.Engines.SqlServer.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="../../../Source/Mise.Engines.PostgreSQL/Brigade.Net.Mise.Engines.PostgreSQL.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="../../../Source/Mise.Engines.MySQL/Brigade.Net.Mise.Engines.MySQL.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />

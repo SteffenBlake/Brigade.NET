@@ -17,7 +17,7 @@ internal static class HandlerRouteDeclarations
     )
     {
         var local = context.SyntaxProvider.CreateSyntaxProvider(
-            static (node, _) => node is TypeDeclarationSyntax { BaseList: not null },
+            static (node, _) => node is TypeDeclarationSyntax { BaseList: not null } or RecordDeclarationSyntax,
             static (syntax, token) => Describe(
                 (INamedTypeSymbol)syntax.SemanticModel.GetDeclaredSymbol(syntax.Node, token)!,
                 syntax.SemanticModel.Compilation
@@ -118,6 +118,12 @@ internal static class HandlerRouteDeclarations
         if (DescribeRoutePolicy(type, compilation) is { } policy)
         {
             return policy;
+        }
+        if (type.TypeKind == TypeKind.Class && !type.IsFileLocal
+            && compilation.IsSymbolAccessibleWithin(type, compilation.Assembly)
+            && BundleDeclarations.Describe(type, compilation) is { } bundle)
+        {
+            return bundle;
         }
         if (type.TypeKind != TypeKind.Class || type.IsAbstract || type.IsFileLocal
             || !compilation.IsSymbolAccessibleWithin(type, compilation.Assembly))

@@ -73,6 +73,11 @@
     <Project Path="Source/Mise.Engines.MySQL/Brigade.Net.Mise.Engines.MySQL.csproj" />
     <Project Path="Source/Mise.Engines.MariaDb/Brigade.Net.Mise.Engines.MariaDb.csproj" />
     <Project Path="Source/Partie.Extensions.Mise/Brigade.Net.Partie.Extensions.Mise.csproj" />
+    <Project Path="Source/Partie.Extensions.Mise.SqlServer/Brigade.Net.Partie.Extensions.Mise.SqlServer.csproj" />
+    <Project Path="Source/Partie.Extensions.Mise.PostgreSQL/Brigade.Net.Partie.Extensions.Mise.PostgreSQL.csproj" />
+    <Project Path="Source/Partie.Extensions.Mise.SQLite/Brigade.Net.Partie.Extensions.Mise.SQLite.csproj" />
+    <Project Path="Source/Partie.Extensions.Mise.MySQL/Brigade.Net.Partie.Extensions.Mise.MySQL.csproj" />
+    <Project Path="Source/Partie.Extensions.Mise.MariaDb/Brigade.Net.Partie.Extensions.Mise.MariaDb.csproj" />
   </Folder>
   <Folder Name="/Source/Core/" />
   <Folder Name="/Source/Expo.Engines.Domain/">

@@ -12,7 +12,7 @@ namespace Brigade.Net.Partie.Generator;
 
 public static class BrigadeGeneratorCore
 {
-    private static readonly DiagnosticDescriptor InvalidRoute = new(
+    internal static readonly DiagnosticDescriptor InvalidRoute = new(
         "BRG005",
         "Invalid Brigade route",
         "{0}",
@@ -39,62 +39,49 @@ public static class BrigadeGeneratorCore
         IncrementalValuesProvider<GeneratedDeclaration>? declarations = null
     )
     {
+        var bundles = BundleDeclarations.Create(context);
+        var generatedDeclarations = declarations is { } supplied
+            ? supplied.Collect().Combine(bundles.Collect()).SelectMany((pair, _) => pair.Left.Concat(pair.Right))
+            : bundles;
         var prepared = context.CompilationProvider;
-        if (declarations is { } generatedDeclarations)
+        var declarationsByName = generatedDeclarations.Collect().SelectMany((items, _) =>
+            items.Distinct()
+                .GroupBy(item => item.HintName)
+                .Select(group => (
+                    Declaration: new GeneratedDeclaration(
+                        group.Key,
+                        group.Skip(1).Any() ? "" : group.First().Source
+                    ),
+                    Collision: group.Skip(1).Any()
+                ))
+                .ToImmutableArray()
+        );
+        context.RegisterSourceOutput(declarationsByName, (output, items) =>
         {
-            var declarationsByName = generatedDeclarations.Collect().SelectMany((items, _) =>
-                items.Distinct()
-                    .GroupBy(item => item.HintName)
-                    .Select(group => (
-                        Declaration: new GeneratedDeclaration(
-                            group.Key,
-                            group.Skip(1).Any() ? "" : group.First().Source
-                        ),
-                        Collision: group.Skip(1).Any()
-                    ))
-                    .ToImmutableArray()
-            );
-            context.RegisterSourceOutput(declarationsByName, (output, items) =>
+            if (items.Collision)
             {
-                if (items.Collision)
-                {
-                    output.ReportDiagnostic(
-                        Diagnostic.Create(
-                            InvalidRoute,
-                            Location.None,
-                            "Generated attribute name collision: '"
-                                + items.Declaration.HintName
-                                + "'. Use distinct type names or namespaces."
-                        )
-                    );
-                }
-            });
-            generatedDeclarations = declarationsByName.Where(items => !items.Collision)
-                .Select((items, _) => items.Declaration);
-            context.RegisterSourceOutput(generatedDeclarations, (output, source) =>
-            {
-                output.AddSource(source.HintName, Format(source.Source));
-            });
-            var trees = generatedDeclarations.Combine(context.ParseOptionsProvider).Select((pair, _) =>
-                CSharpSyntaxTree.ParseText(pair.Left.Source, (CSharpParseOptions)pair.Right));
-            prepared = context.CompilationProvider.Combine(trees.Collect()).Select((pair, _) =>
-                pair.Left.AddSyntaxTrees(pair.Right));
-        }
-        var groups = declarations is null ? context.SyntaxProvider.ForAttributeWithMetadataName(
-            "Brigade.Net.Partie.BrigadeGroupAttribute",
-            static (node, _) => node is ClassDeclarationSyntax,
-            (attributeContext, cancellationToken) => BuildGroup(
-                (INamedTypeSymbol)attributeContext.TargetSymbol,
-                (ClassDeclarationSyntax)attributeContext.TargetNode,
-                attributeContext.SemanticModel.Compilation,
-                cancellationToken,
-                emitRoute,
-                discoverRoute,
-                discoverPolicies,
-                discoverPolicyFunctions,
-                emitTypes
-            )
-        ) : context.SyntaxProvider.ForAttributeWithMetadataName(
+                output.ReportDiagnostic(
+                    Diagnostic.Create(
+                        InvalidRoute,
+                        Location.None,
+                        "Generated attribute name collision: '"
+                            + items.Declaration.HintName
+                            + "'. Use distinct type names or namespaces."
+                    )
+                );
+            }
+        });
+        generatedDeclarations = declarationsByName.Where(items => !items.Collision)
+            .Select((items, _) => items.Declaration);
+        context.RegisterSourceOutput(generatedDeclarations, (output, source) =>
+        {
+            output.AddSource(source.HintName, Format(source.Source));
+        });
+        var trees = generatedDeclarations.Combine(context.ParseOptionsProvider).Select((pair, _) =>
+            CSharpSyntaxTree.ParseText(pair.Left.Source, (CSharpParseOptions)pair.Right));
+        prepared = context.CompilationProvider.Combine(trees.Collect()).Select((pair, _) =>
+            pair.Left.AddSyntaxTrees(pair.Right));
+        var groups = context.SyntaxProvider.ForAttributeWithMetadataName(
             "Brigade.Net.Partie.BrigadeGroupAttribute",
             static (node, _) => node is ClassDeclarationSyntax,
             static (syntax, _) => (ClassDeclarationSyntax)syntax.TargetNode
@@ -233,7 +220,6 @@ public static class BrigadeGeneratorCore
                 .Select(component => component.Value as string ?? "").ToImmutableArray()
         )).ToImmutableArray();
         var groupRegistrations = groupSymbols.SelectMany(symbol => symbol.GetAttributes())
-            .Where(attribute => IsRegistration(attribute, false) || IsRegistration(attribute, true))
             .ToArray();
         var routeIndex = 0;
         foreach (var route in group.GetMembers().OfType<IMethodSymbol>().OrderBy(method => method.Name, StringComparer.Ordinal))
@@ -307,12 +293,20 @@ public static class BrigadeGeneratorCore
             }
 
             var handler = routes[0]!.Handler;
+            var invalidBundle = false;
             var orderedRegistrations = groupRegistrations
-                .Concat(attributes.Where(attribute =>
-                    IsRegistration(attribute, false) || IsRegistration(attribute, true)
-                ))
-                .Select(Registration)
+                .Concat(attributes)
+                .SelectMany(attribute => ExpandRegistration(attribute, compilation,
+                    message =>
+                    {
+                        invalidBundle = true;
+                        Report(route, message);
+                    }))
                 .ToArray();
+            if (invalidBundle)
+            {
+                continue;
+            }
             if (handler is null || orderedRegistrations.Any(registration => registration is null))
             {
                 Report(route, "Route types must resolve to named Handler, Partie and Provider types");
@@ -504,6 +498,38 @@ public static class BrigadeGeneratorCore
             )
         );
     }
+    private static IEnumerable<RegistrationModel?> ExpandRegistration(
+        AttributeData attribute,
+        Compilation compilation,
+        Action<string> report
+    )
+    {
+        var marker = attribute.AttributeClass?.GetAttributes().FirstOrDefault(candidate =>
+            IsAttribute(candidate, "BundleRegistrationAttribute"));
+        if (marker is null)
+        {
+            if (IsRegistration(attribute, false) || IsRegistration(attribute, true))
+            {
+                yield return Registration(attribute);
+            }
+            yield break;
+        }
+
+        if (marker.ConstructorArguments.FirstOrDefault().Value is not INamedTypeSymbol bundle)
+        {
+            report("Bundle registration must resolve to a named bundle type");
+            yield break;
+        }
+        bundle = bundle.IsUnboundGenericType ? bundle.OriginalDefinition : bundle;
+        BundleMembers.Parameters(bundle, compilation, report);
+        var parameters = ContextParameters.Arguments(attribute);
+        foreach (var step in BundleMembers.Read(bundle, compilation, report))
+        {
+            var contract = step.AllInterfaces.First(candidate => StepContracts.IsStep(candidate, compilation));
+            yield return new RegistrationModel(step, attribute, StepContracts.IsProvider(contract, compilation), parameters);
+        }
+    }
+
     private static AttributeData? RegistrationMetadata(AttributeData attribute) =>
         attribute.AttributeClass?.GetAttributes().FirstOrDefault(marker => IsAttribute(marker, "RegistrationAttribute"));
 

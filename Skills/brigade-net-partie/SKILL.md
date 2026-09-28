@@ -13,6 +13,7 @@ Main namespaces:
 using Brigade.Net.Core.Results;
 using Brigade.Net.Core.Transactions; // command handler only
 using Brigade.Net.Partie;
+using PartieSystemBundleAttribute = Brigade.Net.Partie.AspNetCore.PartieSystemBundleAttribute;
 ```
 
 ## Request
@@ -192,12 +193,40 @@ Each accessible Provider/Partie class gets a source-generated, repeatable attr n
 
 Handler gets source-generated `<HandlerName>Route`: query has `.Get`; command has `.Post`, `.Put`, `.Patch`, `.Delete`, `.Head`, `.Options`, `.Trace`, `.Connect`.
 
+## Bundles
+
+Declare a record whose primary constructor lists the real Provider, Partie, or nested bundle types. Constructor order is registration order. Use generic record parameters for generic steps. The `Bundle` suffix is a convention; a record made entirely of steps or bundles also works without it. No marker attr or `partial` is needed, and no bundle instance is constructed at runtime.
+
+```csharp
+using Brigade.Net.Partie.Extensions.Mise.SQLite;
+
+public sealed record AppBundle<TRequest, TResult>(
+    Brigade.Net.Partie.AspNetCore.PartieSystemBundle<TRequest, TResult> Partie,
+    MiseSqliteBundle<TRequest, TResult> Database
+);
+
+[BrigadeGroup("/users")]
+[AppBundle("Users")]
+public static partial class UserRoutes
+{
+    [UserSearchV1HandlerRoute.Get]
+    static partial void Search();
+}
+```
+
+Each record gets a source-generated, repeatable `<TypeName>Attribute`. Apply it to a group or route. Each use expands its members in place, exactly like inline step attrs. Normal matching, generic constraints, provider laziness, and Provide/Decorate rules still apply.
+
+Context `[Parameter]` args bubble through all nested members to the generated bundle attr. Required args stay required; defaults and `params` stay intact. Required args precede optional args. Matching names share an arg when type and default match; incompatible definitions report `BRG005`. Each registration use supplies its own values, forwarded to every matching step. Bundles can come from referenced projects. Cycles and invalid constructor members report `BRG005` and prevent that route's pipeline from being emitted.
+
+For app routing, put `[PartieSystemBundle]` then `[ExpoSystemBundle]` on the root group. The first contains HTTP result mapping followed by command UoW; the second contains Expo validation. Add `[MiseSqlServerBundle(name)]`, `[MisePostgreSqlBundle(name)]`, `[MiseSqliteBundle(name)]`, `[MiseMySqlBundle(name)]`, or `[MiseMariaDbBundle(name)]` to each database group or route. Database bundles contain named config, query reader, command transaction, and command writer providers. Each is in its database integration namespace. Use `brigade-net-mise-setup` for package setup and `brigade-net-expo` for validation.
+
 ## Routes + groups
 
 Group and every containing type must be non-generic, not declared with `file`, and `partial`.
 
 ```csharp
 [BrigadeGroup("/api/v1")]
+[PartieSystemBundle]
 [AuditPartie]
 public static partial class Routes
 {
@@ -208,7 +237,6 @@ public static partial class Routes
         [OrderSearchV1HandlerRoute.Get("/{id}")]
         static partial void Search();
 
-        [UnitOfWorkPartie]
         [OrderCreateV1HandlerRoute.Post]
         static partial void Create();
     }
@@ -235,7 +263,7 @@ Apply its class-name attr to group/route. Generic constraints filter matching po
 
 ## Unit of work
 
-Required: put `[UnitOfWorkPartie]` on command route. Its made value is `UnitOfWork`; command handler always receives it as first arg. A later context can also request `[Provide] UnitOfWork`.
+Put `[PartieSystemBundle]` on the route or an enclosing group. Its `UnitOfWorkPartie` member supplies `UnitOfWork` for commands; command handlers always receive it as the first arg. A later context can also request `[Provide] UnitOfWork`. Expo validation runs inside this UoW when `[ExpoSystemBundle]` follows the system bundle.
 
 - Every Success and Deprecated result commits.
 - Failure rolls back.
@@ -248,7 +276,7 @@ JSON = payload only. No case shell. Status map is opt-in. Add outer, before step
 
 ```csharp
 [BrigadeGroup("/api/v1")]
-[Brigade.Net.Partie.AspNetCore.HttpResultPartie]
+[PartieSystemBundle]
 public static partial class Routes;
 ```
 

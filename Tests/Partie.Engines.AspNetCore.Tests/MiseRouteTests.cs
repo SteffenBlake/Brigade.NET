@@ -1,18 +1,23 @@
 using Brigade.Net.Mise;
 using Brigade.Net.Partie.Extensions.Mise;
 using Microsoft.CodeAnalysis;
+using Brigade.Net.Partie.Extensions.Mise.SQLite;
+using Brigade.Net.Partie.Extensions.Mise.PostgreSQL;
 
 namespace Brigade.Net.Partie.Engines.AspNetCore.Tests;
 
 public sealed class MiseRouteTests
 {
-    [Fact]
-    public void NamedConfigsAndReaderCompileForTwoQueryRoutes()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NamedConfigsAndReaderCompileForTwoQueryRoutes(bool bundled)
     {
-        var generated = EngineCompilation.Valid(
-            """
+        var source = """
             using Brigade.Net.Mise;
             using Brigade.Net.Partie.Extensions.Mise;
+            using Brigade.Net.Partie.Extensions.Mise.SQLite;
+            using Brigade.Net.Partie.Extensions.Mise.PostgreSQL;
 
             public sealed class ReadContext([Provide] DbReader reader);
             public sealed class ReadQuery;
@@ -29,31 +34,38 @@ public sealed class MiseRouteTests
             [BrigadeGroup("/items")]
             public static partial class Routes
             {
-                [DbConfigProvider("Sqlite")]
+                [SqliteDbConfigProvider("Sqlite")]
                 [DbReaderProvider]
                 [ReadHandlerRoute.Get("/sqlite")]
                 static partial void Sqlite();
 
-                [DbConfigProvider("PostgreSql")]
+                [PostgreSqlDbConfigProvider("PostgreSql")]
                 [DbReaderProvider]
                 [ReadHandlerRoute.Get("/postgres")]
                 static partial void PostgreSql();
             }
-            """,
-            MiseReferences()
-        );
+            """;
+        if (bundled)
+        {
+            source = source.Replace("[SqliteDbConfigProvider(\"Sqlite\")]\n    [DbReaderProvider]", "[MiseSqliteBundle(\"Sqlite\")]")
+                .Replace("[PostgreSqlDbConfigProvider(\"PostgreSql\")]\n    [DbReaderProvider]", "[MisePostgreSqlBundle(\"PostgreSql\")]");
+        }
+        var generated = EngineCompilation.Valid(source, MiseReferences());
         Assert.Contains("Sqlite", generated);
         Assert.Contains("PostgreSql", generated);
         Assert.Contains("DbReaderProvider", generated);
     }
 
-    [Fact]
-    public void UnitOfWorkAndTwoWriteProvidersCompileInOrder()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void UnitOfWorkAndTwoWriteProvidersCompileInOrder(bool bundled)
     {
-        var generated = EngineCompilation.Valid(
-            """
+        var source = """
             using Brigade.Net.Mise;
             using Brigade.Net.Partie.Extensions.Mise;
+            using Brigade.Net.Partie.Extensions.Mise.SQLite;
+            using Brigade.Net.Partie.Extensions.Mise.PostgreSQL;
 
             public sealed class WriteContext([Provide] DbWriter writer, [Provide] ITxn transaction);
             public sealed class WriteCommand;
@@ -75,22 +87,28 @@ public sealed class MiseRouteTests
                 [BrigadeGroup("/writes")]
                 private static partial class Writes
                 {
-                    [DbConfigProvider("Sqlite")]
+                    [SqliteDbConfigProvider("Sqlite")]
                     [DbWriterTxnProvider]
                     [DbWriterProvider]
                     [WriteHandlerRoute.Post("/sqlite")]
                     static partial void Sqlite();
 
-                    [DbConfigProvider("PostgreSql")]
+                    [PostgreSqlDbConfigProvider("PostgreSql")]
                     [DbWriterTxnProvider]
                     [DbWriterProvider]
                     [WriteHandlerRoute.Post("/postgres")]
                     static partial void PostgreSql();
                 }
             }
-            """,
-            MiseReferences()
-        );
+            """;
+        if (bundled)
+        {
+            source = "using PartieSystemBundleAttribute = Brigade.Net.Partie.AspNetCore.PartieSystemBundleAttribute;\n"
+                + source.Replace("[UnitOfWorkPartie]", "[PartieSystemBundle]")
+                    .Replace("[SqliteDbConfigProvider(\"Sqlite\")]\n        [DbWriterTxnProvider]\n        [DbWriterProvider]", "[MiseSqliteBundle(\"Sqlite\")]")
+                    .Replace("[PostgreSqlDbConfigProvider(\"PostgreSql\")]\n        [DbWriterTxnProvider]\n        [DbWriterProvider]", "[MisePostgreSqlBundle(\"PostgreSql\")]");
+        }
+        var generated = EngineCompilation.Valid(source, MiseReferences());
         Assert.Contains("DbWriterTxnProvider", generated);
         Assert.Contains("DbWriterProvider", generated);
     }
@@ -98,6 +116,8 @@ public sealed class MiseRouteTests
     private static MetadataReference[] MiseReferences() =>
     [
         MetadataReference.CreateFromFile(typeof(DbReader).Assembly.Location),
-        MetadataReference.CreateFromFile(typeof(DbReaderProvider<,>).Assembly.Location)
+        MetadataReference.CreateFromFile(typeof(DbReaderProvider<,>).Assembly.Location),
+        MetadataReference.CreateFromFile(typeof(SqliteDbConfigProvider<,>).Assembly.Location),
+        MetadataReference.CreateFromFile(typeof(PostgreSqlDbConfigProvider<,>).Assembly.Location)
     ];
 }

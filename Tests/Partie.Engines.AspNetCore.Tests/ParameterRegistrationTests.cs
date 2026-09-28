@@ -42,8 +42,10 @@ public sealed class ParameterRegistrationTests
         }
         """;
 
-    [Fact]
-    public async Task AttributesBindProviderPartieAndHandlerParametersInOrder()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AttributesBindProviderPartieAndHandlerParametersInOrder(bool bundled)
     {
         var source = Contracts + """
             [BrigadeGroup, Supply("provided")]
@@ -87,6 +89,13 @@ public sealed class ParameterRegistrationTests
                 }
             }
             """;
+        if (bundled)
+        {
+            source = source.Replace("Supply(\"provided\")", "SupplyBundle(\"provided\")")
+                .Replace("[TracePartie]", "[TraceBundle]")
+                .Replace("[TracePartie(\"second\"", "[TraceBundle(\"second\"")
+                + "public sealed record SupplyBundle(Supply Supply); public sealed record TraceBundle(TracePartie Trace);";
+        }
         var (output, result) = EngineCompilation.Generate(source);
         Assert.Empty(result.Diagnostics);
         using var stream = new MemoryStream();
@@ -99,8 +108,10 @@ public sealed class ParameterRegistrationTests
         Assert.Equal(new[] { "provided?", "default:Monday::", "second:Friday:String:1,2" }, values);
     }
 
-    [Fact]
-    public void DefaultsArePreservedFromReferencedDomainMetadata()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DefaultsArePreservedFromReferencedDomainMetadata(bool bundled)
     {
         var domain = EngineCompilation.Reference("""
             #nullable enable
@@ -111,8 +122,8 @@ public sealed class ParameterRegistrationTests
             using Brigade.Net.Partie;
             using Brigade.Net.Core.Results;
             namespace Domain;
-            """ + Contracts);
-        var generated = EngineCompilation.Valid("""
+            """ + Contracts + "public sealed record DomainBundle(TracePartie Trace, Supply Supply);");
+        var source = """
             using Domain;
             [BrigadeGroup, Supply("domain")]
             public static partial class Routes
@@ -120,7 +131,13 @@ public sealed class ParameterRegistrationTests
                 [TracePartie, ReadRoute.Get]
                 static partial void Run();
             }
-            """, [domain]);
+            """;
+        if (bundled)
+        {
+            source = source.Replace("Supply(\"domain\")", "DomainBundle(\"domain\")")
+                .Replace("[TracePartie, ReadRoute.Get]", "[ReadRoute.Get]");
+        }
+        var generated = EngineCompilation.Valid(source, [domain]);
         Assert.Contains("string @Label = \"default\"", generated);
         Assert.Contains("global::System.DayOfWeek @Day = (global::System.DayOfWeek)1", generated);
         Assert.Contains("global::System.Type? @Kind = null", generated);

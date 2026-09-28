@@ -3,8 +3,6 @@ using Brigade.Net.Core.Transactions;
 using Brigade.Net.Mise;
 using Brigade.Net.Mise.Tests;
 using Microsoft.Data.Sqlite;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Brigade.Net.Partie.Extensions.Mise.Tests;
 
@@ -144,38 +142,6 @@ public sealed class MiseProviderTests
         }
     }
 
-    [Fact]
-    public async Task ConfigProviderUsesNamedConnectionString()
-    {
-        var settings = new ConfigurationBuilder()
-            .AddInMemoryCollection(
-                new Dictionary<string, string?>
-                {
-                    ["ConnectionStrings:Sqlite"] = "Data Source=example.db"
-                }
-            )
-            .Build();
-        var services = new ServiceCollection()
-            .AddKeyedSingleton<System.Data.Common.DbProviderFactory>(
-                "Sqlite",
-                SqliteFactory.Instance
-            )
-            .BuildServiceProvider();
-        var context = new DbConfigProviderContext(settings, services, "Sqlite");
-        var result = await DbConfigProvider<Unit, Unit>.OnQueryAsync(
-            context,
-            Unit.Default,
-            config =>
-            {
-                Assert.Equal("Data Source=example.db", config.ConnectionString);
-                Assert.Same(SqliteFactory.Instance, config.ProviderFactory);
-                return ValueTask.FromResult<Result<Unit>>(Unit.Default);
-            },
-            default
-        );
-        Assert.True(result.IsSuccess(out _));
-    }
-
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -209,44 +175,6 @@ public sealed class MiseProviderTests
         Assert.Equal(1, connection.OpenCount);
         Assert.Equal(0, connection.BeginTransactionCount);
         Assert.Equal(1, connection.DisposeCount);
-    }
-
-    [Fact]
-    public async Task NamedConfigsSelectDistinctFactories()
-    {
-        var first = new FakeDbProviderFactory(new FakeDbConnection());
-        var second = new FakeDbProviderFactory(new FakeDbConnection());
-        var settings = new ConfigurationBuilder().AddInMemoryCollection(
-            new Dictionary<string, string?>
-            {
-                ["ConnectionStrings:Sqlite"] = "first",
-                ["ConnectionStrings:PostgreSql"] = "second"
-            }
-        ).Build();
-        using var services = new ServiceCollection()
-            .AddKeyedSingleton<System.Data.Common.DbProviderFactory>("Sqlite", first)
-            .AddKeyedSingleton<System.Data.Common.DbProviderFactory>("PostgreSql", second)
-            .BuildServiceProvider();
-
-        var names = new[] { "Sqlite", "PostgreSql" };
-        var configs = new List<IDbConfig>();
-        foreach (var name in names)
-        {
-            await DbConfigProvider<Unit, Unit>.OnQueryAsync(
-                new DbConfigProviderContext(settings, services, name),
-                Unit.Default,
-                config =>
-                {
-                    configs.Add(config);
-                    return ValueTask.FromResult<Result<Unit>>(Unit.Default);
-                },
-                default
-            );
-        }
-
-        Assert.Equal(["first", "second"], configs.Select(config => config.ConnectionString));
-        Assert.Same(first, configs[0].ProviderFactory);
-        Assert.Same(second, configs[1].ProviderFactory);
     }
 
     [Fact]
@@ -287,48 +215,6 @@ public sealed class MiseProviderTests
                 default
             ).AsTask()
         );
-    }
-
-    [Fact]
-    public async Task CommandConfigProviderUsesNamedConnectionString()
-    {
-        var settings = new ConfigurationBuilder()
-            .AddInMemoryCollection(
-                new Dictionary<string, string?>
-                {
-                    ["ConnectionStrings:Sqlite"] = "Data Source=command.db"
-                }
-            )
-            .Build();
-        using var services = new ServiceCollection()
-            .AddKeyedSingleton<System.Data.Common.DbProviderFactory>(
-                "Sqlite",
-                SqliteFactory.Instance
-            )
-            .BuildServiceProvider();
-        var result = await DbConfigProvider<Unit, Unit>.OnCommandAsync(
-            new DbConfigProviderContext(settings, services, "Sqlite"),
-            Unit.Default,
-            config =>
-            {
-                Assert.Equal("Data Source=command.db", config.ConnectionString);
-                return ValueTask.FromResult<Result<Unit>>(Unit.Default);
-            },
-            default
-        );
-        Assert.True(result.IsSuccess(out _));
-    }
-
-    [Fact]
-    public void ConfigProviderRejectsMissingConnectionString()
-    {
-        using var services = new ServiceCollection().BuildServiceProvider();
-        var context = new DbConfigProviderContext(
-            new ConfigurationBuilder().Build(),
-            services,
-            "Missing"
-        );
-        Assert.Throws<InvalidOperationException>(() => context.CreateConfig());
     }
 
     [Fact]

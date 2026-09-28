@@ -1,3 +1,8 @@
+using Brigade.Net.Partie.Extensions.Mise.SqlServer;
+using Brigade.Net.Partie.Extensions.Mise.PostgreSQL;
+using Brigade.Net.Partie.Extensions.Mise.SQLite;
+using Brigade.Net.Partie.Extensions.Mise.MySQL;
+using Brigade.Net.Partie.Extensions.Mise.MariaDb;
 using Brigade.Net.Example.Domain.Accounts.SearchMariaDbV1;
 using Brigade.Net.Example.Domain.Accounts.SearchMySqlV1;
 using Brigade.Net.Example.Domain.Accounts.SearchPostgreSqlV1;
@@ -24,28 +29,23 @@ using Brigade.Net.Example.Domain.ResultCases.SearchV1;
 using Brigade.Net.Example.Web.RoutePolicies;
 using Brigade.Net.Partie.Engines.AspNetCore;
 using Brigade.Net.Partie.Extensions.Expo;
-using Brigade.Net.Partie.Extensions.Mise;
 using Brigade.Net.Partie;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Hosting;
-using HttpResultPartieAttribute = Brigade.Net.Partie.AspNetCore.HttpResultPartieAttribute;
+using PartieSystemBundleAttribute = Brigade.Net.Partie.AspNetCore.PartieSystemBundleAttribute;
 
 namespace Brigade.Net.Example.Web;
 
 [BrigadeGroup("/api/v1")]
-[HttpResultPartie]
-[ExpoValidationPartie]
-[UnitOfWorkPartie]
-[DbReaderProvider]
-[DbWriterTxnProvider]
-[DbWriterProvider]
+[PartieSystemBundle]
+[ExpoSystemBundle]
 public static partial class Routing
 {
     [BrigadeGroup("/mise")]
     private static partial class Mise
     {
         [BrigadeGroup("/sqlserver")]
-        [DbConfigProvider(ServiceNames.SqlServer)]
+        [MiseSqlServerBundle(ServiceNames.SqlServer)]
         private static partial class SqlServer
         {
             [PurchaseSearchSqlServerV1HandlerRoute.Get("purchases")]
@@ -68,7 +68,7 @@ public static partial class Routing
         }
 
         [BrigadeGroup("/postgresql")]
-        [DbConfigProvider(ServiceNames.PostgreSql)]
+        [MisePostgreSqlBundle(ServiceNames.PostgreSql)]
         private static partial class PostgreSql
         {
             [PurchaseSearchPostgreSqlV1HandlerRoute.Get("purchases")]
@@ -91,7 +91,7 @@ public static partial class Routing
         }
 
         [BrigadeGroup("/sqlite")]
-        [DbConfigProvider(ServiceNames.Sqlite)]
+        [MiseSqliteBundle(ServiceNames.Sqlite)]
         private static partial class Sqlite
         {
             [PurchaseSearchSqliteV1HandlerRoute.Get("purchases")]
@@ -114,7 +114,7 @@ public static partial class Routing
         }
 
         [BrigadeGroup("/mysql")]
-        [DbConfigProvider(ServiceNames.MySql)]
+        [MiseMySqlBundle(ServiceNames.MySql)]
         private static partial class MySql
         {
             [PurchaseSearchMySqlV1HandlerRoute.Get("purchases")]
@@ -137,7 +137,7 @@ public static partial class Routing
         }
 
         [BrigadeGroup("/mariadb")]
-        [DbConfigProvider(ServiceNames.MariaDb)]
+        [MiseMariaDbBundle(ServiceNames.MariaDb)]
         private static partial class MariaDb
         {
             [PurchaseSearchMariaDbV1HandlerRoute.Get("purchases")]

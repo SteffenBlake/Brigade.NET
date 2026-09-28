@@ -45,8 +45,10 @@ public class BrigadeRoutingGeneratorTests
         .Select(path => MetadataReference.CreateFromFile(path))
         .ToArray();
 
-    [Fact]
-    public async Task Generator_ProducesInvokableEngineRouteWithoutAspNetReferences()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Generator_ProducesInvokableEngineRouteWithoutAspNetReferences(bool bundled)
     {
         var source = """
             public sealed class Request { [FromParams] public int Count { get; set; } }
@@ -98,12 +100,35 @@ public class BrigadeRoutingGeneratorTests
                 }
             }
             """;
+        if (bundled)
+        {
+            source = source.Replace("Provider(typeof(First))", "OuterBundle")
+                .Replace("Provider(typeof(Second)), Partie(typeof(Fixed))", "InnerBundle")
+                + """
+                    public sealed record OuterBundle(First First);
+                    public sealed record StepsBundle(Second Second, Fixed Fixed);
+                    public sealed record InnerBundle(StepsBundle Steps);
+                    """;
+        }
         var (_, output, result) = Generate(source + Harness);
         Assert.Empty(result.Diagnostics);
         AssertNoErrors(output);
         Assert.DoesNotContain("Microsoft.AspNetCore", AllSource(result));
         Assert.DoesNotContain("GetService", AllSource(result));
         Assert.Equal("one,two,fixed:True|first;second;fixed;handler;after;", await Run(output));
+    }
+
+    [Theory]
+    [InlineData("public sealed record CycleBundle(CycleBundle First, CycleBundle Second);")]
+    [InlineData("public sealed record CycleBundle(OtherBundle Other); public sealed record OtherBundle(CycleBundle Cycle);")]
+    public void Generator_RejectsBundleCycles(string bundles)
+    {
+        var source = Source("").Replace("[BrigadeGroup(\"\")]", "[BrigadeGroup(\"\"), CycleBundle]") + bundles;
+        var (_, _, result) = Generate(source);
+        Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Id == "BRG005"
+            && diagnostic.GetMessage().Contains("Bundle registration cycle"));
+        Assert.DoesNotContain(result.Results.Single().GeneratedSources,
+            item => item.HintName.EndsWith(".Pipeline.g.cs"));
     }
 
     [Fact]

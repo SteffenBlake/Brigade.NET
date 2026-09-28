@@ -1,6 +1,6 @@
 ---
 name: brigade-net-expo
-description: Use Brigade.Net.Expo in application models: built-in and generated validation attributes, custom rules, nested validation, errors, and generated metadata. Assumes Expo and its generators are already installed; do not use for package or host setup.
+description: "Use Brigade.Net.Expo in application models: built-in and generated validation attributes, custom rules, nested validation, errors, and generated metadata. Assumes Expo and its generators are already installed; do not use for package or host setup."
 ---
 
 ## Model contract
@@ -82,4 +82,4 @@ Non-null `IExpoValidatable` prop cascades. Array/generic `IEnumerable<T>` cascad
 
 Validation only when `TryValidate` called. `ExpoValidationPartie<TRequest,TResult>` calls it; fail returns `Error(errors)`, pass continues.
 
-Must add ExpoValidationPartie to Routing for automatic validation. See brigade-net-partie skill for further details.
+Add `[ExpoSystemBundle]` from `Brigade.Net.Partie.Extensions.Expo` to the root routing group, after `[PartieSystemBundle]`, for automatic validation. Its record member is `ExpoValidationPartie<TRequest,TResult>`; the step only matches `IExpoValidatable` requests. See `brigade-net-partie` for route and bundle setup.

@@ -32,6 +32,6 @@ writer.ExecuteScalarAsync<T>(cmd, ct)
 
 List returns all rows; no rows is an empty successful list. First returns first row, ignores later rows, or `NotFound` if none. Scalar returns first cell; no row or SQL NULL gives null.
 
-Write in command handler with `[Provide] DbWriter`; `[UnitOfWorkPartie]` owns transaction. For custom SQL use `.Sql($"UPDATE ... {value}")`; values remain bound. See `brigade-net-partie` for handler/UoW contracts.
+Write in command handler with `[Provide] DbWriter`; the root `[PartieSystemBundle]` owns the UoW and the database bundle, such as `[MiseSqliteBundle("Main")]`, supplies config, transaction, and writer. See `brigade-net-mise-setup` for the other database bundles. For custom SQL use `.Sql($"UPDATE ... {value}")`; values remain bound. See `brigade-net-partie` for handler/UoW contracts.
 
 Command API scope: `InsertInto(FormattableString)` starts INSERT; `Update(FormattableString)` starts UPDATE; `DeleteFrom(FormattableString)` starts DELETE. `Set(FormattableString)` and `Set(string, IQueryBuilder)` are UPDATE only. `Where(FormattableString)` is UPDATE/DELETE only. `Columns(FormattableString)`, `Values(FormattableString)`, `FromQuery(IQueryBuilder)` are INSERT only; choose VALUES or query source. `Sql(FormattableString)` and `Procedure(string)` each choose standalone custom SQL or procedure mode. `ProcedureParameter(string, object?, DbType? = null)` is procedure only. `Timeout(int)` and `Compile()` apply to all command kinds. Invalid mixes fail at compile.

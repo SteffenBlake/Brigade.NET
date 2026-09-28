@@ -20,4 +20,8 @@
     <ProjectReference Include="../../Source/Partie.Extensions.Mise/Brigade.Net.Partie.Extensions.Mise.csproj" />
     <ProjectReference Include="../../Source/Mise/Brigade.Net.Mise.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Source/Partie.Extensions.Mise.PostgreSQL/Brigade.Net.Partie.Extensions.Mise.PostgreSQL.csproj" />
+    <ProjectReference Include="../../Source/Partie.Extensions.Mise.SQLite/Brigade.Net.Partie.Extensions.Mise.SQLite.csproj" />
+  </ItemGroup>
 </Project>

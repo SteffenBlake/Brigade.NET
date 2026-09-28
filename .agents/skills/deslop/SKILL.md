@@ -54,6 +54,13 @@ Mix sentence lengths. Two items beat three. End paragraphs differently. No em da
 
 State facts directly. Skip softening, justification, hand-holding. No "Let's break this down." No "Think of it as..." No pedagogical voice unless the audience genuinely needs it. No fractal summaries (telling the reader what you are about to say, saying it, then summarizing what you said).
 
+Apply these checks when editing prose:
+
+- **Don’t describe the piece of writing.** Delete sentences such as “This guide covers configuration” or “This article explains validation.” Start with the configuration or validation itself.
+- **Don’t preview the reader’s experience.** Delete “You will learn how to…” and “In this section, we’ll…” Start with the fact or instruction.
+- **Don’t narrate the content’s order.** Delete “First, this article explains requests; next, it covers handlers.” Use headings to show the order.
+- **Don’t announce a convention that the content already makes clear.** Delete the announcement without replacement. The reader can already see the convention in the content.
+
 Describe what the subject is, does, or measures. When a user excludes something, honor that constraint by omitting it from the output. Announcing the exclusion turns an editing instruction into needless reader-facing content. Delete statements such as "The report does not rank implementations," "This is not a tutorial," and "No claims are made." State the actual purpose directly: "The report records execution time and allocation by implementation."
 
 Apply this across the whole document, including introductions, scope notes, captions, and conclusions. For technical scope, name the measured operation, population, or statistical quantity directly: "Whiskers show the observed range across runs." Retain a negative statement only when that specific fact is needed to understand a result or take an action.

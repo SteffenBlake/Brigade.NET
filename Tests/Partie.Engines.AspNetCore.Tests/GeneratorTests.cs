@@ -7,6 +7,81 @@ namespace Brigade.Net.Partie.Engines.AspNetCore.Tests;
 
 public class GeneratorTests
 {
+    [Fact]
+    public void BundlesFromReferencedProjectsExpandTheirRegistrations()
+    {
+        var domain = EngineCompilation.Reference("""
+            using System.Threading;
+            using System.Threading.Tasks;
+            using Brigade.Net.Core.Results;
+            using Brigade.Net.Partie;
+            namespace Domain;
+            public sealed class Trace : IQueryPartie<Unit, Unit, Unit, int>
+            {
+                public static ValueTask<Result<int>> OnQueryAsync(
+                    Unit ctx, Unit query, Next<Unit, int> next, CancellationToken ct)
+                    => next(Unit.Default);
+            }
+            public sealed record SharedBundle(Trace Trace);
+            public sealed class Read : IQueryHandler<Unit, int, Unit>
+            {
+                public static Task<Result<int>> RunAsync(Unit ctx, Unit query, CancellationToken ct)
+                    => Task.FromResult<Result<int>>(42);
+            }
+            """);
+        var generated = EngineCompilation.Valid("""
+            using Domain;
+            [BrigadeGroup, SharedBundle]
+            public static partial class Routes
+            {
+                [ReadRoute.Get]
+                static partial void Go();
+            }
+            """, [domain]);
+        Assert.Contains("RouteDispatch.QueryPartie<global::Domain.Trace,", generated);
+    }
+
+    [Theory]
+    [InlineData("MixedBundle")]
+    [InlineData("MixedSteps")]
+    public void BundlesBubbleUpSharedParametersThroughNestedRecords(string bundleName)
+    {
+        var source = TypedSource("Get", "") + """
+            public sealed record StepContext([Parameter] string text);
+            public sealed class TextProvider : IQueryProvider<string, StepContext, Request, int>
+            {
+                public static System.Threading.Tasks.ValueTask<Result<int>> OnQueryAsync(
+                    StepContext ctx, Request query, Next<string, int> next, System.Threading.CancellationToken ct)
+                    => next(ctx.text);
+            }
+            public sealed class TextPartie : IQueryPartie<string, StepContext, Request, int>
+            {
+                public static System.Threading.Tasks.ValueTask<Result<int>> OnQueryAsync(
+                    StepContext ctx, Request query, Next<string, int> next, System.Threading.CancellationToken ct)
+                    => next(ctx.text);
+            }
+            """;
+        var inline = source.Replace("[BrigadeGroup(\"/items\")]",
+                "[BrigadeGroup(\"/items\"), TextProvider(\"group\"), TextPartie(\"group\")]")
+            .Replace("[HandlerRoute.Get]", "[TextProvider(\"route\"), TextPartie(\"route\"), HandlerRoute.Get]");
+        var bundled = source.Replace("[BrigadeGroup(\"/items\")]",
+                "[BrigadeGroup(\"/items\"), " + bundleName + "(\"group\")]")
+            .Replace("[HandlerRoute.Get]", "[NestedBundle(\"route\"), HandlerRoute.Get]")
+            + "public sealed record " + bundleName + "(TextProvider Provider, TextPartie Partie);"
+            + "public sealed record NestedBundle(" + bundleName + " Steps);";
+
+        var (_, inlineOutput, inlineResult) = Generate(inline);
+        var (_, bundleOutput, bundleResult) = Generate(bundled);
+        Assert.Empty(inlineResult.Diagnostics);
+        Assert.Empty(bundleResult.Diagnostics);
+        AssertNoErrors(inlineOutput);
+        AssertNoErrors(bundleOutput);
+        var expected = inlineResult.Results.Single().GeneratedSources.Single(item => item.HintName.EndsWith(".Pipeline.g.cs"));
+        var actual = bundleResult.Results.Single().GeneratedSources.Single(item => item.HintName.EndsWith(".Pipeline.g.cs"));
+        Assert.Equal(expected.SourceText.ToString(), actual.SourceText.ToString());
+        Assert.Contains(bundleResult.Results.Single().GeneratedSources, item => item.HintName == bundleName + "Attribute.g.cs");
+    }
+
     private static readonly MetadataReference[] References = ((string)
         AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!
     )

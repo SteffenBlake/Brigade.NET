@@ -15,7 +15,7 @@ Use `Brigade.Net.Mise` plus one engine pair:
 | MySQL | `Brigade.Net.Mise.MySQL` | `Brigade.Net.Mise.Engines.MySQL` |
 | MariaDB | `Brigade.Net.Mise.MariaDb` | `Brigade.Net.Mise.Engines.MariaDb` |
 
-Also add the provider package/factory. Analyzer package generates table constants, join constants, and row mapping. One mapped type uses one engine.
+The runtime package includes the ADO.NET provider. Analyzer package generates table constants, join constants, and row mapping. One mapped type uses one engine.
 
 Config contract: `IDbConfig.ConnectionString`, `IDbConfig.ProviderFactory`. Route config:
 
@@ -23,17 +23,34 @@ Config contract: `IDbConfig.ConnectionString`, `IDbConfig.ProviderFactory`. Rout
 new DbRouteConfig(connectionString, providerFactory)
 ```
 
-Register keyed `DbProviderFactory` by connection-string name. Route setup:
+Add `Brigade.Net.Partie.Extensions.Mise.<Engine>` for your database. It includes the shared Mise integration and the database runtime package. Route setup:
 
 ```csharp
-[UnitOfWorkPartie]
-[DbReaderProvider]
-[DbWriterTxnProvider]
-[DbWriterProvider]
-[DbConfigProvider("SqlServer")]
+using Brigade.Net.Partie;
+using PartieSystemBundleAttribute = Brigade.Net.Partie.AspNetCore.PartieSystemBundleAttribute;
+using Brigade.Net.Partie.Extensions.Mise.SqlServer;
+
+[BrigadeGroup("/api")]
+[PartieSystemBundle]
+public static partial class Routes
+{
+    [MiseSqlServerBundle("SqlServer")]
+    [AccountSearchV1HandlerRoute.Get("/accounts")]
+    static partial void Search();
+}
 ```
 
-`DbConfigProvider` resolves `IConfiguration.GetConnectionString(name)` and keyed factory. Reader picks last `IDbConfig`; writer transaction is lazy; writer requires `DbWriterTxn`. `DbReader` owns config-created connection; supplied connection stays caller-owned. `DbWriterTxn` owns writer and transaction; outer UoW disposes transaction before writer. Use reader for queries; writer for commands. Use `[Provide] DbReader` / `[Provide] DbWriter` in handler context. Read `brigade-net-partie` for route/provider ordering and handler contracts.
+Each database bundle contains its named config provider, `DbReaderProvider`, `DbWriterTxnProvider`, and `DbWriterProvider`, in that order. The config provider's `[Parameter] string ConnectionStringName` bubbles up to the generated bundle attr. It resolves `IConfiguration.GetConnectionString(name)` and supplies the database factory. Apply the database bundle on a child database group or individual route; keep `[PartieSystemBundle]` on the root group for HTTP results and UoW. Add `[ExpoSystemBundle]` after it when using Expo validation.
+
+| Database integration namespace suffix | Bundle attr |
+|---|---|
+| `SqlServer` | `[MiseSqlServerBundle(name)]` |
+| `PostgreSQL` | `[MisePostgreSqlBundle(name)]` |
+| `SQLite` | `[MiseSqliteBundle(name)]` |
+| `MySQL` | `[MiseMySqlBundle(name)]` |
+| `MariaDb` | `[MiseMariaDbBundle(name)]` |
+
+MySQL and MariaDB use MySqlConnector. Reader picks last `IDbConfig`; writer transaction is lazy; writer requires `DbWriterTxn`. `DbReader` owns config-created connection; supplied connection stays caller-owned. `DbWriterTxn` owns writer and transaction; outer UoW disposes transaction before writer. Use reader for queries; writer for commands. Use `[Provide] DbReader` / `[Provide] DbWriter` in handler context. Read `brigade-net-partie` for route/provider ordering and handler contracts.
 
 Public runtime API:
 
