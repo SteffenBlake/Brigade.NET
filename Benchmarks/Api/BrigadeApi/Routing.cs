@@ -7,11 +7,12 @@ using Brigade.Net.Partie.Extensions.Mise.MySQL;
 using Brigade.Net.Partie.Extensions.Mise.MariaDb;
 using Brigade.Net.Partie.Extensions.Mise.SQLite;
 using Microsoft.AspNetCore.Builder;
-using PartieSystemBundleAttribute = Brigade.Net.Partie.AspNetCore.PartieSystemBundleAttribute;
+using AspNetSystemBundleAttribute = Brigade.Net.Partie.AspNetCore.AspNetSystemBundleAttribute;
 
 namespace Brigade.Net.Benchmarks.Api.BrigadeApi;
 
 [BrigadeGroup("/api")]
+[AspNetSystemBundle]
 [PartieSystemBundle]
 [ExpoSystemBundle]
 public static partial class Routing

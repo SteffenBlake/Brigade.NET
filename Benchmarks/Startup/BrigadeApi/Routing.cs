@@ -8,11 +8,12 @@ using Brigade.Net.Benchmarks.Startup.BrigadeApi.Operations.Order;
 using Brigade.Net.Benchmarks.Startup.BrigadeApi.Operations.Invoice;
 using Brigade.Net.Benchmarks.Startup.BrigadeApi.Operations.Shipment;
 using Brigade.Net.Benchmarks.Startup.BrigadeApi.Operations.Warehouse;
-using PartieSystemBundleAttribute = Brigade.Net.Partie.AspNetCore.PartieSystemBundleAttribute;
+using AspNetSystemBundleAttribute = Brigade.Net.Partie.AspNetCore.AspNetSystemBundleAttribute;
 
 namespace Brigade.Net.Benchmarks.Startup.BrigadeApi;
 
 [BrigadeGroup("/api")]
+[AspNetSystemBundle]
 [PartieSystemBundle]
 [ExpoSystemBundle]
 public static partial class Routing

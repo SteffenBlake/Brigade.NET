@@ -102,7 +102,7 @@ def inspect(value):
                 raise ValueError(f"Missing package license or README: {path.name}")
             is_analyzer = ".Engines." in name
             dll = f"Brigade.Net.{name}.dll"
-            required = f"analyzers/dotnet/cs/{dll}" if is_analyzer else f"lib/net10.0/{dll}"
+            required = f"analyzers/dotnet/cs/{dll}" if is_analyzer else f"lib/net11.0/{dll}"
             if required not in files:
                 raise ValueError(f"Missing assembly {required}")
             if name.startswith("Mise.Engines.") or name == "Partie.Engines.AspNetCore":

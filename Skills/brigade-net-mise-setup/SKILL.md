@@ -27,10 +27,11 @@ Add `Brigade.Net.Partie.Extensions.Mise.<Engine>` for your database. It includes
 
 ```csharp
 using Brigade.Net.Partie;
-using PartieSystemBundleAttribute = Brigade.Net.Partie.AspNetCore.PartieSystemBundleAttribute;
+using AspNetSystemBundleAttribute = Brigade.Net.Partie.AspNetCore.AspNetSystemBundleAttribute;
 using Brigade.Net.Partie.Extensions.Mise.SqlServer;
 
 [BrigadeGroup("/api")]
+[AspNetSystemBundle]
 [PartieSystemBundle]
 public static partial class Routes
 {
@@ -40,7 +41,7 @@ public static partial class Routes
 }
 ```
 
-Each database bundle contains its named config provider, `DbReaderProvider`, `DbWriterTxnProvider`, and `DbWriterProvider`, in that order. The config provider's `[Parameter] string ConnectionStringName` bubbles up to the generated bundle attr. It resolves `IConfiguration.GetConnectionString(name)` and supplies the database factory. Apply the database bundle on a child database group or individual route; keep `[PartieSystemBundle]` on the root group for HTTP results and UoW. Add `[ExpoSystemBundle]` after it when using Expo validation.
+Each database bundle contains its named config provider, `DbReaderProvider`, `DbWriterTxnProvider`, and `DbWriterProvider`, in that order. The config provider's `[Parameter] string ConnectionStringName` bubbles up to the generated bundle attr. It resolves `IConfiguration.GetConnectionString(name)` and supplies the database factory. Apply the database bundle on a child database group or individual route. On an HTTP root group, put `[AspNetSystemBundle]` for HTTP result mapping, then core `[PartieSystemBundle]` for UoW. Add `[ExpoSystemBundle]` after those when using Expo validation.
 
 | Database integration namespace suffix | Bundle attr |
 |---|---|

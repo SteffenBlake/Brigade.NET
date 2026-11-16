@@ -141,7 +141,7 @@ class ReleaseTests(unittest.TestCase):
                 (root / filename).write_bytes(package(files))
                 with self.assertRaisesRegex(ValueError, "Missing assembly"):
                     release.inspect("1.0.0")
-                files[f"lib/net10.0/{name}.dll"] = "assembly"
+                files[f"lib/net11.0/{name}.dll"] = "assembly"
                 files[f"{name}.nuspec"] = metadata.format(dependencies='<dependencies><group><dependency id="Brigade.Net.Other" version="0.9.0" /></group></dependencies>')
                 (root / filename).write_bytes(package(files))
                 with self.assertRaisesRegex(ValueError, "dependencies do not match"):

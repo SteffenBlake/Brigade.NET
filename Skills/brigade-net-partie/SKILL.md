@@ -13,7 +13,7 @@ Main namespaces:
 using Brigade.Net.Core.Results;
 using Brigade.Net.Core.Transactions; // command handler only
 using Brigade.Net.Partie;
-using PartieSystemBundleAttribute = Brigade.Net.Partie.AspNetCore.PartieSystemBundleAttribute;
+using AspNetSystemBundleAttribute = Brigade.Net.Partie.AspNetCore.AspNetSystemBundleAttribute; // HTTP routing only
 ```
 
 ## Request
@@ -201,7 +201,8 @@ Declare a record whose primary constructor lists the real Provider, Partie, or n
 using Brigade.Net.Partie.Extensions.Mise.SQLite;
 
 public sealed record AppBundle<TRequest, TResult>(
-    Brigade.Net.Partie.AspNetCore.PartieSystemBundle<TRequest, TResult> Partie,
+    Brigade.Net.Partie.AspNetCore.AspNetSystemBundle<TRequest, TResult> AspNet,
+    PartieSystemBundle<TRequest, TResult> Partie,
     MiseSqliteBundle<TRequest, TResult> Database
 );
 
@@ -218,7 +219,7 @@ Each record gets a source-generated, repeatable `<TypeName>Attribute`. Apply it 
 
 Context `[Parameter]` args bubble through all nested members to the generated bundle attr. Required args stay required; defaults and `params` stay intact. Required args precede optional args. Matching names share an arg when type and default match; incompatible definitions report `BRG005`. Each registration use supplies its own values, forwarded to every matching step. Bundles can come from referenced projects. Cycles and invalid constructor members report `BRG005` and prevent that route's pipeline from being emitted.
 
-For app routing, put `[PartieSystemBundle]` then `[ExpoSystemBundle]` on the root group. The first contains HTTP result mapping followed by command UoW; the second contains Expo validation. Add `[MiseSqlServerBundle(name)]`, `[MisePostgreSqlBundle(name)]`, `[MiseSqliteBundle(name)]`, `[MiseMySqlBundle(name)]`, or `[MiseMariaDbBundle(name)]` to each database group or route. Database bundles contain named config, query reader, command transaction, and command writer providers. Each is in its database integration namespace. Use `brigade-net-mise-setup` for package setup and `brigade-net-expo` for validation.
+For HTTP app routing, put `[AspNetSystemBundle]`, `[PartieSystemBundle]`, then `[ExpoSystemBundle]` on the root group. Each has one member: HTTP result mapping in `Brigade.Net.Partie.AspNetCore`, command UoW in core `Brigade.Net.Partie`, and Expo validation in `Brigade.Net.Partie.Extensions.Expo`, respectively. Add `[MiseSqlServerBundle(name)]`, `[MisePostgreSqlBundle(name)]`, `[MiseSqliteBundle(name)]`, `[MiseMySqlBundle(name)]`, or `[MiseMariaDbBundle(name)]` to each database group or route. Database bundles contain named config, query reader, command transaction, and command writer providers. Each is in its database integration namespace. Use `brigade-net-mise-setup` for package setup and `brigade-net-expo` for validation.
 
 ## Routes + groups
 
@@ -226,6 +227,7 @@ Group and every containing type must be non-generic, not declared with `file`, a
 
 ```csharp
 [BrigadeGroup("/api/v1")]
+[AspNetSystemBundle]
 [PartieSystemBundle]
 [AuditPartie]
 public static partial class Routes
@@ -276,7 +278,7 @@ JSON = payload only. No case shell. Status map is opt-in. Add outer, before step
 
 ```csharp
 [BrigadeGroup("/api/v1")]
-[PartieSystemBundle]
+[AspNetSystemBundle]
 public static partial class Routes;
 ```
 

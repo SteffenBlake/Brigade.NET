@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Run existing parity tests and benchmarks, then generate charts and the README.
 
-Requires .NET 10, Docker, k6, Python 3.11+, and matplotlib==3.10.7.
+Requires .NET 11, Docker, k6, Python 3.11+, and matplotlib==3.10.7.
 Run: python3 Benchmarks/run.py
 Render saved data: python3 Benchmarks/run.py --render-only RUN_DIRECTORY
 Raw outputs: Benchmarks/.work/runs/ (ignored by Git).

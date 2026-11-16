@@ -103,8 +103,7 @@ public sealed class MiseRouteTests
             """;
         if (bundled)
         {
-            source = "using PartieSystemBundleAttribute = Brigade.Net.Partie.AspNetCore.PartieSystemBundleAttribute;\n"
-                + source.Replace("[UnitOfWorkPartie]", "[PartieSystemBundle]")
+            source = source.Replace("[UnitOfWorkPartie]", "[PartieSystemBundle]")
                     .Replace("[SqliteDbConfigProvider(\"Sqlite\")]\n        [DbWriterTxnProvider]\n        [DbWriterProvider]", "[MiseSqliteBundle(\"Sqlite\")]")
                     .Replace("[PostgreSqlDbConfigProvider(\"PostgreSql\")]\n        [DbWriterTxnProvider]\n        [DbWriterProvider]", "[MisePostgreSqlBundle(\"PostgreSql\")]");
         }

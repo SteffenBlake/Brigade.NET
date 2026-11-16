@@ -12,7 +12,7 @@ public sealed class OpenApiSpecificationTests(AppHostFixture host)
         using var document = await GetDocument();
         var root = document.RootElement;
 
-        Assert.Equal("3.1.1", root.GetProperty("openapi").GetString());
+        Assert.Equal("3.2.0", root.GetProperty("openapi").GetString());
 
         var search = Operation(root, "/api/v1/orders", "get");
         var customer = Parameter(search, "query", "customer").GetProperty("schema");

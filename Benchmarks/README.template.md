@@ -8,7 +8,7 @@ Run these commands from the repository root on Linux.
 
 ### 1. Prerequisites
 
-- .NET 10 SDK.
+- .NET 11 SDK.
 - Docker with a running daemon.
 - k6 available on `PATH`, or its executable path set in `BENCH_K6`.
 - Python 3.11 or newer, with virtual-environment support.

@@ -32,11 +32,12 @@ using Brigade.Net.Partie.Extensions.Expo;
 using Brigade.Net.Partie;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Hosting;
-using PartieSystemBundleAttribute = Brigade.Net.Partie.AspNetCore.PartieSystemBundleAttribute;
+using AspNetSystemBundleAttribute = Brigade.Net.Partie.AspNetCore.AspNetSystemBundleAttribute;
 
 namespace Brigade.Net.Example.Web;
 
 [BrigadeGroup("/api/v1")]
+[AspNetSystemBundle]
 [PartieSystemBundle]
 [ExpoSystemBundle]
 public static partial class Routing
